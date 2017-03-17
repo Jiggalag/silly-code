@@ -1,0 +1,12 @@
+{
+"startDate": "2017-03-18T00:00:00.000Z",
+"endDate": "2017-03-24T10:00:00.000Z",
+"priority": "1",
+"weight": "100",
+"pacing": "ASAP",
+"dimensions": ["summary"],
+"geoTargeting": {"includeCountries": [], "includeContinents": [], "excludeCountries": [], "includeStates": []},
+"keyvalueTargeting": [],
+"inventoryTargeting": {"scheduledPages": []},
+"frequencyTargetings": [{"impsLimit": 53, "scope": "WEEKLY"}]
+}

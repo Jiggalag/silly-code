@@ -1,9 +1,7 @@
-__author__ = 'pavel.kiselev'
-
 import subprocess
 
-user = 'pavel.kiselev'
-server = 'dev02.maxifier.com'
+user = 'mock'
+server = 'mock'
 threshold = 90
 pathToImage = '/home/jiggalag/fffuuu.jpg'
 getFreeSpace = "ssh %s@%s 'df -h | grep /dev/sdb1'" % (user, server)
