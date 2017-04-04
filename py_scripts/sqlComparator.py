@@ -10,6 +10,8 @@ from multiprocessing import Pool
 # TODO: add code for comparing by some sections
 # TODO: add log function to make logging great again
 # TODO: add hideWarnings property
+# TODO: add UI
+# TODO: probably, add functional for cloning databases
 
 logger = Logger(20)
 
@@ -41,27 +43,7 @@ def checkDateList(table, emptyTables, emptyProdTables, emptyTestTables, client):
     sqlParamArray = Pool(2).map(configHelper.ifmsConfigClient(propertyFile, client).getSQLConnectParams, ["prod", "test"])
     dateList = dbHelper.dbConnector.runParallelSelect(sqlParamArray, client, selectQuery)
     if all(dateList):
-        actualDates = set()
-        for days in range(1, depthReportCheck):
-            actualDates.add(calculateDate(days))
-        if dateList[0][-depthReportCheck:] == dateList[1][-depthReportCheck:]:
-            for item in dateList[0][-depthReportCheck:]:
-                comparingTimeframe.append(item.get("dt").date().strftime("%Y-%m-%d"))
-            return comparingTimeframe
-        else:
-            pool = Pool(2)
-            dateSet = pool.map(converters.convertToSet, dateList)
-            if (dateSet[0] - dateSet[1]):
-                uniqueDates = getUniqueReportDates(dateSet[0], dateSet[1])
-                # TODO: replace "test-db" on db-name
-                # print(str(datetime.datetime.now()) + " [WARN] This dates absent in test-db: " + ",".join(uniqueDates) + " in report table " + table)
-                logger.warn("This dates absent in test-db: {} in report table {}...".format(",".join(uniqueDates), table))
-            if (dateSet[1] - dateSet[0]):
-                uniqueDates = getUniqueReportDates(dateSet[1], dateSet[0])
-                # TODO: replace "prod-db" on db-name
-                # print(str(datetime.datetime.now()) + " [WARN] This dates absent in prod-db: " + ",".join(uniqueDates) + " in report table " + table)
-                logger.warn("This dates absent in prod-db: {} in report table {}...".format(",".join(uniqueDates), table))
-            return dateSet[0] & dateSet[1]
+        return calculateComparingTimeframe(comparingTimeframe, dateList, table)
     else:
         if not dateList[0] and not dateList[1]:
             # print(str(datetime.datetime.now()) + " [WARN] Table " + table + " is empty in both dbs...")
@@ -78,6 +60,30 @@ def checkDateList(table, emptyTables, emptyProdTables, emptyTestTables, client):
             logger.warn("Table {} on test-db is empty!".format(table))
             emptyTestTables.append(table)
         return []
+
+
+def calculateComparingTimeframe(comparingTimeframe, dateList, table):
+    actualDates = set()
+    for days in range(1, depthReportCheck):
+        actualDates.add(calculateDate(days))
+    if dateList[0][-depthReportCheck:] == dateList[1][-depthReportCheck:]:
+        for item in dateList[0][-depthReportCheck:]:
+            comparingTimeframe.append(item.get("dt").date().strftime("%Y-%m-%d"))
+        return comparingTimeframe
+    else:
+        pool = Pool(2)
+        dateSet = pool.map(converters.convertToSet, dateList)
+        if (dateSet[0] - dateSet[1]):
+            uniqueDates = getUniqueReportDates(dateSet[0], dateSet[1])
+            # TODO: replace "test-db" on db-name
+            # print(str(datetime.datetime.now()) + " [WARN] This dates absent in test-db: " + ",".join(uniqueDates) + " in report table " + table)
+            logger.warn("This dates absent in test-db: {} in report table {}...".format(",".join(uniqueDates), table))
+        if (dateSet[1] - dateSet[0]):
+            uniqueDates = getUniqueReportDates(dateSet[1], dateSet[0])
+            # TODO: replace "prod-db" on db-name
+            # print(str(datetime.datetime.now()) + " [WARN] This dates absent in prod-db: " + ",".join(uniqueDates) + " in report table " + table)
+            logger.warn("This dates absent in prod-db: {} in report table {}...".format(",".join(uniqueDates), table))
+        return dateSet[0] & dateSet[1]
 
 
 def compareData(tables, tablesWithDifferentSchema, globalBreak, noCrossedDatesTables, emptyTables, emptyProdTables, emptyTestTables, differingTables):
