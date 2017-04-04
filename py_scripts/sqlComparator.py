@@ -2,8 +2,9 @@ import datetime
 import configparser
 import os
 import sys
-from .helpers import configHelper, converters, dbHelper, helper
-from .helpers.loggingHelper import Logger
+sys.path.append(os.getcwd() + '/helpers')
+from helpers import configHelper, converters, dbHelper, helper, loggingHelper
+from loggingHelper import Logger
 from multiprocessing import Pool
 
 # TODO: fix bug with multiple writing same sql-queries in some cases (potentially problem with starmap)
@@ -130,7 +131,8 @@ def compareData(tables, tablesWithDifferentSchema, globalBreak, noCrossedDatesTa
 
 
 def compareEntityTable(table, query, differingTables):
-    listEntities = getTableData(dbHelper.dbConnector.runParallelSelect(query, client))
+    sqlParamArray = Pool(2).map(configHelper.ifmsConfigClient(propertyFile, client).getSQLConnectParams, ["prod", "test"])
+    listEntities = getTableData(dbHelper.dbConnector.runParallelSelect(sqlParamArray, query, client))
     uniqFor0 = listEntities[0] - listEntities[1]
     uniqFor1 = listEntities[1] - listEntities[0]
     if len(uniqFor0) > 0:
@@ -147,8 +149,8 @@ def compareEntityTable(table, query, differingTables):
 
 
 def compareReportSums(table, query, differingTables):
-    # TODO: fix!
-    listReports = dbHelper.dbConnector.runParallelSelect(query)
+    sqlParamArray = Pool(2).map(configHelper.ifmsConfigClient(propertyFile, client).getSQLConnectParams, ["prod", "test"])
+    listReports = dbHelper.dbConnector.runParallelSelect(sqlParamArray, client, query)
     clicks = imps = True
     prodClicks = int(listReports[0][0].get("SUM(CLICKS)"))
     testClicks = int(listReports[1][0].get("SUM(CLICKS)"))
@@ -172,8 +174,8 @@ def compareReportSums(table, query, differingTables):
 
 
 def compareReportDetailed(table, query):
-    # TODO: fix
-    txtReports = getTableData(dbHelper.dbConnector.runParallelSelect(query))
+    sqlParamArray = Pool(2).map(configHelper.ifmsConfigClient(propertyFile, client).getSQLConnectParams, ["prod", "test"])
+    txtReports = getTableData(dbHelper.dbConnector.runParallelSelect(sqlParamArray, client, query))
     uniqFor0 = txtReports[0] - txtReports[1]
     uniqFor1 = txtReports[1] - txtReports[0]
     if len(uniqFor0) > 0:
@@ -191,8 +193,8 @@ def compareReportDetailed(table, query):
 
 def compareTableLists():
     selectQuery = "SELECT DISTINCT(TABLE_NAME) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'DBNAME';"
-    # TODO: fix!
-    tableDicts = dbHelper.dbConnector.runParallelSelect(selectQuery)
+    sqlParamArray = Pool(2).map(configHelper.ifmsConfigClient(propertyFile, client).getSQLConnectParams, ["prod", "test"])
+    tableDicts = dbHelper.dbConnector.runParallelSelect(sqlParamArray, client, selectQuery)
     if tableDicts[0] == tableDicts[1]:
         return tableDicts[0]
     else:
@@ -222,7 +224,8 @@ def compareTablesMetadata(tables):
         # print(str(datetime.datetime.now()) + " Check schema for table " + table + "...")
         logger.info("Check schema for table {}...".format(table))
         selectQuery = "SELECT %s FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'DBNAME' and TABLE_NAME='TABLENAME' ORDER BY COLUMN_NAME;".replace("TABLENAME", table) % schemaColumns
-        columnList = getTableData(dbHelper.dbConnector.runParallelSelect(selectQuery))
+        sqlParamArray = Pool(2).map(configHelper.ifmsConfigClient(propertyFile, client).getSQLConnectParams, ["prod", "test"])
+        columnList = getTableData(dbHelper.dbConnector.runParallelSelect(sqlParamArray, client, selectQuery))
         uniqForProd = columnList[0] - columnList[1]
         uniqForTest = columnList[1] - columnList[0]
         if len(uniqForProd) > 0:
@@ -247,8 +250,8 @@ def countTableRecords(table, date):
         query = "SELECT COUNT(*) FROM %s;" % table
     else:
         query = "SELECT COUNT(*) FROM %s WHERE dt > '%s';" % (table, date)
-    # TODO: fix!
-    amountRecords = dbHelper.dbConnector.runParallelSelect(query)
+    sqlParamArray = Pool(2).map(configHelper.ifmsConfigClient(propertyFile, client).getSQLConnectParams, ["prod", "test"])
+    amountRecords = dbHelper.dbConnector.runParallelSelect(sqlParamArray, client, query)
     return amountRecords
 
 
@@ -544,7 +547,7 @@ def writeUniqueEntitiesToFile(table, listUniqs, stage):
 
 for client in config.getClients():
     clientConfig = configHelper.ifmsConfigClient(propertyFile, client)
-    sqlPropertyDict = clientConfig.getSQLConnectParams()
+    sqlPropertyDict = clientConfig.getSQLConnectParams('test')
     clientIgnoreTables = config.getProperty("specificIgnoredTables", client + ".ignoreTables")
     noCrossedDatesTables = []
     columnsWithoutAssociateTable = []

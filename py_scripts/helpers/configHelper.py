@@ -2,7 +2,7 @@ import configparser
 import datetime
 import os.path
 import sys
-from .loggingHelper import Logger
+from loggingHelper import Logger
 
 logger = Logger(20)
 

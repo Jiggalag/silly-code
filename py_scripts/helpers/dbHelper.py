@@ -1,5 +1,6 @@
-from .loggingHelper import Logger
-from multiprocessing import Pool
+from loggingHelper import Logger
+import configHelper
+from multiprocessing.dummy import Pool
 import pymysql
 
 logger = Logger(20)
@@ -38,7 +39,7 @@ class dbConnector:
     @staticmethod
     def runParallelSelect(sqlParamArray, client, query):
         pool = Pool(2)
-        resultArray = pool.map(lambda x: dbConnector(x, client=client).runSelect(query), sqlParamArray)
+        resultArray = pool.map((lambda x: dbConnector(x, client=client).runSelect(query)), sqlParamArray)
         pool.close()
         pool.join()
         return resultArray
