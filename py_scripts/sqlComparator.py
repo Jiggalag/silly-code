@@ -7,21 +7,21 @@ from helpers import configHelper, converters, dbHelper, helper, loggingHelper
 from loggingHelper import Logger
 from multiprocessing import Pool
 
-# TODO: I've stopped on bug
-# pymysql.err.InternalError: (1054, "Unknown column 't.isapproved' in 'field list'")
-# 2017-04-04 09:48:24.689208 [INFO] SELECT t.remoteid,t.isdeleted,t.description,t.externalid,t.ionumber,t.lastmodifieddt,t.lastupdatedate,t.name,t.notes,t.salesperson,t.trafficker,t.whencreated,t.whenmodified,t.addonfields,t.autoextensiondays,t.billable,t.iscorrect,t.costtype,t.actioncost,t.clickcost,t.impcost,t.cpmclass,t.clickdailygoal,t.impdailygoal,t.dailyrevenue,t.dayofweeks,t.duration,t.enddate,t.flatrate,t.hourofdays,t.impdailygoaloverrun,t.isonlinetarget,t.actiongoal,t.clickgoal,t.impgoal,t.percentage,t.prioritylevel,t.revenuecalculationtype,t.roadblockingtype,t.startdate,t.totalclicks,t.total,t.totalscheduledrevenue,t.usertimezone,t.weight,t.whomodified,agency.remoteid as agencyid,t.custcamptypeid,t.traffickerid,conversion.remoteid as conversionid,insertionorder.remoteid as insertionorderid,target.id as targetid,t.multiplefc,t.adsdeleted,t.campaigncompletion,t.type,t.campaignstatus,t.bookingtype,t.timeframedistribution,t.dailydistribution,advertiser.remoteid as advertiserid,conversiongroup.remoteid as conversiongroupid,t.bannerdeliverytypeenum,t.isapproved FROM campaign AS t JOIN agency ON t.agencyid=agency.id JOIN conversion ON t.conversionid=conversion.id JOIN insertionorder ON t.insertionorderid=insertionorder.id JOIN target ON t.targetid=target.id JOIN advertiser ON t.advertiserid=advertiser.id JOIN conversiongroup ON t.conversiongroupid=conversiongroup.id  ORDER BY t.remoteid,t.externalid, agencyid,t.custcamptypeid,t.traffickerid, conversionid, insertionorderid, targetid, advertiserid, conversiongroupid LIMIT 10000,10000;
+# TODO: fix bug with multiple printing of strings like:
+# SELECT column_name FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = 'campaigngeoreport' AND table_schema = 'ifms3_i_cpopro';
+# SELECT column_name FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = 'campaigngeoreport' AND table_schema = 'ifms3_i_cpopro';
+# SELECT column_name FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = 'campaigngeoreport' AND table_schema = 'ifms3_i_cpopro';
 
-# TODO: fix bug with multiple writing same sql-queries in some cases (potentially problem with starmap)
 # TODO: add code for comparing by some sections
-# TODO: add log function to make logging great again
-# TODO: add hideWarnings property
-# TODO: add UI
-# TODO: probably, add functional for cloning databases
-
-logger = Logger(20)
+# TODO: add intellectual adding often differ tables to ignore list
+# TODO: EPIC: add UI
+# TODO: EPIC: probably, add functional for cloning databases
 
 propertyFile = "./resources/properties/sqlComparator.properties"
 config = configHelper.ifmsConfigCommon(propertyFile)
+
+logger = Logger(config.getPropertyFromMainSection("loggingLevel"))
+
 sendMailFrom = config.getPropertyFromMainSection("sendMailFrom")
 sendMailTo = config.getPropertyFromMainSection("sendMailTo")
 mailPassword = config.getPropertyFromMainSection("mailPassword")
@@ -227,9 +227,8 @@ def compareTableLists():
 def compareTablesMetadata(tables):
     tablesWithDifferentSchema = []
     for table in tables:
-        # print(str(datetime.datetime.now()) + " Check schema for table " + table + "...")
         logger.info("Check schema for table {}...".format(table))
-        selectQuery = "SELECT {} FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'DBNAME' and TABLE_NAME='TABLENAME' ORDER BY COLUMN_NAME;".replace("TABLENAME", table).format(*schemaColumns)
+        selectQuery = "SELECT {} FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'DBNAME' and TABLE_NAME='TABLENAME' ORDER BY COLUMN_NAME;".replace("TABLENAME", table).format(', '.join(schemaColumns))
         sqlParamArray = Pool(2).map(configHelper.ifmsConfigClient(propertyFile, client).getSQLConnectParams, ["prod", "test"])
         columnList = getTableData(dbHelper.dbConnector.runParallelSelect(sqlParamArray, client, selectQuery, dbProperties))
         uniqForProd = columnList[0] - columnList[1]
@@ -481,7 +480,7 @@ def prepareToTest(client):
     createTestDir("/mxf/data/test_results/", client)
     startTime = datetime.datetime.now()
     # print(str(datetime.datetime.now()) + " [INFO] Start " + client + " processing!\n")
-    logger.info("Start {} processing!\n".format(client))
+    logger.info("Start {} processing!".format(client))
     tables = converters.convertToList(compareTableLists())
     return startTime, tables
 
