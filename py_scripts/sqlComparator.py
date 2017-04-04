@@ -47,8 +47,7 @@ def calculateDate(days):
 def checkDateList(table, emptyTables, emptyProdTables, emptyTestTables, client):
     comparingTimeframe = []
     selectQuery = "SELECT distinct(dt) from %s;" % table
-    sqlParamArray = Pool(2).map(configHelper.ifmsConfigClient(propertyFile, client).getSQLConnectParams, ["prod", "test"])
-    dateList = dbHelper.dbConnector.runParallelSelect(sqlParamArray, client, selectQuery, dbProperties)
+    dateList = dbHelper.dbConnector.runParallelSelect(clientConfig, client, selectQuery, dbProperties)
     if all(dateList):
         return calculateComparingTimeframe(comparingTimeframe, dateList, table)
     else:
@@ -131,8 +130,7 @@ def compareData(tables, tablesWithDifferentSchema, globalBreak, noCrossedDatesTa
 
 
 def compareEntityTable(table, query, differingTables):
-    sqlParamArray = Pool(2).map(configHelper.ifmsConfigClient(propertyFile, client).getSQLConnectParams, ["prod", "test"])
-    listEntities = getTableData(dbHelper.dbConnector.runParallelSelect(sqlParamArray, client, query, dbProperties))
+    listEntities = getTableData(dbHelper.dbConnector.runParallelSelect(clientConfig, client, query, dbProperties))
     uniqFor0 = listEntities[0] - listEntities[1]
     uniqFor1 = listEntities[1] - listEntities[0]
     if len(uniqFor0) > 0:
@@ -148,8 +146,7 @@ def compareEntityTable(table, query, differingTables):
 
 
 def compareReportSums(table, query, differingTables):
-    sqlParamArray = Pool(2).map(configHelper.ifmsConfigClient(propertyFile, client).getSQLConnectParams, ["prod", "test"])
-    listReports = dbHelper.dbConnector.runParallelSelect(sqlParamArray, client, query, dbProperties)
+    listReports = dbHelper.dbConnector.runParallelSelect(clientConfig, client, query, dbProperties)
     clicks = imps = True
     prodClicks = int(listReports[0][0].get("SUM(CLICKS)"))
     testClicks = int(listReports[1][0].get("SUM(CLICKS)"))
@@ -170,8 +167,7 @@ def compareReportSums(table, query, differingTables):
 
 
 def compareReportDetailed(table, query):
-    sqlParamArray = Pool(2).map(configHelper.ifmsConfigClient(propertyFile, client).getSQLConnectParams, ["prod", "test"])
-    txtReports = getTableData(dbHelper.dbConnector.runParallelSelect(sqlParamArray, client, query, dbProperties))
+    txtReports = getTableData(dbHelper.dbConnector.runParallelSelect(clientConfig, client, query, dbProperties))
     uniqFor0 = txtReports[0] - txtReports[1]
     uniqFor1 = txtReports[1] - txtReports[0]
     if len(uniqFor0) > 0:
@@ -188,8 +184,7 @@ def compareReportDetailed(table, query):
 
 def compareTableLists():
     selectQuery = "SELECT DISTINCT(TABLE_NAME) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'DBNAME';"
-    sqlParamArray = Pool(2).map(configHelper.ifmsConfigClient(propertyFile, client).getSQLConnectParams, ["prod", "test"])
-    tableDicts = dbHelper.dbConnector.runParallelSelect(sqlParamArray, client, selectQuery, dbProperties)
+    tableDicts = dbHelper.dbConnector.runParallelSelect(clientConfig, client, selectQuery, dbProperties)
     if tableDicts[0] == tableDicts[1]:
         return tableDicts[0]
     else:
@@ -218,8 +213,7 @@ def compareTablesMetadata(tables):
     for table in tables:
         logger.info("Check schema for table {}...".format(table))
         selectQuery = "SELECT {} FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'DBNAME' and TABLE_NAME='TABLENAME' ORDER BY COLUMN_NAME;".replace("TABLENAME", table).format(', '.join(schemaColumns))
-        sqlParamArray = Pool(2).map(configHelper.ifmsConfigClient(propertyFile, client).getSQLConnectParams, ["prod", "test"])
-        columnList = getTableData(dbHelper.dbConnector.runParallelSelect(sqlParamArray, client, selectQuery, dbProperties))
+        columnList = getTableData(dbHelper.dbConnector.runParallelSelect(clientConfig, client, selectQuery, dbProperties))
         uniqForProd = columnList[0] - columnList[1]
         uniqForTest = columnList[1] - columnList[0]
         if len(uniqForProd) > 0:
@@ -240,8 +234,7 @@ def countTableRecords(table, date):
         query = "SELECT COUNT(*) FROM %s;" % table
     else:
         query = "SELECT COUNT(*) FROM %s WHERE dt > '%s';" % (table, date)
-    sqlParamArray = Pool(2).map(configHelper.ifmsConfigClient(propertyFile, client).getSQLConnectParams, ["prod", "test"])
-    amountRecords = dbHelper.dbConnector.runParallelSelect(sqlParamArray, client, query, dbProperties)
+    amountRecords = dbHelper.dbConnector.runParallelSelect(clientConfig, client, query, dbProperties)
     return amountRecords
 
 

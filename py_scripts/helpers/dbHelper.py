@@ -37,8 +37,9 @@ class dbConnector:
                 self.comparingStep = kwargs.get(key)
 
     @staticmethod
-    def runParallelSelect(sqlParamArray, client, query, dbProperties):
+    def runParallelSelect(clientConfig, client, query, dbProperties):
         pool = Pool(2)
+        sqlParamArray = pool.map(clientConfig.getSQLConnectParams, ["prod", "test"])
         resultArray = pool.map((lambda x: dbConnector(x, client=client, **dbProperties).runSelect(query)), sqlParamArray)
         pool.close()
         pool.join()
