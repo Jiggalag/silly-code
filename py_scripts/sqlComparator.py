@@ -38,7 +38,13 @@ mode = config.getProperty("sqlProperties", "reportCheckType")
 schemaColumns = config.getProperty("sqlProperties", "includeSchemaColumns")
 hideColumns = config.getProperty("sqlProperties", "hideColumns")
 
-dbProperties = {'attempts': attempts, 'comparingStep': comparingStep, 'hideColumns': hideColumns, 'mode': mode, 'hideSQLQueries': hideSQLQueries}
+dbProperties = {
+    'attempts': attempts,
+    'comparingStep': comparingStep,
+    'hideColumns': hideColumns,
+    'mode': mode,
+    'hideSQLQueries': hideSQLQueries
+}
 
 def calculateDate(days):
     return (datetime.datetime.today().date() - datetime.timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
@@ -70,15 +76,10 @@ def calculateComparingTimeframe(comparingTimeframe, dateList, table):
     for days in range(1, depthReportCheck):
         actualDates.add(calculateDate(days))
     if dateList[0][-depthReportCheck:] == dateList[1][-depthReportCheck:]:
-        for item in dateList[0][-depthReportCheck:]:
-            comparingTimeframe.append(item.get("dt").date().strftime("%Y-%m-%d"))
-        return comparingTimeframe
+        return getComparingTimeframe(dateList)
     else:
-        pool = Pool(2)
-        dateSet = pool.map(converters.convertToSet, dateList)
-        pool.close()
-        pool.join()
-        if (dateSet[0] - dateSet[1]):
+        dateSet = converters.parallelConvertToSet(dateList)
+        if (dateSet[0] - dateSet[1]): # this code (4 strings below) should be moved to different function
             uniqueDates = getUniqueReportDates(dateSet[0], dateSet[1])
             # TODO: replace "test-db" on db-name
             logger.warn("This dates absent in test-db: {} in report table {}...".format(",".join(uniqueDates), table))
@@ -89,10 +90,20 @@ def calculateComparingTimeframe(comparingTimeframe, dateList, table):
         return dateSet[0] & dateSet[1]
 
 
+def getComparingTimeframe(dateList):
+    comparingTimeframe = []
+    for item in dateList[0][-depthReportCheck:]:
+        comparingTimeframe.append(item.get("dt").date().strftime("%Y-%m-%d"))
+    return comparingTimeframe
+
+
 def compareData(tables, tablesWithDifferentSchema, globalBreak, noCrossedDatesTables, emptyTables, emptyProdTables, emptyTestTables, differingTables):
     tables = prepareTableList(tables, tablesWithDifferentSchema)
     mapping, columnsWithoutAssociateTable = prepareColumnMapping("prod")
     for table in tables:
+        # TODO: remove this hack after debugging
+        if 'campaign' in table:
+            continue
         stopCheckingThisTable = False
         if ("report" or "statistic") in table:
             if not globalBreak:
@@ -188,10 +199,7 @@ def compareTableLists():
     if tableDicts[0] == tableDicts[1]:
         return tableDicts[0]
     else:
-        pool = Pool(2)
-        tableSets = pool.map(converters.convertToSet, tableDicts)
-        pool.close()
-        pool.join()
+        tableSets = converters.parallelConvertToSet(tableDicts)
         prodUniqueTables = tableSets[0] - tableSets[1]
         testUniqueTables = tableSets[1] - tableSets[0]
         if len(prodUniqueTables) > 0:

@@ -1,5 +1,7 @@
 __author__ = 'pavel.kiselev'
 
+from multiprocessing.dummy import Pool
+
 def convertToList(structureToConvert):
     resultList = []
     for item in structureToConvert:
@@ -21,3 +23,11 @@ def convertToSet(listToConvert):
         else:
             resultSet.add(item)
     return resultSet
+
+
+def parallelConvertToSet(tableDicts):
+    pool = Pool(2)
+    tableSets = pool.map(convertToSet, tableDicts)
+    pool.close()
+    pool.join()
+    return tableSets
