@@ -53,17 +53,14 @@ def checkDateList(table, emptyTables, emptyProdTables, emptyTestTables, client):
         return calculateComparingTimeframe(comparingTimeframe, dateList, table)
     else:
         if not dateList[0] and not dateList[1]:
-            # print(str(datetime.datetime.now()) + " [WARN] Table " + table + " is empty in both dbs...")
             logger.warn("Table {} is empty in both dbs...".format(table))
             emptyTables.append(table)
         elif not dateList[0]:
-            # print(str(datetime.datetime.now()) + " [WARN] Table " + table + " on prod-db is empty!")
             # TODO: replace "prod-db" on db-name
             logger.warn("Table {} on prod-db is empty!".format(table))
             emptyProdTables.append(table)
         else:
             # TODO: replace "test-db" on db-name
-            # print(str(datetime.datetime.now()) + " [WARN] Table " + table + " on test-db is empty!")
             logger.warn("Table {} on test-db is empty!".format(table))
             emptyTestTables.append(table)
         return []
@@ -80,15 +77,15 @@ def calculateComparingTimeframe(comparingTimeframe, dateList, table):
     else:
         pool = Pool(2)
         dateSet = pool.map(converters.convertToSet, dateList)
+        pool.close()
+        pool.join()
         if (dateSet[0] - dateSet[1]):
             uniqueDates = getUniqueReportDates(dateSet[0], dateSet[1])
             # TODO: replace "test-db" on db-name
-            # print(str(datetime.datetime.now()) + " [WARN] This dates absent in test-db: " + ",".join(uniqueDates) + " in report table " + table)
             logger.warn("This dates absent in test-db: {} in report table {}...".format(",".join(uniqueDates), table))
         if (dateSet[1] - dateSet[0]):
             uniqueDates = getUniqueReportDates(dateSet[1], dateSet[0])
             # TODO: replace "prod-db" on db-name
-            # print(str(datetime.datetime.now()) + " [WARN] This dates absent in prod-db: " + ",".join(uniqueDates) + " in report table " + table)
             logger.warn("This dates absent in prod-db: {} in report table {}...".format(",".join(uniqueDates), table))
         return dateSet[0] & dateSet[1]
 
@@ -112,7 +109,6 @@ def compareData(tables, tablesWithDifferentSchema, globalBreak, noCrossedDatesTa
                         else:
                             break
                 else:
-                    # print(str(datetime.datetime.now()) + " [WARN] Tables " + table + " shouldn"t be compared correctly, because they have no any crosses dates in reports")
                     logger.warn("Tables {} should not be compared correctly, because they have no any crosses dates in reports".format(table))
                     noCrossedDatesTables.append(table)
             else:
@@ -124,14 +120,12 @@ def compareData(tables, tablesWithDifferentSchema, globalBreak, noCrossedDatesTa
             if not globalBreak:
                 for query in queryList:
                     if (not compareEntityTable(table, query, differingTables)) and failWithFirstError:
-                        # print(str(datetime.datetime.now()) + " [FINISHED] First error founded, checkin failed. Comparing takes " + str(datetime.datetime.now() - startTime))
                         logger.info("First error founded, checkin failed. Comparing takes {}".format(datetime.datetime.now() - startTime))
                         globalBreak = True
                         break
             else:
                 break
     dataComparingTime = datetime.datetime.now() - startTime
-    # print(str(datetime.datetime.now()) + " [INFO] Comparing finished in " + str(dataComparingTime))
     logger.info("Comparing finished in {}".format(dataComparingTime))
     return dataComparingTime
 
@@ -146,7 +140,6 @@ def compareEntityTable(table, query, differingTables):
     if len(uniqFor1) > 0:
         writeUniqueEntitiesToFile(table, uniqFor1, "test")
     if not all([len(uniqFor0) == 0, len(uniqFor1) == 0]):
-        # print(str(datetime.datetime.now()) + " [ERROR] Tables " + table + " differs!")
         logger.error("Tables {} differs!".format(table))
         differingTables.append(table)
         return False
@@ -164,14 +157,11 @@ def compareReportSums(table, query, differingTables):
     testImps = int(listReports[1][0].get("SUM(CLICKS)"))
     if prodClicks != testClicks:
         clicks = False
-        # print(str(datetime.datetime.now()) + " [WARN] There are different click sums for query " + query + ". Prod clicks=" + str(prodClicks) + ", test clicks=" + str(testClicks))
         logger.warn("There are different click sums for query {}. Prod clicks={}, test clicks={}".format(query, prodClicks, testClicks))
     if prodImps != testImps:
         imps = False
-        # print(str(datetime.datetime.now()) + " [WARN] There are different imp sums for query " + query + ". Prod imps=" + str(prodImps) + ", test imps=" + str(testImps))
         logger.warn("There are different imp sums for query {}. Prod imps={}, test imps={}".format(query, prodImps, testImps))
     if not all([clicks, imps]):
-        # print(str(datetime.datetime.now()) + " [ERROR] Tables " + table + " differs!")
         logger.error("Tables {} differs!".format(table))
         differingTables.append(table)
         return False
@@ -189,7 +179,6 @@ def compareReportDetailed(table, query):
     if len(uniqFor1) > 0:
         writeUniqueEntitiesToFile(table, uniqFor1, "test")
     if not all([len(uniqFor0) == 0, len(uniqFor1) == 0]):
-        # print(str(datetime.datetime.now()) + " [ERROR] Tables " + table + " differs!")
         logger.error("Tables {} differs!".format(table))
         differingTables.append(table)
         return False
@@ -206,13 +195,13 @@ def compareTableLists():
     else:
         pool = Pool(2)
         tableSets = pool.map(converters.convertToSet, tableDicts)
+        pool.close()
+        pool.join()
         prodUniqueTables = tableSets[0] - tableSets[1]
         testUniqueTables = tableSets[1] - tableSets[0]
         if len(prodUniqueTables) > 0:
-            # print(str(datetime.datetime.now()) + " [WARN] Tables, which unique for production db " + str(prodUniqueTables))
             logger.warn("Tables, which unique for production db {}.".format(prodUniqueTables))
         if len(testUniqueTables) > 0:
-            # print(str(datetime.datetime.now()) + " [WARN] Tables, which unique for test db " + str(testUniqueTables))
             logger.warn("Tables, which unique for test db {}.".format(testUniqueTables))
         if len(tableSets[0]) >= len(tableSets[1]):
             for item in prodUniqueTables:
@@ -234,17 +223,13 @@ def compareTablesMetadata(tables):
         uniqForProd = columnList[0] - columnList[1]
         uniqForTest = columnList[1] - columnList[0]
         if len(uniqForProd) > 0:
-            # print(str(datetime.datetime.now()) +" [ERROR] Elements, unique for table " + table + " on prod-server:" + str(uniqForProd))
             logger.error("Elements, unique for table {} on prod-server:{}".format(table, uniqForProd))
         if len(uniqForTest) > 0:
-            # print(str(datetime.datetime.now()) +" [ERROR] Elements, unique for table " + table + " on test-server:" + str(uniqForTest))
             logger.error("Elements, unique for table {} on test-server:{}".format(table, uniqForTest))
         if not all([len(uniqForProd) == 0, len(uniqForTest) == 0]):
-            # print(str(datetime.datetime.now()) + " [ERROR] Tables " + table + " differs!")
             logger.error(" [ERROR] Tables {} differs!".format(table))
             tablesWithDifferentSchema.append(table)
             if failWithFirstError:
-                # print(str(datetime.datetime.now()) + "[FINISHED] First error founded, checking failed...")
                 logger.critical("First error founded, checking failed...")
                 return False
     return tablesWithDifferentSchema
@@ -360,18 +345,15 @@ def iterationComparingByQueries(queryList, globalBreak, table):
         if mode == "day-sum":
             if ("impressions" and "clicks") in getColumnList("prod", table):
                 if not compareReportSums(table, query, differingTables) and failWithFirstError:
-                    # print(str(datetime.datetime.now()) + " [FINISHED] First error founded, checking failed. Comparing takes " + str(datetime.datetime.now() - startTime))
                     logger.critical("First error founded, checking failed. Comparing takes {}.".format(datetime.datetime.now() - startTime))
                     globalBreak = True
                     return globalBreak, stopCheckingThisTable
             else:
-                # print(str(datetime.datetime.now()) + " [WARN] There is no impression of click column in table " + table)
                 logger.warn("There is no impression of click column in table {}".format(table))
                 stopCheckingThisTable = True
                 return globalBreak, stopCheckingThisTable
         elif mode == "section-sum" or mode == "detailed":
             if not compareReportDetailed(table, query) and failWithFirstError:
-                # print(str(datetime.datetime.now()) + " [FINISHED] First error founded, checking failed. Comparing takes " + str(datetime.datetime.now() - startTime))
                 logger.critical("First error founded, checking failed. Comparing takes {}.".format(datetime.datetime.now() - startTime))
                 globalBreak = True
                 return globalBreak, stopCheckingThisTable
@@ -403,7 +385,6 @@ def prepareColumnMapping(stage):
                         mapping.update({column: column[:-2]})
                     else:
                         columnsWithoutAssociateTable.append(column)
-                        # print(str(datetime.datetime.now()) + " [WARN] Column " + column + " have no appropriate table...")
                         logger.warn("Column {} have no appropriate table...".format(column))
             return mapping, columnsWithoutAssociateTable
     finally:
@@ -471,7 +452,6 @@ def prepareTableList(tables, tablesWithDifferentSchema):
                 if table in tables:
                     tables.remove(table)
     except configparser.NoOptionError:
-        # print(str(datetime.datetime.now()) + "[WARN] Property " + client + ".ignoreTables in section [specificIgnoredTables] absent")
         logger.warn("Property {}.ignoreTables in section [specificIgnoredTables] absent.".format(client))
     return tables
 
@@ -479,7 +459,6 @@ def prepareTableList(tables, tablesWithDifferentSchema):
 def prepareToTest(client):
     createTestDir("/mxf/data/test_results/", client)
     startTime = datetime.datetime.now()
-    # print(str(datetime.datetime.now()) + " [INFO] Start " + client + " processing!\n")
     logger.info("Start {} processing!".format(client))
     tables = converters.convertToList(compareTableLists())
     return startTime, tables
@@ -534,14 +513,12 @@ def queryReportConstruct(table, dt, mode, threshold, comparingStep, mapping):
             offset = offset + comparingStep
             queryList.append(query)
     else:
-        # print(str(datetime.datetime.now()) + " [ERROR] Property reportCheckType has incorrect value " + mode + ". Please, set any of this value: day-sum, section-sum, detailed.")
         logger.error("Property reportCheckType has incorrect value {}. Please, set any of this value: day-sum, section-sum, detailed.".format(mode))
         sys.exit(1)
     return queryList
 
 
 def writeUniqueEntitiesToFile(table, listUniqs, stage):
-    # print(str(datetime.datetime.now()) + " [ERROR] There are " + str(len(listUniqs)) + " unique elements in table " + table + " on " + stage + "-server. Detailed list of records saved to /tmp/" + table + "_uniqRecords_" + stage)
     logger.error("There are {0} unique elements in table {1} on {2}-server. Detailed list of records saved to /tmp/{1}_uniqRecords_{2}".format(len(listUniqs), table, stage))
     with open("/tmp/" + table + "_uniqueRecords_" + stage, "w") as file:
         firstList = converters.convertToList(listUniqs)
@@ -568,15 +545,12 @@ for client in config.getClients():
         tablesWithDifferentSchema = compareTablesMetadata(tables)
         if not tablesWithDifferentSchema and failWithFirstError:
             schemaComparingTime = str(datetime.datetime.now() - startTime)
-            # print(str(datetime.datetime.now()) + " [INFO] Schema partially compared in " + schemaComparingTime)
             logger.info("Schema partially compared in {}".format(schemaComparingTime))
         else:
             schemaComparingTime = str(datetime.datetime.now() - startTime)
-            # print(str(datetime.datetime.now()) + " [INFO] Schema compared in " + schemaComparingTime)
             logger.info("Schema compared in {}".format(schemaComparingTime))
             dataComparingTime = compareData(tables, tablesWithDifferentSchema, globalBreak, noCrossedDatesTables, emptyTables, emptyProdTables, emptyTestTables, differingTables)
     else:
-        # print(str(datetime.datetime.now()) + " Schema checking disabled...")
         logger.info("Schema checking disabled...")
         tablesWithDifferentSchema = []
         dataComparingTime = compareData(tables, [], globalBreak, noCrossedDatesTables, emptyTables, emptyProdTables, emptyTestTables, differingTables)
