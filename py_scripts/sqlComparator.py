@@ -7,6 +7,10 @@ from helpers import configHelper, converters, dbHelper, helper, loggingHelper
 from loggingHelper import Logger
 from multiprocessing import Pool
 
+# TODO: I've stopped on bug
+# pymysql.err.InternalError: (1054, "Unknown column 't.isapproved' in 'field list'")
+# 2017-04-04 09:48:24.689208 [INFO] SELECT t.remoteid,t.isdeleted,t.description,t.externalid,t.ionumber,t.lastmodifieddt,t.lastupdatedate,t.name,t.notes,t.salesperson,t.trafficker,t.whencreated,t.whenmodified,t.addonfields,t.autoextensiondays,t.billable,t.iscorrect,t.costtype,t.actioncost,t.clickcost,t.impcost,t.cpmclass,t.clickdailygoal,t.impdailygoal,t.dailyrevenue,t.dayofweeks,t.duration,t.enddate,t.flatrate,t.hourofdays,t.impdailygoaloverrun,t.isonlinetarget,t.actiongoal,t.clickgoal,t.impgoal,t.percentage,t.prioritylevel,t.revenuecalculationtype,t.roadblockingtype,t.startdate,t.totalclicks,t.total,t.totalscheduledrevenue,t.usertimezone,t.weight,t.whomodified,agency.remoteid as agencyid,t.custcamptypeid,t.traffickerid,conversion.remoteid as conversionid,insertionorder.remoteid as insertionorderid,target.id as targetid,t.multiplefc,t.adsdeleted,t.campaigncompletion,t.type,t.campaignstatus,t.bookingtype,t.timeframedistribution,t.dailydistribution,advertiser.remoteid as advertiserid,conversiongroup.remoteid as conversiongroupid,t.bannerdeliverytypeenum,t.isapproved FROM campaign AS t JOIN agency ON t.agencyid=agency.id JOIN conversion ON t.conversionid=conversion.id JOIN insertionorder ON t.insertionorderid=insertionorder.id JOIN target ON t.targetid=target.id JOIN advertiser ON t.advertiserid=advertiser.id JOIN conversiongroup ON t.conversiongroupid=conversiongroup.id  ORDER BY t.remoteid,t.externalid, agencyid,t.custcamptypeid,t.traffickerid, conversionid, insertionorderid, targetid, advertiserid, conversiongroupid LIMIT 10000,10000;
+
 # TODO: fix bug with multiple writing same sql-queries in some cases (potentially problem with starmap)
 # TODO: add code for comparing by some sections
 # TODO: add log function to make logging great again
@@ -34,6 +38,8 @@ mode = config.getProperty("sqlProperties", "reportCheckType")
 schemaColumns = config.getProperty("sqlProperties", "includeSchemaColumns")
 hideColumns = config.getProperty("sqlProperties", "hideColumns")
 
+dbProperties = {'attempts': attempts, 'comparingStep': comparingStep, 'hideColumns': hideColumns, 'mode': mode, 'hideSQLQueries': hideSQLQueries}
+
 def calculateDate(days):
     return (datetime.datetime.today().date() - datetime.timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
 
@@ -42,7 +48,7 @@ def checkDateList(table, emptyTables, emptyProdTables, emptyTestTables, client):
     comparingTimeframe = []
     selectQuery = "SELECT distinct(dt) from %s;" % table
     sqlParamArray = Pool(2).map(configHelper.ifmsConfigClient(propertyFile, client).getSQLConnectParams, ["prod", "test"])
-    dateList = dbHelper.dbConnector.runParallelSelect(sqlParamArray, client, selectQuery)
+    dateList = dbHelper.dbConnector.runParallelSelect(sqlParamArray, client, selectQuery, dbProperties)
     if all(dateList):
         return calculateComparingTimeframe(comparingTimeframe, dateList, table)
     else:
@@ -89,7 +95,7 @@ def calculateComparingTimeframe(comparingTimeframe, dateList, table):
 
 def compareData(tables, tablesWithDifferentSchema, globalBreak, noCrossedDatesTables, emptyTables, emptyProdTables, emptyTestTables, differingTables):
     tables = prepareTableList(tables, tablesWithDifferentSchema)
-    mapping, columnsWithoutAssociateTable = prepareColumnMapping("prod", client)
+    mapping, columnsWithoutAssociateTable = prepareColumnMapping("prod")
     for table in tables:
         stopCheckingThisTable = False
         if ("report" or "statistic") in table:
@@ -132,7 +138,7 @@ def compareData(tables, tablesWithDifferentSchema, globalBreak, noCrossedDatesTa
 
 def compareEntityTable(table, query, differingTables):
     sqlParamArray = Pool(2).map(configHelper.ifmsConfigClient(propertyFile, client).getSQLConnectParams, ["prod", "test"])
-    listEntities = getTableData(dbHelper.dbConnector.runParallelSelect(sqlParamArray, query, client))
+    listEntities = getTableData(dbHelper.dbConnector.runParallelSelect(sqlParamArray, client, query, dbProperties))
     uniqFor0 = listEntities[0] - listEntities[1]
     uniqFor1 = listEntities[1] - listEntities[0]
     if len(uniqFor0) > 0:
@@ -150,7 +156,7 @@ def compareEntityTable(table, query, differingTables):
 
 def compareReportSums(table, query, differingTables):
     sqlParamArray = Pool(2).map(configHelper.ifmsConfigClient(propertyFile, client).getSQLConnectParams, ["prod", "test"])
-    listReports = dbHelper.dbConnector.runParallelSelect(sqlParamArray, client, query)
+    listReports = dbHelper.dbConnector.runParallelSelect(sqlParamArray, client, query, dbProperties)
     clicks = imps = True
     prodClicks = int(listReports[0][0].get("SUM(CLICKS)"))
     testClicks = int(listReports[1][0].get("SUM(CLICKS)"))
@@ -175,7 +181,7 @@ def compareReportSums(table, query, differingTables):
 
 def compareReportDetailed(table, query):
     sqlParamArray = Pool(2).map(configHelper.ifmsConfigClient(propertyFile, client).getSQLConnectParams, ["prod", "test"])
-    txtReports = getTableData(dbHelper.dbConnector.runParallelSelect(sqlParamArray, client, query))
+    txtReports = getTableData(dbHelper.dbConnector.runParallelSelect(sqlParamArray, client, query, dbProperties))
     uniqFor0 = txtReports[0] - txtReports[1]
     uniqFor1 = txtReports[1] - txtReports[0]
     if len(uniqFor0) > 0:
@@ -194,7 +200,7 @@ def compareReportDetailed(table, query):
 def compareTableLists():
     selectQuery = "SELECT DISTINCT(TABLE_NAME) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'DBNAME';"
     sqlParamArray = Pool(2).map(configHelper.ifmsConfigClient(propertyFile, client).getSQLConnectParams, ["prod", "test"])
-    tableDicts = dbHelper.dbConnector.runParallelSelect(sqlParamArray, client, selectQuery)
+    tableDicts = dbHelper.dbConnector.runParallelSelect(sqlParamArray, client, selectQuery, dbProperties)
     if tableDicts[0] == tableDicts[1]:
         return tableDicts[0]
     else:
@@ -223,9 +229,9 @@ def compareTablesMetadata(tables):
     for table in tables:
         # print(str(datetime.datetime.now()) + " Check schema for table " + table + "...")
         logger.info("Check schema for table {}...".format(table))
-        selectQuery = "SELECT %s FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'DBNAME' and TABLE_NAME='TABLENAME' ORDER BY COLUMN_NAME;".replace("TABLENAME", table) % schemaColumns
+        selectQuery = "SELECT {} FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'DBNAME' and TABLE_NAME='TABLENAME' ORDER BY COLUMN_NAME;".replace("TABLENAME", table).format(*schemaColumns)
         sqlParamArray = Pool(2).map(configHelper.ifmsConfigClient(propertyFile, client).getSQLConnectParams, ["prod", "test"])
-        columnList = getTableData(dbHelper.dbConnector.runParallelSelect(sqlParamArray, client, selectQuery))
+        columnList = getTableData(dbHelper.dbConnector.runParallelSelect(sqlParamArray, client, selectQuery, dbProperties))
         uniqForProd = columnList[0] - columnList[1]
         uniqForTest = columnList[1] - columnList[0]
         if len(uniqForProd) > 0:
@@ -251,7 +257,7 @@ def countTableRecords(table, date):
     else:
         query = "SELECT COUNT(*) FROM %s WHERE dt > '%s';" % (table, date)
     sqlParamArray = Pool(2).map(configHelper.ifmsConfigClient(propertyFile, client).getSQLConnectParams, ["prod", "test"])
-    amountRecords = dbHelper.dbConnector.runParallelSelect(sqlParamArray, client, query)
+    amountRecords = dbHelper.dbConnector.runParallelSelect(sqlParamArray, client, query, dbProperties)
     return amountRecords
 
 
@@ -299,21 +305,21 @@ def generateMailText(emptyTables, differingTables, noCrossedDatesTables, columns
     return body
 
 
-def getColumnList(stage, table, client):
+def getColumnList(stage, table):
     # Function returns column list for sql-query for report table
-    sql = dbHelper.dbConnector(clientConfig.getSQLConnectParams(stage), client)
+    sql = dbHelper.dbConnector(clientConfig.getSQLConnectParams(stage))
     try:
         with sql.connection.cursor() as cursor:
             columnList = []
             queryGetColumnList = "SELECT column_name FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = '%s' AND table_schema = '%s';" % (table, sql.db)
-            if "False" in hideSQLQueries:
+            if not hideSQLQueries:
                 print(queryGetColumnList)
             cursor.execute(queryGetColumnList)
             columnDict = cursor.fetchall()
             for i in columnDict:
                 element = "t." + str(i.get("column_name")).lower()  # It"s neccessary to make possible queries like "select key form keyname;"
                 columnList.append(element)
-            for column in hideColumns.split("|"):
+            for column in hideColumns:
                 if "t." + column.replace("_", "") in columnList:
                     columnList.remove("t." + column)
             if columnList == []:
@@ -373,14 +379,14 @@ def iterationComparingByQueries(queryList, globalBreak, table):
     return globalBreak, stopCheckingThisTable
 
 
-def prepareColumnMapping(stage, client):
-    sql = dbHelper.dbConnector(clientConfig.getSQLConnectParams(stage), client).connection
+def prepareColumnMapping(stage):
+    sql = dbHelper.dbConnector(clientConfig.getSQLConnectParams(stage))
     try:
         with sql.connection.cursor() as cursor:
             columnList = []
             mapping = {}
             columnsWithoutAssociateTable = []
-            queryGetColumn = "SELECT distinct(column_name) FROM INFORMATION_SCHEMA.COLUMNS WHERE table_schema = '%s' AND column_name LIKE '%id' OR column_name LIKE '%remoteid' ORDER BY column_name asc;" % sql.db
+            queryGetColumn = "SELECT distinct(column_name) FROM INFORMATION_SCHEMA.COLUMNS WHERE table_schema = '{}' AND column_name LIKE '%id' OR column_name LIKE '%remoteid' ORDER BY column_name asc;".format(sql.db)
             if hideSQLQueries:
                 print(queryGetColumn)
             cursor.execute(queryGetColumn)
@@ -549,6 +555,8 @@ for client in config.getClients():
     clientConfig = configHelper.ifmsConfigClient(propertyFile, client)
     sqlPropertyDict = clientConfig.getSQLConnectParams('test')
     clientIgnoreTables = config.getProperty("specificIgnoredTables", client + ".ignoreTables")
+    if clientIgnoreTables is None:
+        clientIgnoreTables = 0
     noCrossedDatesTables = []
     columnsWithoutAssociateTable = []
     emptyTables = []

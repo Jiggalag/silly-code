@@ -19,7 +19,7 @@ class dbConnector:
                                           cursorclass=pymysql.cursors.DictCursor)
 
         # sql-property section
-        self.hideSQLQueries = 'True'
+        self.hideSQLQueries = True
         self.hideColumns = None
         self.attempts = 5
         self.mode = 'detailed'
@@ -28,7 +28,7 @@ class dbConnector:
             if 'hideSQLQueries' in key:
                 self.hideSQLQueries = kwargs.get(key)
             if 'hideColumns' in key:
-                self.hideColumns = kwargs.get(key).split('|')
+                self.hideColumns = kwargs.get(key)
             if 'attempts' in key:
                 self.attempts = int(kwargs.get(key))
             if 'mode' in key:
@@ -37,9 +37,9 @@ class dbConnector:
                 self.comparingStep = kwargs.get(key)
 
     @staticmethod
-    def runParallelSelect(sqlParamArray, client, query):
+    def runParallelSelect(sqlParamArray, client, query, dbProperties):
         pool = Pool(2)
-        resultArray = pool.map((lambda x: dbConnector(x, client=client).runSelect(query)), sqlParamArray)
+        resultArray = pool.map((lambda x: dbConnector(x, client=client, **dbProperties).runSelect(query)), sqlParamArray)
         pool.close()
         pool.join()
         return resultArray
@@ -51,7 +51,7 @@ class dbConnector:
             try:
                 with self.connection.cursor() as cursor:
                     sqlQuery = query.replace('DBNAME', self.db)
-                    if 'False' in self.hideSQLQueries:
+                    if not self.hideSQLQueries:
                         logger.info(sqlQuery)
                     cursor.execute(sqlQuery)
                     result = cursor.fetchall()
