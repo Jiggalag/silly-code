@@ -17,7 +17,7 @@ from multiprocessing import Pool
 # TODO: EPIC: add UI
 # TODO: EPIC: probably, add functional for cloning databases
 
-propertyFile = "./resources/properties/sqlComparator.properties"
+propertyFile = os.getcwd() + "/resources/properties/sqlComparator.properties"
 config = configHelper.ifmsConfigCommon(propertyFile)
 
 logger = Logger(config.getPropertyFromMainSection("loggingLevel"))
@@ -46,48 +46,52 @@ dbProperties = {
     'hideSQLQueries': hideSQLQueries
 }
 
+
 def calculateDate(days):
     return (datetime.datetime.today().date() - datetime.timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
 
 
 def checkDateList(table, emptyTables, emptyProdTables, emptyTestTables, client):
-    comparingTimeframe = []
     selectQuery = "SELECT distinct(dt) from %s;" % table
     dateList = dbHelper.dbConnector.runParallelSelect(clientConfig, client, selectQuery, dbProperties)
     if all(dateList):
-        return calculateComparingTimeframe(comparingTimeframe, dateList, table)
+        return calculateComparingTimeframe(dateList, table)
     else:
         if not dateList[0] and not dateList[1]:
             logger.warn("Table {} is empty in both dbs...".format(table))
             emptyTables.append(table)
         elif not dateList[0]:
-            # TODO: replace "prod-db" on db-name
-            logger.warn("Table {} on prod-db is empty!".format(table))
+            prodDb = config.getProperty('sqlParameters', 'prod.' + client + '.sqlDb')
+            logger.warn("Table {} on {} is empty!".format(table, prodDb))
             emptyProdTables.append(table)
         else:
-            # TODO: replace "test-db" on db-name
-            logger.warn("Table {} on test-db is empty!".format(table))
+            testDb = config.getProperty('sqlParameters', 'test.' + client + '.sqlDb')
+            logger.warn("Table {} on {} is empty!".format(table, testDb))
             emptyTestTables.append(table)
         return []
 
 
-def calculateComparingTimeframe(comparingTimeframe, dateList, table):
+def calculateComparingTimeframe(dateList, table):
     actualDates = set()
     for days in range(1, depthReportCheck):
         actualDates.add(calculateDate(days))
     if dateList[0][-depthReportCheck:] == dateList[1][-depthReportCheck:]:
         return getComparingTimeframe(dateList)
     else:
-        dateSet = converters.parallelConvertToSet(dateList)
-        if (dateSet[0] - dateSet[1]): # this code (4 strings below) should be moved to different function
-            uniqueDates = getUniqueReportDates(dateSet[0], dateSet[1])
-            # TODO: replace "test-db" on db-name
-            logger.warn("This dates absent in test-db: {} in report table {}...".format(",".join(uniqueDates), table))
-        if (dateSet[1] - dateSet[0]):
-            uniqueDates = getUniqueReportDates(dateSet[1], dateSet[0])
-            # TODO: replace "prod-db" on db-name
-            logger.warn("This dates absent in prod-db: {} in report table {}...".format(",".join(uniqueDates), table))
-        return dateSet[0] & dateSet[1]
+        return getTimeframeIntersection(dateList, table)
+
+
+def getTimeframeIntersection(dateList, table):
+    dateSet = converters.parallelConvertToSet(dateList)
+    if (dateSet[0] - dateSet[1]):  # this code (4 strings below) should be moved to different function
+        uniqueDates = getUniqueReportDates(dateSet[0], dateSet[1])
+        testDb = config.getProperty('sqlParameters', 'test.' + client + '.sqlDb')
+        logger.warn("This dates absent in {}: {} in report table {}...".format(testDb, ",".join(uniqueDates), table))
+    if (dateSet[1] - dateSet[0]):
+        uniqueDates = getUniqueReportDates(dateSet[1], dateSet[0])
+        prodDb = config.getProperty('sqlParameters', 'prod.' + client + '.sqlDb')
+        logger.warn("This dates absent in {}: {} in report table {}...".format(prodDb, ",".join(uniqueDates), table))
+    return dateSet[0] & dateSet[1]
 
 
 def getComparingTimeframe(dateList):
@@ -101,26 +105,10 @@ def compareData(tables, tablesWithDifferentSchema, globalBreak, noCrossedDatesTa
     tables = prepareTableList(tables, tablesWithDifferentSchema)
     mapping, columnsWithoutAssociateTable = prepareColumnMapping("prod")
     for table in tables:
-        # TODO: remove this hack after debugging
-        if 'campaign' in table:
-            continue
         stopCheckingThisTable = False
         if ("report" or "statistic") in table:
             if not globalBreak:
-                dates = converters.convertToList(checkDateList(table, emptyTables, emptyProdTables, emptyTestTables, client))
-                dates.sort()
-                if dates:
-                    amountRecords = countTableRecords(table, dates[0])
-                    for dt in reversed(dates):
-                        if not all([globalBreak, stopCheckingThisTable]):
-                            maxAmountOfRecords = max(amountRecords[0][0].get("COUNT(*)"), amountRecords[1][0].get("COUNT(*)"))
-                            queryList = queryReportConstruct(table, dt, mode, maxAmountOfRecords, comparingStep, mapping)
-                            globalBreak, stopCheckingThisTable = iterationComparingByQueries(queryList, globalBreak, table)
-                        else:
-                            break
-                else:
-                    logger.warn("Tables {} should not be compared correctly, because they have no any crosses dates in reports".format(table))
-                    noCrossedDatesTables.append(table)
+                cmpReports(emptyProdTables, emptyTables, emptyTestTables, globalBreak, mapping, noCrossedDatesTables, stopCheckingThisTable, table)
             else:
                 break
         else:
@@ -138,6 +126,26 @@ def compareData(tables, tablesWithDifferentSchema, globalBreak, noCrossedDatesTa
     dataComparingTime = datetime.datetime.now() - startTime
     logger.info("Comparing finished in {}".format(dataComparingTime))
     return dataComparingTime
+
+
+def cmpReports(emptyProdTables, emptyTables, emptyTestTables, globalBreak, mapping, noCrossedDatesTables,
+               stopCheckingThisTable, table):
+    dates = converters.convertToList(checkDateList(table, emptyTables, emptyProdTables, emptyTestTables, client))
+    dates.sort()
+    if dates:
+        amountRecords = countTableRecords(table, dates[0])
+        for dt in reversed(dates):
+            if not all([globalBreak, stopCheckingThisTable]):
+                maxAmountOfRecords = max(amountRecords[0][0].get("COUNT(*)"), amountRecords[1][0].get("COUNT(*)"))
+                queryList = queryReportConstruct(table, dt, mode, maxAmountOfRecords, comparingStep, mapping)
+                globalBreak, stopCheckingThisTable = iterationComparingByQueries(queryList, globalBreak, table)
+            else:
+                break
+    else:
+        logger.warn(
+            "Tables {} should not be compared correctly, because they have no any crosses dates in reports".format(
+                table))
+        noCrossedDatesTables.append(table)
 
 
 def compareEntityTable(table, query, differingTables):
@@ -199,21 +207,27 @@ def compareTableLists():
     if tableDicts[0] == tableDicts[1]:
         return tableDicts[0]
     else:
-        tableSets = converters.parallelConvertToSet(tableDicts)
-        prodUniqueTables = tableSets[0] - tableSets[1]
-        testUniqueTables = tableSets[1] - tableSets[0]
-        if len(prodUniqueTables) > 0:
-            logger.warn("Tables, which unique for production db {}.".format(prodUniqueTables))
-        if len(testUniqueTables) > 0:
-            logger.warn("Tables, which unique for test db {}.".format(testUniqueTables))
-        if len(tableSets[0]) >= len(tableSets[1]):
-            for item in prodUniqueTables:
-                tableSets[0].remove(item)
-            return converters.convertToList(tableSets[0])
-        else:
-            for item in testUniqueTables:
-                tableSets[1].remove(item)
-            return converters.convertToList(tableSets[1])
+        return getIntersectedTables(tableDicts)
+
+
+def getIntersectedTables(tableDicts):
+    tableSets = converters.parallelConvertToSet(tableDicts)
+    prodUniqueTables = tableSets[0] - tableSets[1]
+    testUniqueTables = tableSets[1] - tableSets[0]
+    if len(prodUniqueTables) > 0:
+        prodDb = config.getProperty('sqlParameters', 'prod.' + client + '.sqlDb')
+        logger.warn("Tables, which unique for {} db {}.".format(prodDb, prodUniqueTables))
+    if len(testUniqueTables) > 0:
+        testDb = config.getProperty('sqlParameters', 'test.' + client + '.sqlDb')
+        logger.warn("Tables, which unique for {} db {}.".format(testDb, testUniqueTables))
+    if len(tableSets[0]) >= len(tableSets[1]):
+        for item in prodUniqueTables:
+            tableSets[0].remove(item)
+        return converters.convertToList(tableSets[0])
+    else:
+        for item in testUniqueTables:
+            tableSets[1].remove(item)
+        return converters.convertToList(tableSets[1])
 
 
 def compareTablesMetadata(tables):
@@ -225,9 +239,11 @@ def compareTablesMetadata(tables):
         uniqForProd = columnList[0] - columnList[1]
         uniqForTest = columnList[1] - columnList[0]
         if len(uniqForProd) > 0:
-            logger.error("Elements, unique for table {} on prod-server:{}".format(table, uniqForProd))
+            prodDb = config.getProperty('sqlParameters', 'prod.' + client + '.sqlDb')
+            logger.error("Elements, unique for table {} in {} db:{}".format(table, prodDb, uniqForProd))
         if len(uniqForTest) > 0:
-            logger.error("Elements, unique for table {} on test-server:{}".format(table, uniqForTest))
+            testDb = config.getProperty('sqlParameters', 'test.' + client + '.sqlDb')
+            logger.error("Elements, unique for table {} in {} db:{}".format(table, testDb, uniqForTest))
         if not all([len(uniqForProd) == 0, len(uniqForTest) == 0]):
             logger.error(" [ERROR] Tables {} differs!".format(table))
             tablesWithDifferentSchema.append(table)
@@ -265,28 +281,39 @@ def generateMailText(emptyTables, differingTables, noCrossedDatesTables, columns
         body = body + "2. Find all errors\n"
     body = body + "3. Report checkType is " + config["main"]["reportCheckType"] + "\n\n"
     if any([emptyTables, differingTables, noCrossedDatesTables, columnsWithoutAssociateTable, prodUniqueTables, testUniqueTables]):
-        body = body + "There are some problems found during checking.\n\n"
-        if emptyTables:
-            body = body + "Tables, empty in both dbs:\n" + ",".join(emptyTables) + "\n\n"
-        if emptyProdTables:
-            body = body + "Tables, empty on production db:\n" + ",".join(emptyProdTables) + "\n\n"
-        if emptyTestTables:
-            body = body + "Tables, empty on test db:\n" + ",".join(emptyTestTables) + "\n\n"
-        if differingTables:
-            body = body + "Tables, which have any difference:\n" + ",".join(differingTables) + "\n\n"
-        if list(set(emptyTables).difference(set(noCrossedDatesTables))):
-            body = body + "Report tables, which have no crossing dates:\n" + ",".join(list(set(emptyTables).difference(set(noCrossedDatesTables)))) + "\n\n"
-        if prodUniqueTables:
-            body = body + "Tables, which unique for production db:\n" + ",".join(converters.convertToList(prodUniqueTables)) + "\n\n"
-        if testUniqueTables:
-            body = body + "Tables, which unique for test db:\n" + ",".join(converters.convertToList(testUniqueTables)) + "\n\n"
-        if columnsWithoutAssociateTable:
-            body = body + "Columns, which not associated with tables, but probably should:\n" + ",".join(columnsWithoutAssociateTable)
+        body = getTestResultText(body, columnsWithoutAssociateTable, differingTables, emptyTables, noCrossedDatesTables,
+                                 prodUniqueTables, testUniqueTables)
     else:
         body = body + "It is impossible! There is no any problems founded!"
     if enableSchemaChecking:
         body = body + "Schema checked in " + str(schemaComparingTime) + "\n"
     body = body + "Dbs checked in " + str(dataComparingTime) + "\n"
+    return body
+
+
+def getTestResultText(body, columnsWithoutAssociateTable, differingTables, emptyTables, noCrossedDatesTables,
+                      prodUniqueTables, testUniqueTables):
+    body = body + "There are some problems found during checking.\n\n"
+    if emptyTables:
+        body = body + "Tables, empty in both dbs:\n" + ",".join(emptyTables) + "\n\n"
+    if emptyProdTables:
+        body = body + "Tables, empty on production db:\n" + ",".join(emptyProdTables) + "\n\n"
+    if emptyTestTables:
+        body = body + "Tables, empty on test db:\n" + ",".join(emptyTestTables) + "\n\n"
+    if differingTables:
+        body = body + "Tables, which have any difference:\n" + ",".join(differingTables) + "\n\n"
+    if list(set(emptyTables).difference(set(noCrossedDatesTables))):
+        body = body + "Report tables, which have no crossing dates:\n" + ",".join(
+            list(set(emptyTables).difference(set(noCrossedDatesTables)))) + "\n\n"
+    if prodUniqueTables:
+        body = body + "Tables, which unique for production db:\n" + ",".join(
+            converters.convertToList(prodUniqueTables)) + "\n\n"
+    if testUniqueTables:
+        body = body + "Tables, which unique for test db:\n" + ",".join(
+            converters.convertToList(testUniqueTables)) + "\n\n"
+    if columnsWithoutAssociateTable:
+        body = body + "Columns, which not associated with tables, but probably should:\n" + ",".join(
+            columnsWithoutAssociateTable)
     return body
 
 
@@ -397,6 +424,35 @@ def prepareQuerySections(table, mapping):
     setColumnList = ""
     setJoinSection = ""
     tmpOrderList = []
+    setColumnList, setJoinSection = constructColumnAndJoinSection(columnString, mapping, setColumnList, setJoinSection)
+    if setColumnList[-1:] == ",":
+        setColumnList = setColumnList[:-1]
+    setOrderList = constructOrdetList(setColumnList, tmpOrderList)
+    columns = ",".join(setOrderList)
+    return columnString, setColumnList, setJoinSection, columns
+
+
+def constructOrdetList(setColumnList, tmpOrderList):
+    for i in setColumnList.split(","):
+        if " as " in i:
+            tmpOrderList.append(i[i.rfind(" "):])
+        else:
+            tmpOrderList.append(i)
+    setOrderList = []
+    if "t.dt" in tmpOrderList:
+        setOrderList.append("t.dt")
+    if "campaignid" in tmpOrderList:
+        setOrderList.append("campaignid")
+    for item in tmpOrderList:
+        if "id" in item and "campaignid" not in item:
+            setOrderList.append(item)
+    for item in tmpOrderList:
+        if item not in tmpOrderList:
+            setOrderList.append(item)
+    return setOrderList
+
+
+def constructColumnAndJoinSection(columnString, mapping, setColumnList, setJoinSection):
     for column in columnString.split(","):
         if column[2:] in list(mapping):
             if "remoteid" in column[2:]:
@@ -414,29 +470,12 @@ def prepareQuerySections(table, mapping):
                     setColumnList = setColumnList + mapping.get(column[2:]) + ".remoteid as " + column[2:] + ","
                 else:
                     setColumnList = setColumnList + mapping.get(column[2:]) + ".id as " + column[2:] + ","
-            setJoinSection = setJoinSection + "JOIN " + mapping.get(column[2:]) + " ON t." + column[2:] + "=" + mapping.get(column[2:]) + ".id "
+            setJoinSection = setJoinSection + "JOIN " + mapping.get(column[2:]) + " ON t." + column[
+                                                                                             2:] + "=" + mapping.get(
+                column[2:]) + ".id "
         else:
             setColumnList = setColumnList + column + ","
-    if setColumnList[-1:] == ",":
-        setColumnList = setColumnList[:-1]
-    for i in setColumnList.split(","):
-        if " as " in i:
-            tmpOrderList.append(i[i.rfind(" "):])
-        else:
-            tmpOrderList.append(i)
-    setOrderList = []
-    if "t.dt" in tmpOrderList:
-        setOrderList.append("t.dt")
-    if "campaignid" in tmpOrderList:
-        setOrderList.append("campaignid")
-    for item in tmpOrderList:
-        if "id" in item and "campaignid" not in item:
-            setOrderList.append(item)
-    for item in tmpOrderList:
-        if item not in tmpOrderList:
-            setOrderList.append(item)
-    columns = ",".join(setOrderList)
-    return columnString, setColumnList, setJoinSection, columns
+    return setColumnList, setJoinSection
 
 
 def prepareTableList(tables, tablesWithDifferentSchema):
