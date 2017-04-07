@@ -35,7 +35,7 @@ class Example(QWidget):
         btn_setConfiguration = QPushButton('Set configuration', self)
         btn_setConfiguration.setToolTip('This is an example button')
         btn_setConfiguration.move(160, 180)
-        btn_setConfiguration.clicked.connect(self.on_click)
+        btn_setConfiguration.clicked.connect(self.setConfiguration)
 
         self.show()
 
@@ -59,7 +59,6 @@ class Example(QWidget):
             self.mode = True
         else:
             self.mode = False
-
 
     @pyqtSlot()
     def setConfiguration(self):
