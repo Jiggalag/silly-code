@@ -5,12 +5,6 @@ import sys
 sys.path.append(os.getcwd() + '/helpers')
 from helpers import configHelper, converters, dbHelper, helper, loggingHelper
 from loggingHelper import Logger
-from multiprocessing import Pool
-
-# TODO: fix bug with multiple printing of strings like:
-# SELECT column_name FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = 'campaigngeoreport' AND table_schema = 'ifms3_i_cpopro';
-# SELECT column_name FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = 'campaigngeoreport' AND table_schema = 'ifms3_i_cpopro';
-# SELECT column_name FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = 'campaigngeoreport' AND table_schema = 'ifms3_i_cpopro';
 
 # TODO: add code for comparing by some sections
 # TODO: add intellectual adding often differ tables to ignore list
@@ -33,7 +27,6 @@ depthReportCheck = config.getProperty("sqlProperties", "depthReportCheck")
 enableSchemaChecking = config.getProperty("sqlProperties", "enableSchemaChecking")
 excludedTables = config.getProperty("sqlProperties", "tablesNotToCompare")
 failWithFirstError = config.getProperty("sqlProperties", "failWithFirstError")
-hideSQLQueries = config.getProperty("sqlProperties", "hideSQLQueries")
 mode = config.getProperty("sqlProperties", "reportCheckType")
 schemaColumns = config.getProperty("sqlProperties", "includeSchemaColumns")
 hideColumns = config.getProperty("sqlProperties", "hideColumns")
@@ -42,8 +35,7 @@ dbProperties = {
     'attempts': attempts,
     'comparingStep': comparingStep,
     'hideColumns': hideColumns,
-    'mode': mode,
-    'hideSQLQueries': hideSQLQueries
+    'mode': mode
 }
 
 
@@ -316,7 +308,7 @@ def getTestResultText(body, columnsWithoutAssociateTable, differingTables, empty
             columnsWithoutAssociateTable)
     return body
 
-
+# TODO: probably, bug with multiprinting of sql-queries in this function
 def getColumnList(stage, table):
     # Function returns column list for sql-query for report table
     sql = dbHelper.dbConnector(clientConfig.getSQLConnectParams(stage))
@@ -324,8 +316,7 @@ def getColumnList(stage, table):
         with sql.connection.cursor() as cursor:
             columnList = []
             queryGetColumnList = "SELECT column_name FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = '%s' AND table_schema = '%s';" % (table, sql.db)
-            if not hideSQLQueries:
-                print(queryGetColumnList)
+            logger.debug(queryGetColumnList)
             cursor.execute(queryGetColumnList)
             columnDict = cursor.fetchall()
             for i in columnDict:
@@ -396,8 +387,7 @@ def prepareColumnMapping(stage):
             mapping = {}
             columnsWithoutAssociateTable = []
             queryGetColumn = "SELECT distinct(column_name) FROM INFORMATION_SCHEMA.COLUMNS WHERE table_schema = '{}' AND column_name LIKE '%id' OR column_name LIKE '%remoteid' ORDER BY column_name asc;".format(sql.db)
-            if hideSQLQueries:
-                print(queryGetColumn)
+            logger.debug(queryGetColumn)
             cursor.execute(queryGetColumn)
             rawColumnList = cursor.fetchall()
             for i in rawColumnList:

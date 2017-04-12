@@ -19,14 +19,11 @@ class dbConnector:
                                           cursorclass=pymysql.cursors.DictCursor)
 
         # sql-property section
-        self.hideSQLQueries = True
         self.hideColumns = None
         self.attempts = 5
         self.mode = 'detailed'
         self.comparingStep = 10000
         for key in list(kwargs.keys()):
-            if 'hideSQLQueries' in key:
-                self.hideSQLQueries = kwargs.get(key)
             if 'hideColumns' in key:
                 self.hideColumns = kwargs.get(key)
             if 'attempts' in key:
@@ -52,8 +49,7 @@ class dbConnector:
             try:
                 with self.connection.cursor() as cursor:
                     sqlQuery = query.replace('DBNAME', self.db)
-                    if not self.hideSQLQueries:
-                        logger.info(sqlQuery)
+                    logger.debug(sqlQuery)
                     cursor.execute(sqlQuery)
                     result = cursor.fetchall()
                     return result
@@ -74,8 +70,7 @@ class dbConnector:
             with self.connection.cursor() as cursor:
                 columnList = []
                 queryGetColumnList = "SELECT column_name FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = '%s' AND table_schema = '%s';" % (table, self.db)
-                if 'False' in self.hideSQLQueries:
-                    print(queryGetColumnList)
+                logger.debug(queryGetColumnList)
                 cursor.execute(queryGetColumnList)
                 columnDict = cursor.fetchall()
                 for i in columnDict:
