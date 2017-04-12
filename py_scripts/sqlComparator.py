@@ -1,15 +1,11 @@
 import datetime
 import configparser
 import os
+import shutil
 import sys
 sys.path.append(os.getcwd() + '/helpers')
 from helpers import configHelper, converters, dbHelper, helper, loggingHelper
 from loggingHelper import Logger
-
-# TODO: add code for comparing by some sections
-# TODO: add intellectual adding often differ tables to ignore list
-# TODO: EPIC: add UI
-# TODO: EPIC: probably, add functional for cloning databases
 
 propertyFile = os.getcwd() + "/resources/properties/sqlComparator.properties"
 config = configHelper.ifmsConfigCommon(propertyFile)
@@ -30,6 +26,7 @@ failWithFirstError = config.getProperty("sqlProperties", "failWithFirstError")
 mode = config.getProperty("sqlProperties", "reportCheckType")
 schemaColumns = config.getProperty("sqlProperties", "includeSchemaColumns")
 hideColumns = config.getProperty("sqlProperties", "hideColumns")
+serviceDir = config.getPropertyFromMainSection("serviceDir")
 
 dbProperties = {
     'attempts': attempts,
@@ -73,51 +70,17 @@ def calculateComparingTimeframe(dateList, table):
         return getTimeframeIntersection(dateList, table)
 
 
-def getTimeframeIntersection(dateList, table):
-    dateSet = converters.parallelConvertToSet(dateList)
-    if (dateSet[0] - dateSet[1]):  # this code (4 strings below) should be moved to different function
-        uniqueDates = getUniqueReportDates(dateSet[0], dateSet[1])
-        testDb = config.getProperty('sqlParameters', 'test.' + client + '.sqlDb')
-        logger.warn("This dates absent in {}: {} in report table {}...".format(testDb, ",".join(uniqueDates), table))
-    if (dateSet[1] - dateSet[0]):
-        uniqueDates = getUniqueReportDates(dateSet[1], dateSet[0])
-        prodDb = config.getProperty('sqlParameters', 'prod.' + client + '.sqlDb')
-        logger.warn("This dates absent in {}: {} in report table {}...".format(prodDb, ",".join(uniqueDates), table))
-    return dateSet[0] & dateSet[1]
+def calculateSectionName(query):
+    tmpList = query.split(" ")
+    for item in tmpList:
+        if "GROUP" in item:
+            return tmpList[tmpList.index(item) + 2][2:].replace("_", "").replace("id", "")
 
 
-def getComparingTimeframe(dateList):
-    comparingTimeframe = []
-    for item in dateList[0][-depthReportCheck:]:
-        comparingTimeframe.append(item.get("dt").date().strftime("%Y-%m-%d"))
-    return comparingTimeframe
-
-
-def compareData(tables, tablesWithDifferentSchema, globalBreak, noCrossedDatesTables, emptyTables, emptyProdTables, emptyTestTables, differingTables):
-    tables = prepareTableList(tables, tablesWithDifferentSchema)
-    mapping, columnsWithoutAssociateTable = prepareColumnMapping("prod")
-    for table in tables:
-        stopCheckingThisTable = False
-        if ("report" or "statistic") in table:
-            if not globalBreak:
-                cmpReports(emptyProdTables, emptyTables, emptyTestTables, globalBreak, mapping, noCrossedDatesTables, stopCheckingThisTable, table)
-            else:
-                break
-        else:
-            amountRecords = countTableRecords(table, None)
-            maxAmountOfRecords = max(amountRecords[0][0].get("COUNT(*)"), amountRecords[1][0].get("COUNT(*)"))
-            queryList = queryEntityConstructor(table, maxAmountOfRecords, comparingStep, mapping)
-            if not globalBreak:
-                for query in queryList:
-                    if (not compareEntityTable(table, query, differingTables)) and failWithFirstError:
-                        logger.info("First error founded, checkin failed. Comparing takes {}".format(datetime.datetime.now() - startTime))
-                        globalBreak = True
-                        break
-            else:
-                break
-    dataComparingTime = datetime.datetime.now() - startTime
-    logger.info("Comparing finished in {}".format(dataComparingTime))
-    return dataComparingTime
+def checkServiceDir(serviceDir):
+    if os.path.exists(serviceDir):
+        shutil.rmtree(serviceDir)
+    os.mkdir(serviceDir)
 
 
 def cmpReports(emptyProdTables, emptyTables, emptyTestTables, globalBreak, mapping, noCrossedDatesTables,
@@ -140,14 +103,53 @@ def cmpReports(emptyProdTables, emptyTables, emptyTestTables, globalBreak, mappi
         noCrossedDatesTables.append(table)
 
 
+def compareData(tables, tablesWithDifferentSchema, globalBreak, noCrossedDatesTables, emptyTables, emptyProdTables, emptyTestTables, differingTables):
+    tables = prepareTableList(tables, tablesWithDifferentSchema)
+    mapping = prepareColumnMapping("prod")
+    for table in tables:
+        # TODO: remove this!
+        table = 'creative_page_position'
+        logger.info("Table {} processing now...".format(table))
+        startTableCheckTime = datetime.datetime.now()
+        # TODO: remove this hack after debugging
+        if 'campaign' in table:
+            continue
+        stopCheckingThisTable = False
+        if ('report' in table) or ('statistic' in table):
+            if not globalBreak:
+                cmpReports(emptyProdTables, emptyTables, emptyTestTables, globalBreak, mapping, noCrossedDatesTables, stopCheckingThisTable, table)
+                logger.info("Table {} checked in {}...".format(table, datetime.datetime.now() - startTableCheckTime))
+            else:
+                logger.info("Table {} checked in {}...".format(table, datetime.datetime.now() - startTableCheckTime))
+                break
+        else:
+            amountRecords = countTableRecords(table, None)
+            maxAmountOfRecords = max(amountRecords[0][0].get("COUNT(*)"), amountRecords[1][0].get("COUNT(*)"))
+            queryList = queryEntityConstructor(table, maxAmountOfRecords, comparingStep, mapping)
+            if not globalBreak:
+                for query in queryList:
+                    if (not compareEntityTable(table, query, differingTables)) and failWithFirstError:
+                        logger.info("First error founded, checking failed. Comparing takes {}".format(datetime.datetime.now() - startTime))
+                        globalBreak = True
+                        logger.info("Table {} checked in {}...".format(table, datetime.datetime.now() - startTableCheckTime))
+                        break
+                logger.info("Table {} checked in {}...".format(table, datetime.datetime.now() - startTableCheckTime))
+            else:
+                logger.info("Table {} checked in {}...".format(table, datetime.datetime.now() - startTableCheckTime))
+                break
+    dataComparingTime = datetime.datetime.now() - startTime
+    logger.info("Comparing finished in {}".format(dataComparingTime))
+    return dataComparingTime
+
+
 def compareEntityTable(table, query, differingTables):
     listEntities = getTableData(dbHelper.dbConnector.runParallelSelect(clientConfig, client, query, dbProperties))
     uniqFor0 = listEntities[0] - listEntities[1]
     uniqFor1 = listEntities[1] - listEntities[0]
     if len(uniqFor0) > 0:
-        writeUniqueEntitiesToFile(table, uniqFor0, "prod")
+        writeUniqueEntitiesToFile(table, uniqFor0, "prod", query)
     if len(uniqFor1) > 0:
-        writeUniqueEntitiesToFile(table, uniqFor1, "test")
+        writeUniqueEntitiesToFile(table, uniqFor1, "test", query)
     if not all([len(uniqFor0) == 0, len(uniqFor1) == 0]):
         logger.error("Tables {} differs!".format(table))
         differingTables.append(table)
@@ -182,9 +184,9 @@ def compareReportDetailed(table, query):
     uniqFor0 = txtReports[0] - txtReports[1]
     uniqFor1 = txtReports[1] - txtReports[0]
     if len(uniqFor0) > 0:
-        writeUniqueEntitiesToFile(table, uniqFor0, "prod")
+        writeUniqueEntitiesToFile(table, uniqFor0, "prod", query)
     if len(uniqFor1) > 0:
-        writeUniqueEntitiesToFile(table, uniqFor1, "test")
+        writeUniqueEntitiesToFile(table, uniqFor1, "test", query)
     if not all([len(uniqFor0) == 0, len(uniqFor1) == 0]):
         logger.error("Tables {} differs!".format(table))
         differingTables.append(table)
@@ -200,26 +202,6 @@ def compareTableLists():
         return tableDicts[0]
     else:
         return getIntersectedTables(tableDicts)
-
-
-def getIntersectedTables(tableDicts):
-    tableSets = converters.parallelConvertToSet(tableDicts)
-    prodUniqueTables = tableSets[0] - tableSets[1]
-    testUniqueTables = tableSets[1] - tableSets[0]
-    if len(prodUniqueTables) > 0:
-        prodDb = config.getProperty('sqlParameters', 'prod.' + client + '.sqlDb')
-        logger.warn("Tables, which unique for {} db {}.".format(prodDb, prodUniqueTables))
-    if len(testUniqueTables) > 0:
-        testDb = config.getProperty('sqlParameters', 'test.' + client + '.sqlDb')
-        logger.warn("Tables, which unique for {} db {}.".format(testDb, testUniqueTables))
-    if len(tableSets[0]) >= len(tableSets[1]):
-        for item in prodUniqueTables:
-            tableSets[0].remove(item)
-        return converters.convertToList(tableSets[0])
-    else:
-        for item in testUniqueTables:
-            tableSets[1].remove(item)
-        return converters.convertToList(tableSets[1])
 
 
 def compareTablesMetadata(tables):
@@ -261,7 +243,7 @@ def createTestDir(path, client):
         os.mkdir(path + client)
 
 
-def generateMailText(emptyTables, differingTables, noCrossedDatesTables, columnsWithoutAssociateTable, prodUniqueTables, testUniqueTables):
+def generateMailText(emptyTables, differingTables, noCrossedDatesTables, prodUniqueTables, testUniqueTables):
     body = "Initial conditions:\n\n"
     if enableSchemaChecking:
         body = body + "1. Schema checking enabled.\n"
@@ -272,8 +254,8 @@ def generateMailText(emptyTables, differingTables, noCrossedDatesTables, columns
     else:
         body = body + "2. Find all errors\n"
     body = body + "3. Report checkType is " + config["main"]["reportCheckType"] + "\n\n"
-    if any([emptyTables, differingTables, noCrossedDatesTables, columnsWithoutAssociateTable, prodUniqueTables, testUniqueTables]):
-        body = getTestResultText(body, columnsWithoutAssociateTable, differingTables, emptyTables, noCrossedDatesTables,
+    if any([emptyTables, differingTables, noCrossedDatesTables, prodUniqueTables, testUniqueTables]):
+        body = getTestResultText(body, differingTables, emptyTables, noCrossedDatesTables,
                                  prodUniqueTables, testUniqueTables)
     else:
         body = body + "It is impossible! There is no any problems founded!"
@@ -283,32 +265,6 @@ def generateMailText(emptyTables, differingTables, noCrossedDatesTables, columns
     return body
 
 
-def getTestResultText(body, columnsWithoutAssociateTable, differingTables, emptyTables, noCrossedDatesTables,
-                      prodUniqueTables, testUniqueTables):
-    body = body + "There are some problems found during checking.\n\n"
-    if emptyTables:
-        body = body + "Tables, empty in both dbs:\n" + ",".join(emptyTables) + "\n\n"
-    if emptyProdTables:
-        body = body + "Tables, empty on production db:\n" + ",".join(emptyProdTables) + "\n\n"
-    if emptyTestTables:
-        body = body + "Tables, empty on test db:\n" + ",".join(emptyTestTables) + "\n\n"
-    if differingTables:
-        body = body + "Tables, which have any difference:\n" + ",".join(differingTables) + "\n\n"
-    if list(set(emptyTables).difference(set(noCrossedDatesTables))):
-        body = body + "Report tables, which have no crossing dates:\n" + ",".join(
-            list(set(emptyTables).difference(set(noCrossedDatesTables)))) + "\n\n"
-    if prodUniqueTables:
-        body = body + "Tables, which unique for production db:\n" + ",".join(
-            converters.convertToList(prodUniqueTables)) + "\n\n"
-    if testUniqueTables:
-        body = body + "Tables, which unique for test db:\n" + ",".join(
-            converters.convertToList(testUniqueTables)) + "\n\n"
-    if columnsWithoutAssociateTable:
-        body = body + "Columns, which not associated with tables, but probably should:\n" + ",".join(
-            columnsWithoutAssociateTable)
-    return body
-
-# TODO: probably, bug with multiprinting of sql-queries in this function
 def getColumnList(stage, table):
     # Function returns column list for sql-query for report table
     sql = dbHelper.dbConnector(clientConfig.getSQLConnectParams(stage))
@@ -333,6 +289,45 @@ def getColumnList(stage, table):
         sql.connection.close()
 
 
+def getColumnListForSum(setColumnList):
+    columnListWithSums = []
+    for item in setColumnList.split(","):
+        if "clicks" in item or "impressions" in item:
+            columnListWithSums.append("sum(" + item + ")")
+        # elif " as " in item:
+        #    columnListWithSums.append(item[item.rfind(" "):])
+        else:
+            columnListWithSums.append(item)
+    return columnListWithSums
+
+
+def getComparingTimeframe(dateList):
+    comparingTimeframe = []
+    for item in dateList[0][-depthReportCheck:]:
+        comparingTimeframe.append(item.get("dt").date().strftime("%Y-%m-%d"))
+    return comparingTimeframe
+
+
+def getIntersectedTables(tableDicts):
+    tableSets = converters.parallelConvertToSet(tableDicts)
+    prodUniqueTables = tableSets[0] - tableSets[1]
+    testUniqueTables = tableSets[1] - tableSets[0]
+    if len(prodUniqueTables) > 0:
+        prodDb = config.getProperty('sqlParameters', 'prod.' + client + '.sqlDb')
+        logger.warn("Tables, which unique for {} db {}.".format(prodDb, prodUniqueTables))
+    if len(testUniqueTables) > 0:
+        testDb = config.getProperty('sqlParameters', 'test.' + client + '.sqlDb')
+        logger.warn("Tables, which unique for {} db {}.".format(testDb, testUniqueTables))
+    if len(tableSets[0]) >= len(tableSets[1]):
+        for item in prodUniqueTables:
+            tableSets[0].remove(item)
+        return converters.convertToList(tableSets[0])
+    else:
+        for item in testUniqueTables:
+            tableSets[1].remove(item)
+        return converters.convertToList(tableSets[1])
+
+
 def getTableData(listReports):
     txtReports = []
     for record in listReports:
@@ -349,6 +344,42 @@ def getTableData(listReports):
             instance.add(",".join(section))
         txtReports.append(instance)
     return txtReports
+
+
+def getTestResultText(body, differingTables, emptyTables, noCrossedDatesTables,
+                      prodUniqueTables, testUniqueTables):
+    body = body + "There are some problems found during checking.\n\n"
+    if emptyTables:
+        body = body + "Tables, empty in both dbs:\n" + ",".join(emptyTables) + "\n\n"
+    if emptyProdTables:
+        body = body + "Tables, empty on production db:\n" + ",".join(emptyProdTables) + "\n\n"
+    if emptyTestTables:
+        body = body + "Tables, empty on test db:\n" + ",".join(emptyTestTables) + "\n\n"
+    if differingTables:
+        body = body + "Tables, which have any difference:\n" + ",".join(differingTables) + "\n\n"
+    if list(set(emptyTables).difference(set(noCrossedDatesTables))):
+        body = body + "Report tables, which have no crossing dates:\n" + ",".join(
+            list(set(emptyTables).difference(set(noCrossedDatesTables)))) + "\n\n"
+    if prodUniqueTables:
+        body = body + "Tables, which unique for production db:\n" + ",".join(
+            converters.convertToList(prodUniqueTables)) + "\n\n"
+    if testUniqueTables:
+        body = body + "Tables, which unique for test db:\n" + ",".join(
+            converters.convertToList(testUniqueTables)) + "\n\n"
+    return body
+
+
+def getTimeframeIntersection(dateList, table):
+    dateSet = converters.parallelConvertToSet(dateList)
+    if (dateSet[0] - dateSet[1]):  # this code (4 strings below) should be moved to different function
+        uniqueDates = getUniqueReportDates(dateSet[0], dateSet[1])
+        testDb = config.getProperty('sqlParameters', 'test.' + client + '.sqlDb')
+        logger.warn("This dates absent in {}: {} in report table {}...".format(testDb, ",".join(uniqueDates), table))
+    if (dateSet[1] - dateSet[0]):
+        uniqueDates = getUniqueReportDates(dateSet[1], dateSet[0])
+        prodDb = config.getProperty('sqlParameters', 'prod.' + client + '.sqlDb')
+        logger.warn("This dates absent in {}: {} in report table {}...".format(prodDb, ",".join(uniqueDates), table))
+    return dateSet[0] & dateSet[1]
 
 
 def getUniqueReportDates(firstDateList, secondDateList):
@@ -372,6 +403,9 @@ def iterationComparingByQueries(queryList, globalBreak, table):
                 stopCheckingThisTable = True
                 return globalBreak, stopCheckingThisTable
         elif mode == "section-sum" or mode == "detailed":
+            if mode == "section-sum":
+                section = calculateSectionName(query)
+                logger.info("Check section {} for table {}".format(section, table))
             if not compareReportDetailed(table, query) and failWithFirstError:
                 logger.critical("First error founded, checking failed. Comparing takes {}.".format(datetime.datetime.now() - startTime))
                 globalBreak = True
@@ -383,28 +417,14 @@ def prepareColumnMapping(stage):
     sql = dbHelper.dbConnector(clientConfig.getSQLConnectParams(stage))
     try:
         with sql.connection.cursor() as cursor:
-            columnList = []
-            mapping = {}
-            columnsWithoutAssociateTable = []
-            queryGetColumn = "SELECT distinct(column_name) FROM INFORMATION_SCHEMA.COLUMNS WHERE table_schema = '{}' AND column_name LIKE '%id' OR column_name LIKE '%remoteid' ORDER BY column_name asc;".format(sql.db)
+            columnDict = {}
+            queryGetColumn = "select column_name, referenced_table_name from INFORMATION_SCHEMA.KEY_COLUMN_USAGE where constraint_name not like 'PRIMARY' and referenced_table_name is not null and table_schema = '{}';".format(sql.db)
             logger.debug(queryGetColumn)
             cursor.execute(queryGetColumn)
             rawColumnList = cursor.fetchall()
-            for i in rawColumnList:
-                columnList.append(i.get("column_name").lower())
-            for column in columnList:
-                if "_" in column:
-                    column = column.replace(column[column.rfind("_")], "")
-                if "remoteid" in column:
-                    if column[:-8] in tables:
-                        mapping.update({column: column[:-8]})
-                else:
-                    if column[:-2] in tables:
-                        mapping.update({column: column[:-2]})
-                    else:
-                        columnsWithoutAssociateTable.append(column)
-                        logger.warn("Column {} have no appropriate table...".format(column))
-            return mapping, columnsWithoutAssociateTable
+            for item in rawColumnList:
+                columnDict.update({item.get('column_name'): item.get('referenced_table_name')})
+            return columnDict
     finally:
         sql.connection.close()
 
@@ -417,12 +437,12 @@ def prepareQuerySections(table, mapping):
     setColumnList, setJoinSection = constructColumnAndJoinSection(columnString, mapping, setColumnList, setJoinSection)
     if setColumnList[-1:] == ",":
         setColumnList = setColumnList[:-1]
-    setOrderList = constructOrdetList(setColumnList, tmpOrderList)
+    setOrderList = constructOrderList(setColumnList, tmpOrderList)
     columns = ",".join(setOrderList)
     return columnString, setColumnList, setJoinSection, columns
 
 
-def constructOrdetList(setColumnList, tmpOrderList):
+def constructOrderList(setColumnList, tmpOrderList):
     for i in setColumnList.split(","):
         if " as " in i:
             tmpOrderList.append(i[i.rfind(" "):])
@@ -437,7 +457,7 @@ def constructOrdetList(setColumnList, tmpOrderList):
         if "id" in item and "campaignid" not in item:
             setOrderList.append(item)
     for item in tmpOrderList:
-        if item not in tmpOrderList:
+        if item not in setOrderList:
             setOrderList.append(item)
     return setOrderList
 
@@ -451,7 +471,7 @@ def constructColumnAndJoinSection(columnString, mapping, setColumnList, setJoinS
                 else:
                     setColumnList = setColumnList + mapping.get(column[2:]) + ".id as " + column[2:] + ","
             elif "id" in column[2:]:
-                if "remoteid" in getColumnList("prod", column[2:-2]):
+                if "remoteid" in getColumnList("prod", column[2:-2].replace("_", "")):
                     setColumnList = setColumnList + mapping.get(column[2:]) + ".remoteid as " + column[2:] + ","
                 else:
                     setColumnList = setColumnList + mapping.get(column[2:]) + ".id as " + column[2:] + ","
@@ -519,21 +539,13 @@ def queryReportConstruct(table, dt, mode, threshold, comparingStep, mapping):
         query = "SELECT SUM(IMPRESSIONS), SUM(CLICKS) FROM %s WHERE dt = '%s';" % (table, dt)
         queryList.append(query)
     elif mode == "section-sum":
-        # TODO: add code for comparing by some sections
         sections = []  # Sections for imp-aggregating
         columnString, setColumnList, setJoinSection, setOrderList = prepareQuerySections(table, mapping)
         for column in columnString.split(","):
             if "id" == column[-2:]:
                 sections.append(column)
-                columnListWithSums = []
-                for item in setColumnList.split(","):
-                    if "clicks" in item or "impressions" in item:
-                        columnListWithSums.append("sum(" + item + ")")
-                    elif " as " in item:
-                        columnListWithSums.append(item[item.rfind(" "):])
-                    else:
-                        columnListWithSums.append(item)
-                query = "SELECT %s FROM %s as t %s WHERE t.dt = '%s' group by %s;" % (",".join(columnListWithSums), table, setJoinSection, dt, column)
+                columnListWithSums = getColumnListForSum(setColumnList)
+                query = "SELECT {} FROM {} AS t {} WHERE t.dt = '{}' GROUP BY {} ORDER BY {};".format(",".join(columnListWithSums), table, setJoinSection, dt, column, setOrderList)
                 queryList.append(query)
     elif mode == "detailed":
         offset = 0
@@ -548,15 +560,32 @@ def queryReportConstruct(table, dt, mode, threshold, comparingStep, mapping):
     return queryList
 
 
-def writeUniqueEntitiesToFile(table, listUniqs, stage):
-    logger.error("There are {0} unique elements in table {1} on {2}-server. Detailed list of records saved to /tmp/{1}_uniqRecords_{2}".format(len(listUniqs), table, stage))
-    with open("/tmp/" + table + "_uniqueRecords_" + stage, "w") as file:
+def writeHeader(fileName, query):
+    cutSelect = query[7:]
+    columns = cutSelect[:cutSelect.find("FROM") - 1]
+    header = []
+    for item in columns.split(","):
+        if ' as ' in item:
+            header.append(item[:item.find(' ')].replace('t.', ''))
+        else:
+            header.append(item.replace('t.', ''))
+    with open(fileName, 'w') as file:
+        file.write(','.join(header) + '\n')
+
+
+def writeUniqueEntitiesToFile(table, listUniqs, stage, query):
+    logger.error("There are {0} unique elements in table {1} on {2}-server. Detailed list of records saved to {3}{1}_uniqRecords_{2}".format(len(listUniqs), table, stage, serviceDir))
+    fileName = "{}{}_uniqRecords_{}".format(serviceDir, table, stage)
+    if not os.path.exists(fileName):
+        writeHeader(fileName, query)
+    with open(fileName, "a") as file:
         firstList = converters.convertToList(listUniqs)
         firstList.sort()
         for item in firstList:
-            file.write(item)
+            file.write(item + "\n")
 
 
+checkServiceDir(serviceDir)
 for client in config.getClients():
     clientConfig = configHelper.ifmsConfigClient(propertyFile, client)
     sqlPropertyDict = clientConfig.getSQLConnectParams('test')
@@ -564,7 +593,6 @@ for client in config.getClients():
     if clientIgnoreTables is None:
         clientIgnoreTables = 0
     noCrossedDatesTables = []
-    columnsWithoutAssociateTable = []
     emptyTables = []
     differingTables = []
     emptyProdTables = emptyTestTables = []
@@ -585,5 +613,5 @@ for client in config.getClients():
         tablesWithDifferentSchema = []
         dataComparingTime = compareData(tables, [], globalBreak, noCrossedDatesTables, emptyTables, emptyProdTables, emptyTestTables, differingTables)
     subject = "[Test] Check databases for client %s" % client
-    body = generateMailText(emptyTables, differingTables, noCrossedDatesTables, columnsWithoutAssociateTable, prodUniqueTables, testUniqueTables)
+    body = generateMailText(emptyTables, differingTables, noCrossedDatesTables, prodUniqueTables, testUniqueTables)
     helper.sendmail(body, sendMailFrom, sendMailTo, mailPassword, subject, None)

@@ -1,9 +1,8 @@
 from loggingHelper import Logger
-import configHelper
 from multiprocessing.dummy import Pool
 import pymysql
 
-logger = Logger(20)
+logger = Logger(10)
 
 class dbConnector:
     def __init__(self, connectParameters, **kwargs):
