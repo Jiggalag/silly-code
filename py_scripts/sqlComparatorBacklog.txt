@@ -1,5 +1,6 @@
 Backlog:
 
+0. Add JOIN section to queryEntity construct.
 1. Add intellectual adding often differ tables to ignore list.
 2. Support onlyEntitiesCheck property.
 3. Support onlyReportsCheck property.

@@ -423,7 +423,7 @@ def prepareColumnMapping(stage):
             cursor.execute(queryGetColumn)
             rawColumnList = cursor.fetchall()
             for item in rawColumnList:
-                columnDict.update({item.get('column_name'): item.get('referenced_table_name')})
+                columnDict.update({item.get('column_name').lower(): item.get('referenced_table_name').lower()})
             return columnDict
     finally:
         sql.connection.close()
@@ -464,14 +464,14 @@ def constructOrderList(setColumnList, tmpOrderList):
 
 def constructColumnAndJoinSection(columnString, mapping, setColumnList, setJoinSection):
     for column in columnString.split(","):
-        if column[2:] in list(mapping):
+        if column[2:] in list(mapping.keys()):
             if "remoteid" in column[2:]:
                 if "remoteid" in getColumnList("prod", column[2:-8]):
                     setColumnList = setColumnList + mapping.get(column[2:]) + ".remoteid as " + column[2:] + ","
                 else:
                     setColumnList = setColumnList + mapping.get(column[2:]) + ".id as " + column[2:] + ","
             elif "id" in column[2:]:
-                if "remoteid" in getColumnList("prod", column[2:-2].replace("_", "")):
+                if "remoteid" in getColumnList("prod", mapping.get(column[2:])):
                     setColumnList = setColumnList + mapping.get(column[2:]) + ".remoteid as " + column[2:] + ","
                 else:
                     setColumnList = setColumnList + mapping.get(column[2:]) + ".id as " + column[2:] + ","
