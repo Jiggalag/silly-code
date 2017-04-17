@@ -8,6 +8,7 @@ from helpers import configHelper, converters, dbHelper, helper, loggingHelper
 from loggingHelper import Logger
 
 propertyFile = os.getcwd() + "/resources/properties/sqlComparator.properties"
+logFile = "/home/jiggalag/comparatorLog.txt"
 config = configHelper.ifmsConfigCommon(propertyFile)
 
 logger = Logger(config.getPropertyFromMainSection("loggingLevel"))
@@ -41,7 +42,7 @@ def calculateDate(days):
 
 
 def checkDateList(table, emptyTables, emptyProdTables, emptyTestTables, client):
-    selectQuery = "SELECT distinct(dt) from %s;" % table
+    selectQuery = "SELECT distinct(dt) from {};".format(table)
     dateList = dbHelper.dbConnector.runParallelSelect(clientConfig, client, selectQuery, dbProperties)
     if all(dateList):
         return calculateComparingTimeframe(dateList, table)
@@ -108,12 +109,12 @@ def compareData(tables, tablesWithDifferentSchema, globalBreak, noCrossedDatesTa
     mapping = prepareColumnMapping("prod")
     for table in tables:
         # TODO: remove this!
-        table = 'creative_page_position'
+        # table = 'adfoxgeoitem'
         logger.info("Table {} processing now...".format(table))
         startTableCheckTime = datetime.datetime.now()
         # TODO: remove this hack after debugging
-        if 'campaign' in table:
-            continue
+        # if 'campaign' in table:
+        #    continue
         stopCheckingThisTable = False
         if ('report' in table) or ('statistic' in table):
             if not globalBreak:
@@ -229,9 +230,9 @@ def compareTablesMetadata(tables):
 
 def countTableRecords(table, date):
     if date is None:
-        query = "SELECT COUNT(*) FROM %s;" % table
+        query = "SELECT COUNT(*) FROM {};".format(table)
     else:
-        query = "SELECT COUNT(*) FROM %s WHERE dt > '%s';" % (table, date)
+        query = "SELECT COUNT(*) FROM {} WHERE dt > '{}';".format(table, date)
     amountRecords = dbHelper.dbConnector.runParallelSelect(clientConfig, client, query, dbProperties)
     return amountRecords
 
@@ -253,7 +254,7 @@ def generateMailText(emptyTables, differingTables, noCrossedDatesTables, prodUni
         body = body + "2. Failed with first founded error.\n"
     else:
         body = body + "2. Find all errors\n"
-    body = body + "3. Report checkType is " + config["main"]["reportCheckType"] + "\n\n"
+    body = body + "3. Report checkType is " + mode + "\n\n"
     if any([emptyTables, differingTables, noCrossedDatesTables, prodUniqueTables, testUniqueTables]):
         body = getTestResultText(body, differingTables, emptyTables, noCrossedDatesTables,
                                  prodUniqueTables, testUniqueTables)
@@ -271,7 +272,7 @@ def getColumnList(stage, table):
     try:
         with sql.connection.cursor() as cursor:
             columnList = []
-            queryGetColumnList = "SELECT column_name FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = '%s' AND table_schema = '%s';" % (table, sql.db)
+            queryGetColumnList = "SELECT column_name FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = '{}' AND table_schema = '{}';".format(table, sql.db)
             logger.debug(queryGetColumnList)
             cursor.execute(queryGetColumnList)
             columnDict = cursor.fetchall()
@@ -517,16 +518,16 @@ def prepareToTest(client):
 def queryEntityConstructor(table, threshold, comparingStep, mapping):
     queryList = []
     columnString, setColumnList, setJoinSection, setOrderList = prepareQuerySections(table, mapping)
-    offset = 0
-    query = "SELECT %s FROM %s AS t" % (setColumnList, table)
+    query = "SELECT {} FROM {} AS t".format(setColumnList, table)
     if setJoinSection:
-        query = query + " %s" % setJoinSection
+        query = query + " {}".format(setJoinSection)
     if setOrderList:
-        query = query + " ORDER BY %s" % setOrderList
+        query = query + " ORDER BY {}".format(setOrderList)
     if threshold > comparingStep:
+        offset = 0
         while offset < threshold:
+            queryWithLimit = query + " LIMIT {},{};".format(offset, comparingStep)
             offset = offset + comparingStep
-            queryWithLimit = query + " LIMIT %d,%d;" % (offset, comparingStep)
             queryList.append(queryWithLimit)
     else:
         queryList.append(query + ";")
@@ -536,7 +537,7 @@ def queryEntityConstructor(table, threshold, comparingStep, mapping):
 def queryReportConstruct(table, dt, mode, threshold, comparingStep, mapping):
     queryList = []
     if mode == "day-sum":
-        query = "SELECT SUM(IMPRESSIONS), SUM(CLICKS) FROM %s WHERE dt = '%s';" % (table, dt)
+        query = "SELECT SUM(IMPRESSIONS), SUM(CLICKS) FROM {} WHERE dt = '{}';".format(table, dt)
         queryList.append(query)
     elif mode == "section-sum":
         sections = []  # Sections for imp-aggregating
@@ -551,7 +552,7 @@ def queryReportConstruct(table, dt, mode, threshold, comparingStep, mapping):
         offset = 0
         while offset < threshold:
             columnString, setColumnList, setJoinSection, setOrderList = prepareQuerySections(table, mapping)
-            query = "SELECT %s FROM %s AS t %s WHERE t.dt>='%s' ORDER BY %s LIMIT %d,%d;" % (setColumnList, table, setJoinSection, dt, setOrderList, offset, comparingStep)
+            query = "SELECT {} FROM {} AS t {} WHERE t.dt>='{}' ORDER BY {} LIMIT {},{};".format(setColumnList, table, setJoinSection, dt, setOrderList, offset, comparingStep)
             offset = offset + comparingStep
             queryList.append(query)
     else:
@@ -580,6 +581,7 @@ def writeUniqueEntitiesToFile(table, listUniqs, stage, query):
         writeHeader(fileName, query)
     with open(fileName, "a") as file:
         firstList = converters.convertToList(listUniqs)
+        # TODO: is it neccessary?
         firstList.sort()
         for item in firstList:
             file.write(item + "\n")
@@ -612,6 +614,6 @@ for client in config.getClients():
         logger.info("Schema checking disabled...")
         tablesWithDifferentSchema = []
         dataComparingTime = compareData(tables, [], globalBreak, noCrossedDatesTables, emptyTables, emptyProdTables, emptyTestTables, differingTables)
-    subject = "[Test] Check databases for client %s" % client
+    subject = "[Test] Check databases for client {}".format(client)
     body = generateMailText(emptyTables, differingTables, noCrossedDatesTables, prodUniqueTables, testUniqueTables)
     helper.sendmail(body, sendMailFrom, sendMailTo, mailPassword, subject, None)
