@@ -1,10 +1,7 @@
 Backlog:
 
-[HIGH] Remove stupid crutch "add t. to column and table names".
-1. Add intellectual adding often differ tables to ignore list.
-2. Support onlyEntitiesCheck property.
-3. Support onlyReportsCheck property.
-4. Clarify problem with creative_page_position table.
+2. Support onlyEntitiesCheck property?
+3. Support onlyReportsCheck property?
 5. Support quickCheck property, which enables quick-check mode. Tables would be compared by short case (first N, where N = amountCheckingRecords record).
 6. Present summary information more flexible.
 7. Add opportunity of writing to log file in loggerHelper.

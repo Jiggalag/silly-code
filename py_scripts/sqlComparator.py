@@ -3,15 +3,14 @@ import configparser
 import os
 import shutil
 import sys
-sys.path.append(os.getcwd() + '/helpers')
-from helpers import configHelper, converters, dbHelper, helper, loggingHelper
-from loggingHelper import Logger
+sys.path.append(os.getcwd() + '/py_scripts')
+from py_scripts.helpers import configHelper, converters, dbHelper, helper, loggingHelper
 
 propertyFile = os.getcwd() + "/resources/properties/sqlComparator.properties"
 logFile = "/home/jiggalag/comparatorLog.txt"
 config = configHelper.ifmsConfigCommon(propertyFile)
 
-logger = Logger(config.getPropertyFromMainSection("loggingLevel"))
+logger = loggingHelper.Logger(config.getPropertyFromMainSection("loggingLevel"))
 
 sendMailFrom = config.getPropertyFromMainSection("sendMailFrom")
 sendMailTo = config.getPropertyFromMainSection("sendMailTo")
@@ -42,7 +41,7 @@ def calculateDate(days):
 
 
 def checkDateList(table, emptyTables, emptyProdTables, emptyTestTables, client):
-    selectQuery = "SELECT distinct(dt) from {};".format(table)
+    selectQuery = "SELECT distinct(`dt`) from {};".format(table)
     dateList = dbHelper.dbConnector.runParallelSelect(clientConfig, client, selectQuery, dbProperties)
     if all(dateList):
         return calculateComparingTimeframe(dateList, table)
@@ -107,9 +106,10 @@ def cmpReports(emptyProdTables, emptyTables, emptyTestTables, globalBreak, mappi
 def compareData(tables, tablesWithDifferentSchema, globalBreak, noCrossedDatesTables, emptyTables, emptyProdTables, emptyTestTables, differingTables):
     tables = prepareTableList(tables, tablesWithDifferentSchema)
     mapping = prepareColumnMapping("prod")
+    tables = ['zip']
     for table in tables:
-        # TODO: remove this!
-        table = 'browser'
+        # TODO: remove after debugging
+        # table = 'campaigncountryreport'
         logger.info("Table {} processing now...".format(table))
         startTableCheckTime = datetime.datetime.now()
         # TODO: remove this hack after debugging
@@ -233,9 +233,9 @@ def compareTablesMetadata(tables):
 
 def countTableRecords(table, date):
     if date is None:
-        query = "SELECT COUNT(*) FROM {};".format(table)
+        query = "SELECT COUNT(*) FROM `{}`;".format(table)
     else:
-        query = "SELECT COUNT(*) FROM {} WHERE dt > '{}';".format(table, date)
+        query = "SELECT COUNT(*) FROM `{}` WHERE dt > '{}';".format(table, date)
     amountRecords = dbHelper.dbConnector.runParallelSelect(clientConfig, client, query, dbProperties)
     return amountRecords
 
@@ -280,15 +280,15 @@ def getColumnList(stage, table):
             cursor.execute(queryGetColumnList)
             columnDict = cursor.fetchall()
             for i in columnDict:
-                element = "t." + str(i.get("column_name")).lower()  # It"s neccessary to make possible queries like "select key form keyname;"
-                columnList.append(element)
+                element = str(i.get("column_name")).lower()
+                columnList.append("`{}`".format(element))
             for column in hideColumns:
-                if "t." + column.replace("_", "") in columnList:
-                    columnList.remove("t." + column)
+                if column in columnList:
+                    columnList.remove(column)
             if columnList == []:
                 return False
             columnString = ",".join(columnList)
-            return columnString.lower()
+            return columnString
     finally:
         sql.connection.close()
 
@@ -298,6 +298,7 @@ def getColumnListForSum(setColumnList):
     for item in setColumnList.split(","):
         if "clicks" in item or "impressions" in item:
             columnListWithSums.append("sum(" + item + ")")
+        # TODO: probably should be removed
         # elif " as " in item:
         #    columnListWithSums.append(item[item.rfind(" "):])
         else:
@@ -318,9 +319,9 @@ def getHeader(query):
     header = []
     for item in columns.split(","):
         if ' as ' in item:
-            header.append(item[:item.find(' ')].replace('t.', ''))
+            header.append(item[:item.find(' ')])
         else:
-            header.append(item.replace('t.', ''))
+            header.append(item)
     return header
 
 
@@ -437,7 +438,7 @@ def prepareColumnMapping(stage):
             cursor.execute(queryGetColumn)
             rawColumnList = cursor.fetchall()
             for item in rawColumnList:
-                columnDict.update({item.get('column_name').lower(): item.get('referenced_table_name').lower()})
+                columnDict.update({item.get('column_name').lower(): "`{}`".format(item.get('referenced_table_name').lower())})
             return columnDict
     finally:
         sql.connection.close()
@@ -463,8 +464,8 @@ def constructOrderList(setColumnList, tmpOrderList):
         else:
             tmpOrderList.append(i)
     setOrderList = []
-    if "t.dt" in tmpOrderList:
-        setOrderList.append("t.dt")
+    if "dt" in tmpOrderList:
+        setOrderList.append("dt")
     if "campaignid" in tmpOrderList:
         setOrderList.append("campaignid")
     for item in tmpOrderList:
@@ -478,25 +479,24 @@ def constructOrderList(setColumnList, tmpOrderList):
 
 def constructColumnAndJoinSection(columnString, mapping, setColumnList, setJoinSection):
     for column in columnString.split(","):
-        if column[2:] in list(mapping.keys()):
-            if "remoteid" in column[2:]:
-                if "remoteid" in getColumnList("prod", column[2:-8]):
-                    setColumnList = setColumnList + mapping.get(column[2:]) + ".remoteid as " + column[2:] + ","
+        if column in list(mapping.keys()):
+            linkedTable = mapping.get(column)
+            if "remoteid" in column:
+                if "remoteid" in getColumnList("prod", column[:-8]):
+                    setColumnList = setColumnList + linkedTable + ".`remoteid` as " + column + ","
                 else:
-                    setColumnList = setColumnList + mapping.get(column[2:]) + ".id as " + column[2:] + ","
-            elif "id" in column[2:]:
-                if "remoteid" in getColumnList("prod", mapping.get(column[2:])):
-                    setColumnList = setColumnList + mapping.get(column[2:]) + ".remoteid as " + column[2:] + ","
+                    setColumnList = setColumnList + linkedTable + ".`id` as " + column + ","
+            elif "id" in column:
+                if "remoteid" in getColumnList("prod", linkedTable):
+                    setColumnList = setColumnList + linkedTable + ".`remoteid` as " + column + ","
                 else:
-                    setColumnList = setColumnList + mapping.get(column[2:]) + ".id as " + column[2:] + ","
+                    setColumnList = setColumnList + linkedTable + ".`id` as " + column + ","
             else:
-                if "remoteid" in getColumnList("prod", column[2:]):
-                    setColumnList = setColumnList + mapping.get(column[2:]) + ".remoteid as " + column[2:] + ","
+                if "remoteid" in getColumnList("prod", column):
+                    setColumnList = setColumnList + linkedTable + ".`remoteid` as " + column + ","
                 else:
-                    setColumnList = setColumnList + mapping.get(column[2:]) + ".id as " + column[2:] + ","
-            setJoinSection = setJoinSection + "JOIN " + mapping.get(column[2:]) + " ON t." + column[
-                                                                                             2:] + "=" + mapping.get(
-                column[2:]) + ".id "
+                    setColumnList = setColumnList + linkedTable + ".`id` as " + column + ","
+            setJoinSection = setJoinSection + "JOIN " + linkedTable + " ON " + column + "=" + linkedTable + ".`id` "
         else:
             setColumnList = setColumnList + column + ","
     return setColumnList, setJoinSection
@@ -531,7 +531,7 @@ def prepareToTest(client):
 def queryEntityConstructor(table, threshold, comparingStep, mapping):
     queryList = []
     columnString, setColumnList, setJoinSection, setOrderList = prepareQuerySections(table, mapping)
-    query = "SELECT {} FROM {} AS t".format(setColumnList, table)
+    query = "SELECT {} FROM `{}` ".format(setColumnList, table)
     if setJoinSection:
         query = query + " {}".format(setJoinSection)
     if setOrderList:
@@ -559,13 +559,13 @@ def queryReportConstruct(table, dt, mode, threshold, comparingStep, mapping):
             if "id" == column[-2:]:
                 sections.append(column)
                 columnListWithSums = getColumnListForSum(setColumnList)
-                query = "SELECT {} FROM {} AS t {} WHERE t.dt = '{}' GROUP BY {} ORDER BY {};".format(",".join(columnListWithSums), table, setJoinSection, dt, column, setOrderList)
+                query = "SELECT {} FROM `{}` {} WHERE dt = '{}' GROUP BY {} ORDER BY {};".format(",".join(columnListWithSums), table, setJoinSection, dt, column, setOrderList)
                 queryList.append(query)
     elif mode == "detailed":
         offset = 0
         while offset < threshold:
             columnString, setColumnList, setJoinSection, setOrderList = prepareQuerySections(table, mapping)
-            query = "SELECT {} FROM {} AS t {} WHERE t.dt>='{}' ORDER BY {} LIMIT {},{};".format(setColumnList, table, setJoinSection, dt, setOrderList, offset, comparingStep)
+            query = "SELECT {} FROM `{}` {} WHERE t.dt>='{}' ORDER BY {} LIMIT {},{};".format(setColumnList, table, setJoinSection, dt, setOrderList, offset, comparingStep)
             offset = offset + comparingStep
             queryList.append(query)
     else:
@@ -586,7 +586,6 @@ def writeUniqueEntitiesToFile(table, listUniqs, stage, header):
         writeHeader(fileName, header)
     with open(fileName, "a") as file:
         firstList = converters.convertToList(listUniqs)
-        # TODO: is it neccessary?
         firstList.sort()
         for item in firstList:
             file.write(item + "\n")

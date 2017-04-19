@@ -1,8 +1,11 @@
-from loggingHelper import Logger
+import sys
+import os
+sys.path.append(os.getcwd() + '/py_scripts/helpers')
+from py_scripts.helpers import loggingHelper
 from multiprocessing.dummy import Pool
 import pymysql
 
-logger = Logger(10)
+logger = loggingHelper.Logger(10)
 
 class dbConnector:
     def __init__(self, connectParameters, **kwargs):

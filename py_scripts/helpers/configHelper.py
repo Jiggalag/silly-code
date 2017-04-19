@@ -2,9 +2,10 @@ import configparser
 import datetime
 import os.path
 import sys
-from loggingHelper import Logger
+sys.path.append(os.getcwd() + '/py_scripts/helpers')
+from py_scripts.helpers import loggingHelper
 
-logger = Logger(20)
+logger = loggingHelper.Logger(20)
 
 class ifmsConfigCommon:
     def __init__(self, configName):
