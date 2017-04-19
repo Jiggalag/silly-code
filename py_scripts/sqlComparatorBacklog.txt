@@ -1,7 +1,6 @@
 Backlog:
 
 [HIGH] Remove stupid crutch "add t. to column and table names".
-0. Fix mismatched headers in result discrepancy files.
 1. Add intellectual adding often differ tables to ignore list.
 2. Support onlyEntitiesCheck property.
 3. Support onlyReportsCheck property.

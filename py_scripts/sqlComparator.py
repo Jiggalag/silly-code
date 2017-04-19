@@ -42,6 +42,7 @@ def calculateDate(days):
 
 
 def checkDateList(table, emptyTables, emptyProdTables, emptyTestTables, client):
+    # TODO: add checking is there dt column in tested table
     selectQuery = "SELECT distinct(dt) from {};".format(table)
     dateList = dbHelper.dbConnector.runParallelSelect(clientConfig, client, selectQuery, dbProperties)
     if all(dateList):
@@ -109,14 +110,15 @@ def compareData(tables, tablesWithDifferentSchema, globalBreak, noCrossedDatesTa
     mapping = prepareColumnMapping("prod")
     for table in tables:
         # TODO: remove this!
-        # table = 'adfoxgeoitem'
+        table = 'browser'
         logger.info("Table {} processing now...".format(table))
         startTableCheckTime = datetime.datetime.now()
         # TODO: remove this hack after debugging
-        # if 'campaign' in table:
-        #    continue
+        if table == 'target_country_excluded':
+        # if 'target' in table:
+            continue
         stopCheckingThisTable = False
-        if ('report' in table) or ('statistic' in table):
+        if (('report' in table) or ('statistic' in table)) and ('dt' in getColumnList('prod', table)):
             if not globalBreak:
                 cmpReports(emptyProdTables, emptyTables, emptyTestTables, globalBreak, mapping, noCrossedDatesTables, stopCheckingThisTable, table)
                 logger.info("Table {} checked in {}...".format(table, datetime.datetime.now() - startTableCheckTime))
@@ -143,14 +145,29 @@ def compareData(tables, tablesWithDifferentSchema, globalBreak, noCrossedDatesTa
     return dataComparingTime
 
 
+def getHeader(query):
+    cutSelect = query[7:]
+    columns = cutSelect[:cutSelect.find("FROM") - 1]
+    header = []
+    for item in columns.split(","):
+        if ' as ' in item:
+            header.append(item[:item.find(' ')].replace('t.', ''))
+        else:
+            header.append(item.replace('t.', ''))
+    return header
+
+
+
 def compareEntityTable(table, query, differingTables):
-    listEntities = getTableData(dbHelper.dbConnector.runParallelSelect(clientConfig, client, query, dbProperties))
+    # TODO: clarify, probably, getTableData reorders data from SQL
+    header = getHeader(query)
+    listEntities = getTableData(dbHelper.dbConnector.runParallelSelect(clientConfig, client, query, dbProperties), header)
     uniqFor0 = listEntities[0] - listEntities[1]
     uniqFor1 = listEntities[1] - listEntities[0]
     if len(uniqFor0) > 0:
-        writeUniqueEntitiesToFile(table, uniqFor0, "prod", query)
+        writeUniqueEntitiesToFile(table, uniqFor0, "prod", header)
     if len(uniqFor1) > 0:
-        writeUniqueEntitiesToFile(table, uniqFor1, "test", query)
+        writeUniqueEntitiesToFile(table, uniqFor1, "test", header)
     if not all([len(uniqFor0) == 0, len(uniqFor1) == 0]):
         logger.error("Tables {} differs!".format(table))
         differingTables.append(table)
@@ -181,13 +198,14 @@ def compareReportSums(table, query, differingTables):
 
 
 def compareReportDetailed(table, query):
-    txtReports = getTableData(dbHelper.dbConnector.runParallelSelect(clientConfig, client, query, dbProperties))
+    header = getHeader(query)
+    txtReports = getTableData(dbHelper.dbConnector.runParallelSelect(clientConfig, client, query, dbProperties), header)
     uniqFor0 = txtReports[0] - txtReports[1]
     uniqFor1 = txtReports[1] - txtReports[0]
     if len(uniqFor0) > 0:
-        writeUniqueEntitiesToFile(table, uniqFor0, "prod", query)
+        writeUniqueEntitiesToFile(table, uniqFor0, "prod", header)
     if len(uniqFor1) > 0:
-        writeUniqueEntitiesToFile(table, uniqFor1, "test", query)
+        writeUniqueEntitiesToFile(table, uniqFor1, "test", header)
     if not all([len(uniqFor0) == 0, len(uniqFor1) == 0]):
         logger.error("Tables {} differs!".format(table))
         differingTables.append(table)
@@ -210,7 +228,8 @@ def compareTablesMetadata(tables):
     for table in tables:
         logger.info("Check schema for table {}...".format(table))
         selectQuery = "SELECT {} FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'DBNAME' and TABLE_NAME='TABLENAME' ORDER BY COLUMN_NAME;".replace("TABLENAME", table).format(', '.join(schemaColumns))
-        columnList = getTableData(dbHelper.dbConnector.runParallelSelect(clientConfig, client, selectQuery, dbProperties))
+        header = getHeader(selectQuery)
+        columnList = getTableData(dbHelper.dbConnector.runParallelSelect(clientConfig, client, selectQuery, dbProperties), header)
         uniqForProd = columnList[0] - columnList[1]
         uniqForTest = columnList[1] - columnList[0]
         if len(uniqForProd) > 0:
@@ -329,15 +348,13 @@ def getIntersectedTables(tableDicts):
         return converters.convertToList(tableSets[1])
 
 
-def getTableData(listReports):
+def getTableData(listReports, header):
     txtReports = []
     for record in listReports:
         instance = set()
         for item in record:
             section = []
-            keys = list(item.keys())
-            keys.sort()
-            for key in keys:
+            for key in header:
                 try:
                     section.append(str(int(item.get(key))))
                 except (TypeError, ValueError):
@@ -561,24 +578,16 @@ def queryReportConstruct(table, dt, mode, threshold, comparingStep, mapping):
     return queryList
 
 
-def writeHeader(fileName, query):
-    cutSelect = query[7:]
-    columns = cutSelect[:cutSelect.find("FROM") - 1]
-    header = []
-    for item in columns.split(","):
-        if ' as ' in item:
-            header.append(item[:item.find(' ')].replace('t.', ''))
-        else:
-            header.append(item.replace('t.', ''))
+def writeHeader(fileName, header):
     with open(fileName, 'w') as file:
         file.write(','.join(header) + '\n')
 
 
-def writeUniqueEntitiesToFile(table, listUniqs, stage, query):
+def writeUniqueEntitiesToFile(table, listUniqs, stage, header):
     logger.error("There are {0} unique elements in table {1} on {2}-server. Detailed list of records saved to {3}{1}_uniqRecords_{2}".format(len(listUniqs), table, stage, serviceDir))
     fileName = "{}{}_uniqRecords_{}".format(serviceDir, table, stage)
     if not os.path.exists(fileName):
-        writeHeader(fileName, query)
+        writeHeader(fileName, header)
     with open(fileName, "a") as file:
         firstList = converters.convertToList(listUniqs)
         # TODO: is it neccessary?
