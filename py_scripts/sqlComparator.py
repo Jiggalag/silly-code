@@ -106,15 +106,9 @@ def cmpReports(emptyProdTables, emptyTables, emptyTestTables, globalBreak, mappi
 def compareData(tables, tablesWithDifferentSchema, globalBreak, noCrossedDatesTables, emptyTables, emptyProdTables, emptyTestTables, differingTables):
     tables = prepareTableList(tables, tablesWithDifferentSchema)
     mapping = prepareColumnMapping("prod")
-    tables = ['zip']
     for table in tables:
-        # TODO: remove after debugging
-        # table = 'campaigncountryreport'
         logger.info("Table {} processing now...".format(table))
         startTableCheckTime = datetime.datetime.now()
-        # TODO: remove this hack after debugging
-        if table == 'campaign':
-            continue
         stopCheckingThisTable = False
         if (('report' in table) or ('statistic' in table)) and ('dt' in getColumnList('prod', table)):
             if not globalBreak:
@@ -298,9 +292,6 @@ def getColumnListForSum(setColumnList):
     for item in setColumnList.split(","):
         if "clicks" in item or "impressions" in item:
             columnListWithSums.append("sum(" + item + ")")
-        # TODO: probably should be removed
-        # elif " as " in item:
-        #    columnListWithSums.append(item[item.rfind(" "):])
         else:
             columnListWithSums.append(item)
     return columnListWithSums
