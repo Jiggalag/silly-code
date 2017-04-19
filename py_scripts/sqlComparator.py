@@ -42,7 +42,6 @@ def calculateDate(days):
 
 
 def checkDateList(table, emptyTables, emptyProdTables, emptyTestTables, client):
-    # TODO: add checking is there dt column in tested table
     selectQuery = "SELECT distinct(dt) from {};".format(table)
     dateList = dbHelper.dbConnector.runParallelSelect(clientConfig, client, selectQuery, dbProperties)
     if all(dateList):
@@ -114,8 +113,7 @@ def compareData(tables, tablesWithDifferentSchema, globalBreak, noCrossedDatesTa
         logger.info("Table {} processing now...".format(table))
         startTableCheckTime = datetime.datetime.now()
         # TODO: remove this hack after debugging
-        if table == 'target_country_excluded':
-        # if 'target' in table:
+        if table == 'campaign':
             continue
         stopCheckingThisTable = False
         if (('report' in table) or ('statistic' in table)) and ('dt' in getColumnList('prod', table)):
@@ -145,21 +143,7 @@ def compareData(tables, tablesWithDifferentSchema, globalBreak, noCrossedDatesTa
     return dataComparingTime
 
 
-def getHeader(query):
-    cutSelect = query[7:]
-    columns = cutSelect[:cutSelect.find("FROM") - 1]
-    header = []
-    for item in columns.split(","):
-        if ' as ' in item:
-            header.append(item[:item.find(' ')].replace('t.', ''))
-        else:
-            header.append(item.replace('t.', ''))
-    return header
-
-
-
 def compareEntityTable(table, query, differingTables):
-    # TODO: clarify, probably, getTableData reorders data from SQL
     header = getHeader(query)
     listEntities = getTableData(dbHelper.dbConnector.runParallelSelect(clientConfig, client, query, dbProperties), header)
     uniqFor0 = listEntities[0] - listEntities[1]
@@ -326,6 +310,18 @@ def getComparingTimeframe(dateList):
     for item in dateList[0][-depthReportCheck:]:
         comparingTimeframe.append(item.get("dt").date().strftime("%Y-%m-%d"))
     return comparingTimeframe
+
+
+def getHeader(query):
+    cutSelect = query[7:]
+    columns = cutSelect[:cutSelect.find("FROM") - 1]
+    header = []
+    for item in columns.split(","):
+        if ' as ' in item:
+            header.append(item[:item.find(' ')].replace('t.', ''))
+        else:
+            header.append(item.replace('t.', ''))
+    return header
 
 
 def getIntersectedTables(tableDicts):
