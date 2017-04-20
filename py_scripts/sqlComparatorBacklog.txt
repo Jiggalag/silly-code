@@ -1,0 +1,11 @@
+Backlog:
+
+1. Support onlyEntitiesCheck property?
+2. Support onlyReportsCheck property?
+3. Support quickCheck property, which enables quick-check mode. Tables would be compared by short case (first N, where N = amountCheckingRecords record).
+4. Present summary information more flexible.
+5. Add opportunity of writing to log file in loggerHelper.
+
+Epics:
+1. Add UI.
+2. Probably, add functional for cloning databases.

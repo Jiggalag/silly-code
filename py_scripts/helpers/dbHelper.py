@@ -1,8 +1,11 @@
-from .loggingHelper import Logger
-from multiprocessing import Pool
+import sys
+import os
+sys.path.append(os.getcwd() + '/py_scripts/helpers')
+from py_scripts.helpers import loggingHelper
+from multiprocessing.dummy import Pool
 import pymysql
 
-logger = Logger(20)
+logger = loggingHelper.Logger(10)
 
 class dbConnector:
     def __init__(self, connectParameters, **kwargs):
@@ -18,16 +21,13 @@ class dbConnector:
                                           cursorclass=pymysql.cursors.DictCursor)
 
         # sql-property section
-        self.hideSQLQueries = 'True'
         self.hideColumns = None
         self.attempts = 5
         self.mode = 'detailed'
         self.comparingStep = 10000
         for key in list(kwargs.keys()):
-            if 'hideSQLQueries' in key:
-                self.hideSQLQueries = kwargs.get(key)
             if 'hideColumns' in key:
-                self.hideColumns = kwargs.get(key).split('|')
+                self.hideColumns = kwargs.get(key)
             if 'attempts' in key:
                 self.attempts = int(kwargs.get(key))
             if 'mode' in key:
@@ -36,9 +36,10 @@ class dbConnector:
                 self.comparingStep = kwargs.get(key)
 
     @staticmethod
-    def runParallelSelect(sqlParamArray, client, query):
+    def runParallelSelect(clientConfig, client, query, dbProperties):
         pool = Pool(2)
-        resultArray = pool.map(lambda x: dbConnector(x, client=client).runSelect(query), sqlParamArray)
+        sqlParamArray = pool.map(clientConfig.getSQLConnectParams, ["prod", "test"])
+        resultArray = pool.map((lambda x: dbConnector(x, client=client, **dbProperties).runSelect(query)), sqlParamArray)
         pool.close()
         pool.join()
         return resultArray
@@ -50,8 +51,7 @@ class dbConnector:
             try:
                 with self.connection.cursor() as cursor:
                     sqlQuery = query.replace('DBNAME', self.db)
-                    if 'False' in self.hideSQLQueries:
-                        logger.info(sqlQuery)
+                    logger.debug(sqlQuery)
                     cursor.execute(sqlQuery)
                     result = cursor.fetchall()
                     return result
@@ -72,8 +72,7 @@ class dbConnector:
             with self.connection.cursor() as cursor:
                 columnList = []
                 queryGetColumnList = "SELECT column_name FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = '%s' AND table_schema = '%s';" % (table, self.db)
-                if 'False' in self.hideSQLQueries:
-                    print(queryGetColumnList)
+                logger.debug(queryGetColumnList)
                 cursor.execute(queryGetColumnList)
                 columnDict = cursor.fetchall()
                 for i in columnDict:
