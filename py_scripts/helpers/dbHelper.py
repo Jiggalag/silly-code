@@ -42,7 +42,14 @@ class dbConnector:
         resultArray = pool.map((lambda x: dbConnector(x, client=client, **dbProperties).runSelect(query)), sqlParamArray)
         pool.close()
         pool.join()
-        return resultArray
+        prodResult = testResult = []
+        for item in resultArray[0]:
+            for key in item.keys():
+                prodResult.append(item.get(key))
+        for item in resultArray[1]:
+            for key in item.keys():
+                testResult.append(item.get(key))
+        return [prodResult, testResult]
 
 
     def runSelect(self, query):

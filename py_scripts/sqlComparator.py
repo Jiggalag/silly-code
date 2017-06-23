@@ -1,3 +1,6 @@
+# TODO: add structure to store any information about something db-lists
+# TODO: add structure to store any differences
+
 import datetime
 import configparser
 import os
@@ -35,11 +38,28 @@ dbProperties = {
     'mode': mode
 }
 
+tableStructure = {
+    "ignoredTables": set(),
+    "prodEmpty": set(),
+    "testEmpty": set(),
+    "prodList": [],
+    "testList": [],
+    "crossedList": [],
+    "prodUnique": set(),
+    "testUnique": set(),
+    "prodUniqueColumns": set(),
+    "testUniqueColumns": set(),
+    "noCrossedDates": set(),
+    "diffSchema": set(),
+    "diffData": set()
+    }
+
+
 
 def calculateDate(days):
     return (datetime.datetime.today().date() - datetime.timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
 
-
+# TODO: too many args
 def checkDateList(table, emptyTables, emptyProdTables, emptyTestTables, client):
     selectQuery = "SELECT distinct(`dt`) from {};".format(table)
     dateList = dbHelper.dbConnector.runParallelSelect(clientConfig, client, selectQuery, dbProperties)
@@ -82,7 +102,7 @@ def checkServiceDir(serviceDir):
         shutil.rmtree(serviceDir)
     os.mkdir(serviceDir)
 
-
+# TODO: too many args
 def cmpReports(emptyProdTables, emptyTables, emptyTestTables, globalBreak, mapping, noCrossedDatesTables,
                stopCheckingThisTable, table):
     dates = converters.convertToList(checkDateList(table, emptyTables, emptyProdTables, emptyTestTables, client))
@@ -102,11 +122,11 @@ def cmpReports(emptyProdTables, emptyTables, emptyTestTables, globalBreak, mappi
                 table))
         noCrossedDatesTables.append(table)
 
-
-def compareData(tables, tablesWithDifferentSchema, globalBreak, noCrossedDatesTables, emptyTables, emptyProdTables, emptyTestTables, differingTables):
-    tables = prepareTableList(tables, tablesWithDifferentSchema)
+# TODO: too many args
+def compareData(tableStructure, globalBreak):
+    prepareTableList(tableStructure)
     mapping = prepareColumnMapping("prod")
-    for table in tables:
+    for table in tableStructure.get("crossedList"):
         logger.info("Table {} processing now...".format(table))
         startTableCheckTime = datetime.datetime.now()
         stopCheckingThisTable = False
@@ -192,37 +212,38 @@ def compareReportDetailed(table, query):
         return True
 
 
-def compareTableLists():
+def compareTableLists(tableStructure):
     selectQuery = "SELECT DISTINCT(TABLE_NAME) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'DBNAME';"
-    tableDicts = dbHelper.dbConnector.runParallelSelect(clientConfig, client, selectQuery, dbProperties)
-    if tableDicts[0] == tableDicts[1]:
-        return tableDicts[0]
-    else:
-        return getIntersectedTables(tableDicts)
+    prodTableList, testTableList = dbHelper.dbConnector.runParallelSelect(clientConfig, client, selectQuery, dbProperties)
+    # TODO: remove all callings like tableDict[1] - it's not clear
+    tableStructure.update({"prodList": prodTableList})
+    tableStructure.update({"testList": testTableList})
+    if prodTableList != testTableList:
+        getIntersectedTables(tableStructure)
 
 
-def compareTablesMetadata(tables):
-    tablesWithDifferentSchema = []
-    for table in tables:
+def compareTablesMetadata(tableStructure, failWithFirstError):
+    for table in tableStructure.get("crossedList"):
         logger.info("Check schema for table {}...".format(table))
         selectQuery = "SELECT {} FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'DBNAME' and TABLE_NAME='TABLENAME' ORDER BY COLUMN_NAME;".replace("TABLENAME", table).format(', '.join(schemaColumns))
-        header = getHeader(selectQuery)
-        columnList = getTableData(dbHelper.dbConnector.runParallelSelect(clientConfig, client, selectQuery, dbProperties), header)
-        uniqForProd = columnList[0] - columnList[1]
-        uniqForTest = columnList[1] - columnList[0]
-        if len(uniqForProd) > 0:
+        prodColumns, testColumns = dbHelper.dbConnector.runParallelSelect(clientConfig, client, selectQuery, dbProperties)
+        prodUniqueColumns = prodColumns - testColumns
+        tableStructure.update({"prodUniqueColumns": prodUniqueColumns})
+        testUniqueColumns = testColumns - prodColumns
+        tableStructure.update({"testUniqueColumns": testUniqueColumns})
+        if len(prodUniqueColumns) > 0:
             prodDb = config.getProperty('sqlParameters', 'prod.' + client + '.sqlDb')
-            logger.error("Elements, unique for table {} in {} db:{}".format(table, prodDb, uniqForProd))
-        if len(uniqForTest) > 0:
+            logger.error("Elements, unique for table {} in {} db:{}".format(table, prodDb, prodUniqueColumns))
+        if len(testUniqueColumns) > 0:
             testDb = config.getProperty('sqlParameters', 'test.' + client + '.sqlDb')
-            logger.error("Elements, unique for table {} in {} db:{}".format(table, testDb, uniqForTest))
-        if not all([len(uniqForProd) == 0, len(uniqForTest) == 0]):
+            logger.error("Elements, unique for table {} in {} db:{}".format(table, testDb, testUniqueColumns))
+        if not all([len(prodUniqueColumns) == 0, len(testUniqueColumns) == 0]):
             logger.error(" [ERROR] Tables {} differs!".format(table))
-            tablesWithDifferentSchema.append(table)
+            diffSchema = tableStructure.get("diffSchema")
+            diffSchema.add(table)
+            tableStructure.update({"diffSchema": diffSchema})
             if failWithFirstError:
                 logger.critical("First error founded, checking failed...")
-                return False
-    return tablesWithDifferentSchema
 
 
 def countTableRecords(table, date):
@@ -240,7 +261,7 @@ def createTestDir(path, client):
     if not os.path.exists(path + client):
         os.mkdir(path + client)
 
-
+# TODO: too many args
 def generateMailText(emptyTables, differingTables, noCrossedDatesTables, prodUniqueTables, testUniqueTables):
     body = "Initial conditions:\n\n"
     if enableSchemaChecking:
@@ -316,24 +337,27 @@ def getHeader(query):
     return header
 
 
-def getIntersectedTables(tableDicts):
-    tableSets = converters.parallelConvertToSet(tableDicts)
-    prodUniqueTables = tableSets[0] - tableSets[1]
-    testUniqueTables = tableSets[1] - tableSets[0]
+def getIntersectedTables(tableStructure):
+    prodUniqueTables = set(tableStructure.get("prodList")) - set(tableStructure.get("testList")) # TODO: test it!
+    testUniqueTables = set(tableStructure.get("testList")) - set(tableStructure.get("prodList")) # TODO: test it!
+    tableStructure.update({"prodUnique": prodUniqueTables})
+    tableStructure.update({"testUnique": testUniqueTables})
     if len(prodUniqueTables) > 0:
         prodDb = config.getProperty('sqlParameters', 'prod.' + client + '.sqlDb')
         logger.warn("Tables, which unique for {} db {}.".format(prodDb, prodUniqueTables))
     if len(testUniqueTables) > 0:
         testDb = config.getProperty('sqlParameters', 'test.' + client + '.sqlDb')
         logger.warn("Tables, which unique for {} db {}.".format(testDb, testUniqueTables))
-    if len(tableSets[0]) >= len(tableSets[1]):
+    prodTableList = tableStructure.get("prodList")
+    testTableList = tableStructure.get("testList")
+    if len(prodUniqueTables) >= len(testUniqueTables):
         for item in prodUniqueTables:
-            tableSets[0].remove(item)
-        return converters.convertToList(tableSets[0])
+            prodTableList.remove(item)
+        tableStructure.update({"crossedList": prodTableList})
     else:
         for item in testUniqueTables:
-            tableSets[1].remove(item)
-        return converters.convertToList(tableSets[1])
+            testTableList.remove(item)
+        tableStructure.update({"crossedList": testTableList})
 
 
 def getTableData(listReports, header):
@@ -493,30 +517,33 @@ def constructColumnAndJoinSection(columnString, mapping, setColumnList, setJoinS
     return setColumnList, setJoinSection
 
 
-def prepareTableList(tables, tablesWithDifferentSchema):
-    for table in excludedTables:
-        if table in tables:
-            tables.remove(table)
-    if tablesWithDifferentSchema is not None:
-        for table in tablesWithDifferentSchema:
-            if table in tables:
-                tables.remove(table)
+def prepareTableList(tableStructure):
+    crossedList = tableStructure.get("crossedList")
+    diffSchema = tableStructure.get("diffSchema")
+    ignoredTables = tableStructure.get("ignoredTables")
+    for table in tableStructure.get("ignoredTables"):
+        if table in crossedList:
+            crossedList.remove(table)
+    if tableStructure.get("diffSchema") is not None:
+        for table in diffSchema:
+            if table in crossedList:
+                crossedList.remove(table)
     try:
-        if len(clientIgnoreTables) > 0:
-            for table in clientIgnoreTables.split(","):
-                if table in tables:
-                    tables.remove(table)
+        if len(ignoredTables) > 0:
+            for table in ignoredTables:
+                if table in crossedList:
+                    crossedList.remove(table)
     except configparser.NoOptionError:
         logger.warn("Property {}.ignoreTables in section [specificIgnoredTables] absent.".format(client))
-    return tables
+    tableStructure.update({"crossedList": crossedList})
 
 
-def prepareToTest(client):
+def prepareToTest(client, tableStructure):
     createTestDir("/mxf/data/test_results/", client)
     startTime = datetime.datetime.now()
     logger.info("Start {} processing!".format(client))
-    tables = converters.convertToList(compareTableLists())
-    return startTime, tables
+    compareTableLists(tableStructure)
+    return startTime
 
 
 def queryEntityConstructor(table, threshold, comparingStep, mapping):
@@ -586,29 +613,22 @@ checkServiceDir(serviceDir)
 for client in config.getClients():
     clientConfig = configHelper.ifmsConfigClient(propertyFile, client)
     sqlPropertyDict = clientConfig.getSQLConnectParams('test')
-    clientIgnoreTables = config.getProperty("specificIgnoredTables", client + ".ignoreTables")
-    if clientIgnoreTables is None:
-        clientIgnoreTables = 0
-    noCrossedDatesTables = []
-    emptyTables = []
-    differingTables = []
-    emptyProdTables = emptyTestTables = []
-    prodUniqueTables = testUniqueTables = set()
+    tableStructure.update({"ignoredTables": set(config.getProperty("specificIgnoredTables", client + ".ignoreTables").split(","))})
     globalBreak = False
-    startTime, tables = prepareToTest(client)
+    startTime = prepareToTest(client, tableStructure)
     if enableSchemaChecking:
-        tablesWithDifferentSchema = compareTablesMetadata(tables)
-        if not tablesWithDifferentSchema and failWithFirstError:
+        compareTablesMetadata(tableStructure, failWithFirstError)
+        if not tableStructure.get("diffSchema") and failWithFirstError:
             schemaComparingTime = str(datetime.datetime.now() - startTime)
             logger.info("Schema partially compared in {}".format(schemaComparingTime))
         else:
             schemaComparingTime = str(datetime.datetime.now() - startTime)
             logger.info("Schema compared in {}".format(schemaComparingTime))
-            dataComparingTime = compareData(tables, tablesWithDifferentSchema, globalBreak, noCrossedDatesTables, emptyTables, emptyProdTables, emptyTestTables, differingTables)
+            dataComparingTime = compareData(tableStructure, globalBreak)
     else:
         logger.info("Schema checking disabled...")
         tablesWithDifferentSchema = []
-        dataComparingTime = compareData(tables, [], globalBreak, noCrossedDatesTables, emptyTables, emptyProdTables, emptyTestTables, differingTables)
+        dataComparingTime = compareData(tableStructure, globalBreak)
     subject = "[Test] Check databases for client {}".format(client)
     body = generateMailText(emptyTables, differingTables, noCrossedDatesTables, prodUniqueTables, testUniqueTables)
     helper.sendmail(body, sendMailFrom, sendMailTo, mailPassword, subject, None)
