@@ -42,7 +42,7 @@ class dbConnector:
         resultArray = pool.map((lambda x: dbConnector(x, client=client, **dbProperties).runSelect(query)), sqlParamArray)
         pool.close()
         pool.join()
-        return resultArray
+        return resultArray[0], resultArray[1]
 
 
     def runSelect(self, query):
@@ -54,7 +54,16 @@ class dbConnector:
                     logger.debug(sqlQuery)
                     cursor.execute(sqlQuery)
                     result = cursor.fetchall()
-                    return result
+                    processedResult = []
+                    for item in result:
+                        tmpRecord = []
+                        for key in item.keys():
+                            tmpRecord.append(item.get(key))
+                        if len(tmpRecord) == 1:
+                            processedResult.append(tmpRecord[0])
+                        else:
+                            processedResult.append(frozenset(tmpRecord))
+                    return processedResult
             except pymysql.OperationalError:
                 errorCount += 1
                 logger.error("There are some SQL query error " + str(pymysql.OperationalError))

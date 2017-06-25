@@ -42,14 +42,14 @@ def calculateDate(days):
 
 def checkDateList(table, emptyTables, emptyProdTables, emptyTestTables, client):
     selectQuery = "SELECT distinct(`dt`) from {};".format(table)
-    dateList = dbHelper.dbConnector.runParallelSelect(clientConfig, client, selectQuery, dbProperties)
-    if all(dateList):
-        return calculateComparingTimeframe(dateList, table)
+    prodDates, testDates = dbHelper.dbConnector.runParallelSelect(clientConfig, client, selectQuery, dbProperties)
+    if all([prodDates, testDates]):
+        return calculateComparingTimeframe(prodDates, testDates, table)
     else:
-        if not dateList[0] and not dateList[1]:
+        if not prodDates and not testDates:
             logger.warn("Table {} is empty in both dbs...".format(table))
             emptyTables.append(table)
-        elif not dateList[0]:
+        elif not prodDates:
             prodDb = config.getProperty('sqlParameters', 'prod.' + client + '.sqlDb')
             logger.warn("Table {} on {} is empty!".format(table, prodDb))
             emptyProdTables.append(table)
@@ -60,14 +60,14 @@ def checkDateList(table, emptyTables, emptyProdTables, emptyTestTables, client):
         return []
 
 
-def calculateComparingTimeframe(dateList, table):
+def calculateComparingTimeframe(prodDates, testDates, table):
     actualDates = set()
     for days in range(1, depthReportCheck):
         actualDates.add(calculateDate(days))
-    if dateList[0][-depthReportCheck:] == dateList[1][-depthReportCheck:]:
-        return getComparingTimeframe(dateList)
+    if prodDates[-depthReportCheck:] == testDates[-depthReportCheck:]:
+        return getComparingTimeframe(prodDates)
     else:
-        return getTimeframeIntersection(dateList, table)
+        return getTimeframeIntersection(prodDates, testDates, table)
 
 
 def calculateSectionName(query):
@@ -88,10 +88,10 @@ def cmpReports(emptyProdTables, emptyTables, emptyTestTables, globalBreak, mappi
     dates = converters.convertToList(checkDateList(table, emptyTables, emptyProdTables, emptyTestTables, client))
     dates.sort()
     if dates:
-        amountRecords = countTableRecords(table, dates[0])
+        prodRecordAmount, testRecordAmount = countTableRecords(table, dates[0])
         for dt in reversed(dates):
             if not all([globalBreak, stopCheckingThisTable]):
-                maxAmountOfRecords = max(amountRecords[0][0].get("COUNT(*)"), amountRecords[1][0].get("COUNT(*)"))
+                maxAmountOfRecords = max(prodRecordAmount[0].get("COUNT(*)"), testRecordAmount[0].get("COUNT(*)"))
                 queryList = queryReportConstruct(table, dt, mode, maxAmountOfRecords, comparingStep, mapping)
                 globalBreak, stopCheckingThisTable = iterationComparingByQueries(queryList, globalBreak, table)
             else:
@@ -118,8 +118,8 @@ def compareData(tables, tablesWithDifferentSchema, globalBreak, noCrossedDatesTa
                 logger.info("Table {} checked in {}...".format(table, datetime.datetime.now() - startTableCheckTime))
                 break
         else:
-            amountRecords = countTableRecords(table, None)
-            maxAmountOfRecords = max(amountRecords[0][0].get("COUNT(*)"), amountRecords[1][0].get("COUNT(*)"))
+            prodRecotdAmount, testRecordAmount = countTableRecords(table, None)
+            maxAmountOfRecords = max(prodRecotdAmount[0].get("COUNT(*)"), testRecordAmount[0].get("COUNT(*)"))
             queryList = queryEntityConstructor(table, maxAmountOfRecords, comparingStep, mapping)
             if not globalBreak:
                 for query in queryList:
@@ -139,14 +139,14 @@ def compareData(tables, tablesWithDifferentSchema, globalBreak, noCrossedDatesTa
 
 def compareEntityTable(table, query, differingTables):
     header = getHeader(query)
-    listEntities = getTableData(dbHelper.dbConnector.runParallelSelect(clientConfig, client, query, dbProperties), header)
-    uniqFor0 = listEntities[0] - listEntities[1]
-    uniqFor1 = listEntities[1] - listEntities[0]
-    if len(uniqFor0) > 0:
-        writeUniqueEntitiesToFile(table, uniqFor0, "prod", header)
-    if len(uniqFor1) > 0:
-        writeUniqueEntitiesToFile(table, uniqFor1, "test", header)
-    if not all([len(uniqFor0) == 0, len(uniqFor1) == 0]):
+    prodEntities, testEntities = dbHelper.dbConnector.runParallelSelect(clientConfig, client, query, dbProperties)
+    prodUniqueEntities = prodEntities - testEntities
+    testUniqueEntities = testEntities - prodEntities
+    if len(prodUniqueEntities) > 0:
+        writeUniqueEntitiesToFile(table, prodUniqueEntities, "prod", header)
+    if len(testUniqueEntities) > 0:
+        writeUniqueEntitiesToFile(table, testUniqueEntities, "test", header)
+    if not all([len(prodUniqueEntities) == 0, len(testUniqueEntities) == 0]):
         logger.error("Tables {} differs!".format(table))
         differingTables.append(table)
         return False
@@ -155,12 +155,12 @@ def compareEntityTable(table, query, differingTables):
 
 
 def compareReportSums(table, query, differingTables):
-    listReports = dbHelper.dbConnector.runParallelSelect(clientConfig, client, query, dbProperties)
+    prodReports, testReports = dbHelper.dbConnector.runParallelSelect(clientConfig, client, query, dbProperties)
     clicks = imps = True
-    prodClicks = int(listReports[0][0].get("SUM(CLICKS)"))
-    testClicks = int(listReports[1][0].get("SUM(CLICKS)"))
-    prodImps = int(listReports[0][0].get("SUM(CLICKS)"))
-    testImps = int(listReports[1][0].get("SUM(CLICKS)"))
+    prodClicks = int(prodReports[0].get("SUM(CLICKS)"))
+    testClicks = int(testReports[0].get("SUM(CLICKS)"))
+    prodImps = int(prodReports[0].get("SUM(CLICKS)"))
+    testImps = int(testReports[0].get("SUM(CLICKS)"))
     if prodClicks != testClicks:
         clicks = False
         logger.warn("There are different click sums for query {}. Prod clicks={}, test clicks={}".format(query, prodClicks, testClicks))
@@ -177,14 +177,14 @@ def compareReportSums(table, query, differingTables):
 
 def compareReportDetailed(table, query):
     header = getHeader(query)
-    txtReports = getTableData(dbHelper.dbConnector.runParallelSelect(clientConfig, client, query, dbProperties), header)
-    uniqFor0 = txtReports[0] - txtReports[1]
-    uniqFor1 = txtReports[1] - txtReports[0]
-    if len(uniqFor0) > 0:
-        writeUniqueEntitiesToFile(table, uniqFor0, "prod", header)
-    if len(uniqFor1) > 0:
-        writeUniqueEntitiesToFile(table, uniqFor1, "test", header)
-    if not all([len(uniqFor0) == 0, len(uniqFor1) == 0]):
+    prodReports, testReports = dbHelper.dbConnector.runParallelSelect(clientConfig, client, query, dbProperties)
+    prodUniqueReports = prodReports - testReports
+    testUniqueReports = testReports - prodReports
+    if len(prodUniqueReports) > 0:
+        writeUniqueEntitiesToFile(table, prodUniqueReports, "prod", header)
+    if len(testUniqueReports) > 0:
+        writeUniqueEntitiesToFile(table, testUniqueReports, "test", header)
+    if not all([len(prodUniqueReports) == 0, len(testUniqueReports) == 0]):
         logger.error("Tables {} differs!".format(table))
         differingTables.append(table)
         return False
@@ -194,11 +194,11 @@ def compareReportDetailed(table, query):
 
 def compareTableLists():
     selectQuery = "SELECT DISTINCT(TABLE_NAME) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'DBNAME';"
-    tableDicts = dbHelper.dbConnector.runParallelSelect(clientConfig, client, selectQuery, dbProperties)
-    if tableDicts[0] == tableDicts[1]:
-        return tableDicts[0]
+    prodTables, testTables = dbHelper.dbConnector.runParallelSelect(clientConfig, client, selectQuery, dbProperties)
+    if prodTables == testTables:
+        return prodTables
     else:
-        return getIntersectedTables(tableDicts)
+        return getIntersectedTables(prodTables, testTables)
 
 
 def compareTablesMetadata(tables):
@@ -206,10 +206,9 @@ def compareTablesMetadata(tables):
     for table in tables:
         logger.info("Check schema for table {}...".format(table))
         selectQuery = "SELECT {} FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'DBNAME' and TABLE_NAME='TABLENAME' ORDER BY COLUMN_NAME;".replace("TABLENAME", table).format(', '.join(schemaColumns))
-        header = getHeader(selectQuery)
-        columnList = getTableData(dbHelper.dbConnector.runParallelSelect(clientConfig, client, selectQuery, dbProperties), header)
-        uniqForProd = columnList[0] - columnList[1]
-        uniqForTest = columnList[1] - columnList[0]
+        prodColumns, testColumns = dbHelper.dbConnector.runParallelSelect(clientConfig, client, selectQuery, dbProperties)
+        uniqForProd = set(prodColumns) - set(testColumns)
+        uniqForTest = set(testColumns) - set(prodColumns)
         if len(uniqForProd) > 0:
             prodDb = config.getProperty('sqlParameters', 'prod.' + client + '.sqlDb')
             logger.error("Elements, unique for table {} in {} db:{}".format(table, prodDb, uniqForProd))
@@ -230,8 +229,7 @@ def countTableRecords(table, date):
         query = "SELECT COUNT(*) FROM `{}`;".format(table)
     else:
         query = "SELECT COUNT(*) FROM `{}` WHERE dt > '{}';".format(table, date)
-    amountRecords = dbHelper.dbConnector.runParallelSelect(clientConfig, client, query, dbProperties)
-    return amountRecords
+    return dbHelper.dbConnector.runParallelSelect(clientConfig, client, query, dbProperties)
 
 
 def createTestDir(path, client):
@@ -297,9 +295,9 @@ def getColumnListForSum(setColumnList):
     return columnListWithSums
 
 
-def getComparingTimeframe(dateList):
+def getComparingTimeframe(prodDates):
     comparingTimeframe = []
-    for item in dateList[0][-depthReportCheck:]:
+    for item in prodDates[-depthReportCheck:]:
         comparingTimeframe.append(item.get("dt").date().strftime("%Y-%m-%d"))
     return comparingTimeframe
 
@@ -316,40 +314,25 @@ def getHeader(query):
     return header
 
 
-def getIntersectedTables(tableDicts):
-    tableSets = converters.parallelConvertToSet(tableDicts)
-    prodUniqueTables = tableSets[0] - tableSets[1]
-    testUniqueTables = tableSets[1] - tableSets[0]
+def getIntersectedTables(prodTables, testTables):
+    prodSet = set(prodTables)
+    testSet = set(testTables)
+    prodUniqueTables = prodSet - testSet
+    testUniqueTables = testSet - prodSet
     if len(prodUniqueTables) > 0:
         prodDb = config.getProperty('sqlParameters', 'prod.' + client + '.sqlDb')
         logger.warn("Tables, which unique for {} db {}.".format(prodDb, prodUniqueTables))
     if len(testUniqueTables) > 0:
         testDb = config.getProperty('sqlParameters', 'test.' + client + '.sqlDb')
         logger.warn("Tables, which unique for {} db {}.".format(testDb, testUniqueTables))
-    if len(tableSets[0]) >= len(tableSets[1]):
+    if len(prodSet) >= len(testSet):
         for item in prodUniqueTables:
-            tableSets[0].remove(item)
-        return converters.convertToList(tableSets[0])
+            prodSet.remove(item)
+        return converters.convertToList(prodSet)
     else:
         for item in testUniqueTables:
-            tableSets[1].remove(item)
-        return converters.convertToList(tableSets[1])
-
-
-def getTableData(listReports, header):
-    txtReports = []
-    for record in listReports:
-        instance = set()
-        for item in record:
-            section = []
-            for key in header:
-                try:
-                    section.append(str(int(item.get(key))))
-                except (TypeError, ValueError):
-                    section.append(str(item.get(key)))
-            instance.add(",".join(section))
-        txtReports.append(instance)
-    return txtReports
+            testSet.remove(item)
+        return converters.convertToList(testSet)
 
 
 def getTestResultText(body, differingTables, emptyTables, noCrossedDatesTables,
@@ -375,17 +358,18 @@ def getTestResultText(body, differingTables, emptyTables, noCrossedDatesTables,
     return body
 
 
-def getTimeframeIntersection(dateList, table):
-    dateSet = converters.parallelConvertToSet(dateList)
-    if (dateSet[0] - dateSet[1]):  # this code (4 strings below) should be moved to different function
-        uniqueDates = getUniqueReportDates(dateSet[0], dateSet[1])
+def getTimeframeIntersection(prodDates, testDates, table):
+    prodSet = set(prodDates)
+    testSet = set(testDates)
+    if (prodSet - testSet):  # this code (4 strings below) should be moved to different function
+        uniqueDates = getUniqueReportDates(prodSet, testSet)
         testDb = config.getProperty('sqlParameters', 'test.' + client + '.sqlDb')
         logger.warn("This dates absent in {}: {} in report table {}...".format(testDb, ",".join(uniqueDates), table))
-    if (dateSet[1] - dateSet[0]):
-        uniqueDates = getUniqueReportDates(dateSet[1], dateSet[0])
+    if (testSet - prodSet):
+        uniqueDates = getUniqueReportDates(testSet, prodSet)
         prodDb = config.getProperty('sqlParameters', 'prod.' + client + '.sqlDb')
         logger.warn("This dates absent in {}: {} in report table {}...".format(prodDb, ",".join(uniqueDates), table))
-    return dateSet[0] & dateSet[1]
+    return prodSet & testSet
 
 
 def getUniqueReportDates(firstDateList, secondDateList):
