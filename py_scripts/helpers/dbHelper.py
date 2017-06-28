@@ -36,16 +36,35 @@ class dbConnector:
                 self.comparingStep = kwargs.get(key)
 
     @staticmethod
-    def runParallelSelect(clientConfig, client, query, dbProperties):
+    def runParallelSelect(clientConfig, client, query, dbProperties, resultType="frozenset"):
         pool = Pool(2)
         sqlParamArray = pool.map(clientConfig.getSQLConnectParams, ["prod", "test"])
-        resultArray = pool.map((lambda x: dbConnector(x, client=client, **dbProperties).runSelect(query)), sqlParamArray)
+        resultArray = pool.map((lambda x: dbConnector(x, client=client, **dbProperties).runSelect(query, resultType)), sqlParamArray)
         pool.close()
         pool.join()
-        return resultArray[0], resultArray[1]
+        if resultType == "list":
+            prodResult = []
+            testResult = []
+            for item in resultArray[0]:
+                prodResult.append(list(item))
+            for item in resultArray[1]:
+                testResult.append(list(item))
+        else:
+            prodResult = resultArray[0]
+            testResult = resultArray[1]
+        # return value instead of
+        if len(prodResult) == 1: # TODO: strongly refactor this code
+            prod = prodResult[0]
+        else:
+            prod = prodResult
+        if len(testResult) == 1:
+            test = testResult[0]
+        else:
+            test = testResult
+        return prod, test
 
 
-    def runSelect(self, query):
+    def runSelect(self, query, resultType="frozenset"):
         errorCount = 0
         while errorCount < self.attempts:
             try:
@@ -61,6 +80,8 @@ class dbConnector:
                             tmpRecord.append(item.get(key))
                         if len(tmpRecord) == 1:
                             processedResult.append(tmpRecord[0])
+                        elif resultType == "list":
+                            processedResult.append(tmpRecord)
                         else:
                             processedResult.append(frozenset(tmpRecord))
                     return processedResult

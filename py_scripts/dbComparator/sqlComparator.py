@@ -91,7 +91,7 @@ def cmpReports(emptyProdTables, emptyTables, emptyTestTables, globalBreak, mappi
         prodRecordAmount, testRecordAmount = countTableRecords(table, dates[0])
         for dt in reversed(dates):
             if not all([globalBreak, stopCheckingThisTable]):
-                maxAmountOfRecords = max(prodRecordAmount[0].get("COUNT(*)"), testRecordAmount[0].get("COUNT(*)"))
+                maxAmountOfRecords = max(prodRecordAmount, testRecordAmount)
                 queryList = queryReportConstruct(table, dt, mode, maxAmountOfRecords, comparingStep, mapping)
                 globalBreak, stopCheckingThisTable = iterationComparingByQueries(queryList, globalBreak, table)
             else:
@@ -107,6 +107,7 @@ def compareData(tables, tablesWithDifferentSchema, globalBreak, noCrossedDatesTa
     tables = prepareTableList(tables, tablesWithDifferentSchema)
     mapping = prepareColumnMapping("prod")
     for table in tables:
+        table = "creative" # TODO: remove this hack after refactor finishing
         logger.info("Table {} processing now...".format(table))
         startTableCheckTime = datetime.datetime.now()
         stopCheckingThisTable = False
@@ -118,8 +119,17 @@ def compareData(tables, tablesWithDifferentSchema, globalBreak, noCrossedDatesTa
                 logger.info("Table {} checked in {}...".format(table, datetime.datetime.now() - startTableCheckTime))
                 break
         else:
-            prodRecotdAmount, testRecordAmount = countTableRecords(table, None)
-            maxAmountOfRecords = max(prodRecotdAmount[0].get("COUNT(*)"), testRecordAmount[0].get("COUNT(*)"))
+            prodRecordAmount, testRecordAmount = countTableRecords(table, None)
+            if prodRecordAmount == 0 and testRecordAmount == 0:
+                logger.warn("Table {} is empty on both servers!".format(table))
+                continue
+            if prodRecordAmount == 0:
+                logger.warn("Table {} is empty on prod-server!".format(table))
+                continue
+            if testRecordAmount == 0:
+                logger.warn("Table {} is empty on test-server!".format(table))
+                continue
+            maxAmountOfRecords = max(prodRecordAmount, testRecordAmount)
             queryList = queryEntityConstructor(table, maxAmountOfRecords, comparingStep, mapping)
             if not globalBreak:
                 for query in queryList:
@@ -140,8 +150,8 @@ def compareData(tables, tablesWithDifferentSchema, globalBreak, noCrossedDatesTa
 def compareEntityTable(table, query, differingTables):
     header = getHeader(query)
     prodEntities, testEntities = dbHelper.dbConnector.runParallelSelect(clientConfig, client, query, dbProperties)
-    prodUniqueEntities = prodEntities - testEntities
-    testUniqueEntities = testEntities - prodEntities
+    prodUniqueEntities = set(prodEntities) - set(testEntities)
+    testUniqueEntities = set(testEntities) - set(prodEntities)
     if len(prodUniqueEntities) > 0:
         writeUniqueEntitiesToFile(table, prodUniqueEntities, "prod", header)
     if len(testUniqueEntities) > 0:
@@ -155,12 +165,13 @@ def compareEntityTable(table, query, differingTables):
 
 
 def compareReportSums(table, query, differingTables):
-    prodReports, testReports = dbHelper.dbConnector.runParallelSelect(clientConfig, client, query, dbProperties)
-    clicks = imps = True
-    prodClicks = int(prodReports[0].get("SUM(CLICKS)"))
-    testClicks = int(testReports[0].get("SUM(CLICKS)"))
-    prodImps = int(prodReports[0].get("SUM(CLICKS)"))
-    testImps = int(testReports[0].get("SUM(CLICKS)"))
+    prodReports, testReports = dbHelper.dbConnector.runParallelSelect(clientConfig, client, query, dbProperties, "list")
+    clicks = True
+    imps = True
+    prodImps = prodReports[0]
+    testImps = testReports[0]
+    prodClicks = prodReports[1]
+    testClicks = testReports[1]
     if prodClicks != testClicks:
         clicks = False
         logger.warn("There are different click sums for query {}. Prod clicks={}, test clicks={}".format(query, prodClicks, testClicks))
@@ -271,14 +282,14 @@ def getColumnList(stage, table):
             logger.debug(queryGetColumnList)
             cursor.execute(queryGetColumnList)
             columnDict = cursor.fetchall()
-            for i in columnDict:
-                element = str(i.get("column_name")).lower()
-                columnList.append("`{}`".format(element))
+            for item in columnDict:
+                for key in item.keys():
+                    columnList.append("`{}`".format(item.get(key).lower()))
             for column in hideColumns:
-                if column in columnList:
-                    columnList.remove(column)
+                if "`{}`".format(column) in columnList:
+                    columnList.remove("`{}`".format(column))
             if columnList == []:
-                return False
+                return []
             columnString = ",".join(columnList)
             return columnString
     finally:
@@ -298,7 +309,7 @@ def getColumnListForSum(setColumnList):
 def getComparingTimeframe(prodDates):
     comparingTimeframe = []
     for item in prodDates[-depthReportCheck:]:
-        comparingTimeframe.append(item.get("dt").date().strftime("%Y-%m-%d"))
+        comparingTimeframe.append(item.date().strftime("%Y-%m-%d"))
     return comparingTimeframe
 
 
@@ -413,7 +424,7 @@ def prepareColumnMapping(stage):
             cursor.execute(queryGetColumn)
             rawColumnList = cursor.fetchall()
             for item in rawColumnList:
-                columnDict.update({item.get('column_name').lower(): "`{}`".format(item.get('referenced_table_name').lower())})
+                columnDict.update({"`{}`".format(item.get('column_name').lower()): "`{}`".format(item.get('referenced_table_name').lower())})
             return columnDict
     finally:
         sql.connection.close()
@@ -421,10 +432,10 @@ def prepareColumnMapping(stage):
 
 def prepareQuerySections(table, mapping):
     columnString = getColumnList("prod", table)
-    setColumnList = ""
-    setJoinSection = ""
+    setColumnList = "" # ?
+    setJoinSection = "" # ?
     tmpOrderList = []
-    setColumnList, setJoinSection = constructColumnAndJoinSection(columnString, mapping, setColumnList, setJoinSection)
+    setColumnList, setJoinSection = constructColumnAndJoinSection(columnString, mapping, setColumnList, setJoinSection, table)
     if setColumnList[-1:] == ",":
         setColumnList = setColumnList[:-1]
     setOrderList = constructOrderList(setColumnList, tmpOrderList)
@@ -452,15 +463,15 @@ def constructOrderList(setColumnList, tmpOrderList):
     return setOrderList
 
 
-def constructColumnAndJoinSection(columnString, mapping, setColumnList, setJoinSection):
+def constructColumnAndJoinSection(columnString, mapping, setColumnList, setJoinSection, table):
     for column in columnString.split(","):
         if column in list(mapping.keys()):
             linkedTable = mapping.get(column)
             if "remoteid" in column:
-                if "remoteid" in getColumnList("prod", column[:-8]):
-                    setColumnList = setColumnList + linkedTable + ".`remoteid` as " + column + ","
-                else:
-                    setColumnList = setColumnList + linkedTable + ".`id` as " + column + ","
+                # if "remoteid" in getColumnList("prod", column[:-8]):
+                #     setColumnList = setColumnList + linkedTable + ".`remoteid` as " + column + ","
+                # else:
+                setColumnList = setColumnList + linkedTable + ".`remoteid` as " + column + ","
             elif "id" in column:
                 if "remoteid" in getColumnList("prod", linkedTable):
                     setColumnList = setColumnList + linkedTable + ".`remoteid` as " + column + ","
@@ -471,9 +482,12 @@ def constructColumnAndJoinSection(columnString, mapping, setColumnList, setJoinS
                     setColumnList = setColumnList + linkedTable + ".`remoteid` as " + column + ","
                 else:
                     setColumnList = setColumnList + linkedTable + ".`id` as " + column + ","
-            setJoinSection = setJoinSection + "JOIN " + linkedTable + " ON " + column + "=" + linkedTable + ".`id` "
+            if "`{}`".format(table) == linkedTable:
+                setJoinSection = ""
+            else:
+                setJoinSection = setJoinSection + "JOIN " + linkedTable + " ON " + column + "=" + linkedTable + ".`id` "
         else:
-            setColumnList = setColumnList + column + ","
+            setColumnList = setColumnList + table + "." + column + ","
     return setColumnList, setJoinSection
 
 
@@ -563,7 +577,7 @@ def writeUniqueEntitiesToFile(table, listUniqs, stage, header):
         firstList = converters.convertToList(listUniqs)
         firstList.sort()
         for item in firstList:
-            file.write(item + "\n")
+            file.write(str(item) + "\n")
 
 
 checkServiceDir(serviceDir)
