@@ -1,18 +1,16 @@
-import sys
-import os
-sys.path.append(os.getcwd() + '/py_scripts/helpers')
+import pymysql
 from py_scripts.helpers import loggingHelper
 from multiprocessing.dummy import Pool
-import pymysql
 
 logger = loggingHelper.Logger(10)
 
-class dbConnector:
-    def __init__(self, connectParameters, **kwargs):
-        self.host = connectParameters.get('host')
-        self.user = connectParameters.get('user')
-        self.password = connectParameters.get('password')
-        self.db = connectParameters.get('db')
+
+class DbConnector:
+    def __init__(self, connect_parameters, **kwargs):
+        self.host = connect_parameters.get('host')
+        self.user = connect_parameters.get('user')
+        self.password = connect_parameters.get('password')
+        self.db = connect_parameters.get('db')
         self.connection = pymysql.connect(host=self.host,
                                           user=self.user,
                                           password=self.password,
@@ -21,72 +19,109 @@ class dbConnector:
                                           cursorclass=pymysql.cursors.DictCursor)
 
         # sql-property section
-        self.hideColumns = None
+        self.hide_columns = None
         self.attempts = 5
         self.mode = 'detailed'
-        self.comparingStep = 10000
+        self.comparing_step = 10000
+        self.excluded_tables = []
+        self.client_ignored_tables = []
+        self.check_schema = True
+        self.check_depth = 7
+        self.quick_fall = False
+        self.schema_columns = [
+            "TABLE_CATALOG",
+            "TABLE_NAME",
+            "COLUMN_NAME",
+            "ORDINAL_POSITION",
+            "COLUMN_DEFAULT",
+            "IS_NULLABLE",
+            "DATA_TYPE",
+            "CHARACTER_MAXIMUM_LENGTH",
+            "CHARACTER_OCTET_LENGTH",
+            "NUMERIC_PRECISION",
+            "NUMERIC_SCALE",
+            "DATETIME_PRECISION",
+            "CHARACTER_SET_NAME",
+            "COLLATION_NAME",
+            "COLUMN_TYPE",
+            "COLUMN_KEY",
+            "EXTRA",
+            "COLUMN_COMMENT",
+            "GENERATION_EXPRESSION"
+        ]
         for key in list(kwargs.keys()):
             if 'hideColumns' in key:
-                self.hideColumns = kwargs.get(key)
+                self.hide_columns = kwargs.get(key)
             if 'attempts' in key:
                 self.attempts = int(kwargs.get(key))
             if 'mode' in key:
                 self.mode = kwargs.get(key)
             if 'comparingStep' in key:
-                self.comparingStep = kwargs.get(key)
+                self.comparing_step = kwargs.get(key)
+            if 'excludedTables' in key:
+                self.excluded_tables = kwargs.get(key)  # TODO: add split?
+            if 'clientIgnoredTables' in key:
+                self.client_ignored_tables = kwargs.get(key)  # TODO: add split?
+            if 'enableSchemaChecking' in key:
+                self.check_schema = kwargs.get(key)
+            if 'depthReportCheck' in key:
+                self.check_depth = kwargs.get(key)
+            if 'failWithFirstError' in key:
+                self.quick_fall = kwargs.get(key)
+            if 'schemaColumns' in key:
+                self.schema_columns = kwargs.get(key)  # TODO: add split?
 
     @staticmethod
-    def runParallelSelect(clientConfig, client, query, dbProperties, resultType="frozenset"):
+    def parallel_select(client_config, client, query, db_properties, result_type="frozenset"):
         pool = Pool(2)
-        sqlParamArray = pool.map(clientConfig.getSQLConnectParams, ["prod", "test"])
-        resultArray = pool.map((lambda x: dbConnector(x, client=client, **dbProperties).runSelect(query, resultType)), sqlParamArray)
+        sql_params = pool.map(client_config.get_sql_connection_params, ["prod", "test"])
+        result = pool.map((lambda x: DbConnector(x, client=client, **db_properties).select(query, result_type)),
+                          sql_params)
         pool.close()
         pool.join()
-        if resultType == "list":
-            prodResult = []
-            testResult = []
-            for item in resultArray[0]:
-                prodResult.append(list(item))
-            for item in resultArray[1]:
-                testResult.append(list(item))
+        if result_type == "list":
+            prod_result = []
+            test_result = []
+            for item in result[0]:
+                prod_result.append(list(item))
+            for item in result[1]:
+                test_result.append(list(item))
         else:
-            prodResult = resultArray[0]
-            testResult = resultArray[1]
-        # return value instead of
-        if len(prodResult) == 1: # TODO: strongly refactor this code
-            prod = prodResult[0]
+            prod_result = result[0]
+            test_result = result[1]
+        if len(prod_result) == 1:  # TODO: strongly refactor this code
+            prod = prod_result[0]
         else:
-            prod = prodResult
-        if len(testResult) == 1:
-            test = testResult[0]
+            prod = prod_result
+        if len(test_result) == 1:
+            test = test_result[0]
         else:
-            test = testResult
+            test = test_result
         return prod, test
 
-
-    def runSelect(self, query, resultType="frozenset"):
-        errorCount = 0
-        while errorCount < self.attempts:
+    def select(self, query, result_type="frozenset"):
+        error_count = 0
+        while error_count < self.attempts:
             try:
                 with self.connection.cursor() as cursor:
-                    sqlQuery = query.replace('DBNAME', self.db)
-                    logger.debug(sqlQuery)
-                    cursor.execute(sqlQuery)
+                    sql_query = query.replace('DBNAME', self.db)
+                    logger.debug(sql_query)
+                    cursor.execute(sql_query)
                     result = cursor.fetchall()
-                    processedResult = []
+                    processed_result = []
                     for item in result:
-                        tmpRecord = []
+                        tmp_record = []
                         for key in item.keys():
-                            tmpRecord.append(item.get(key))
-                        if len(tmpRecord) == 1:
-                            processedResult.append(tmpRecord[0])
-                        elif resultType == "list":
-                            processedResult.append(tmpRecord)
+                            tmp_record.append(item.get(key))
+                        if len(tmp_record) == 1:
+                            processed_result.append(tmp_record[0])
+                        elif result_type == "list":
+                            processed_result.append(tmp_record)
                         else:
-                            processedResult.append(frozenset(tmpRecord))
-                    return processedResult
+                            processed_result.append(frozenset(tmp_record))
+                    return processed_result
             except pymysql.OperationalError:
-                errorCount += 1
+                error_count += 1
                 logger.error("There are some SQL query error " + str(pymysql.OperationalError))
             finally:
                 try:
@@ -95,25 +130,64 @@ class dbConnector:
                     logger.info("Connection already closed...")
                     return []
 
+    def get_amount_records(self, table, date, client_config, client):
+        if date is None:
+            query = "SELECT COUNT(*) FROM `{}`;".format(table)
+        else:
+            query = "SELECT COUNT(*) FROM `{}` WHERE dt > '{}';".format(table, date)
+        return DbConnector.parallel_select(client_config, client, query, db_properties)
 
-    def getColumnList(self, table):
-        # Function returns column list for sql-query for report table
+    def get_tables(self):
         try:
             with self.connection.cursor() as cursor:
-                columnList = []
-                queryGetColumnList = "SELECT column_name FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = '%s' AND table_schema = '%s';" % (table, self.db)
-                logger.debug(queryGetColumnList)
-                cursor.execute(queryGetColumnList)
-                columnDict = cursor.fetchall()
-                for i in columnDict:
-                    element = 't.' + str(i.get('column_name')).lower()  # It's neccessary to make possible queries like "select key form keyname;"
-                    columnList.append(element)
-                for column in self.hideColumns:
-                    if 't.' + column.replace('_', '') in columnList:
-                        columnList.remove('t.' + column)
-                if columnList == []:
-                    return False
-                columnString = ','.join(columnList)
-                return columnString.lower()
+                showTables = "SELECT DISTINCT(table_name) FROM information_schema.columns WHERE table_schema LIKE '{}';".format(self.db)
+                listTable = []
+                cursor.execute(showTables)
+                result = cursor.fetchall()
+                for item in result:
+                    listTable.append(item.get('table_name'))
         finally:
             self.connection.close()
+        return listTable
+
+
+def get_column_list(sql, table):
+    # Function returns column list for sql-query for report table
+    try:
+        with sql.connection.cursor() as cursor:
+            column_list = []
+            query = "SELECT column_name FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = '%s' " \
+                                 "AND table_schema = '%s';" % (table, sql.db)
+            logger.debug(query)
+            cursor.execute(query)
+            column_dict = cursor.fetchall()
+            for i in column_dict:
+                element = 't.' + str(i.get('column_name')).lower()  # TODO: get rid of this hack
+                column_list.append(element)
+            for column in sql.hide_columns:
+                if 't.' + column.replace('_', '') in column_list:
+                    column_list.remove('t.' + column)
+            if not column_list:
+                return False
+            column_string = ','.join(column_list)
+            return column_string.lower()
+    finally:
+        sql.connection.close()
+
+
+def get_column_list_for_sum(set_column_list):
+    column_list_with_sums = []
+    for item in set_column_list.split(","):
+        if "clicks" in item or "impressions" in item:
+            column_list_with_sums.append("sum(" + item + ")")
+        else:
+            column_list_with_sums.append(item)
+    return column_list_with_sums
+
+
+def get_amount_records(table, date, client_config, client, db_properties):
+    if date is None:
+        query = "SELECT COUNT(*) FROM `{}`;".format(table)
+    else:
+        query = "SELECT COUNT(*) FROM `{}` WHERE dt > '{}';".format(table, date)
+    return DbConnector.parallel_select(client_config, client, query, db_properties)

@@ -66,13 +66,13 @@ class ifmsConfigCommon:
         return datetime.timedelta(days=days, hours=hours, minutes=minutes)
 
 
-class ifmsConfigClient(ifmsConfigCommon):
+class IfmsConfigClient(ifmsConfigCommon):
     def __init__(self, configName, client):
         super().__init__(configName)
         self.client = client
 
 
-    def getMongoConnectParams(self, stage):
+    def get_mongo_connection_params(self, stage):
         paramArray = ['mongohost', 'mongodb', 'mongoport']
         connectionDict = {}
         if stage is None:
@@ -93,7 +93,7 @@ class ifmsConfigClient(ifmsConfigCommon):
         return connectionDict
 
 
-    def getSQLConnectParams(self, stage):
+    def get_sql_connection_params(self, stage):
         paramArray = ['sqlhost', 'sqluser', 'sqlpassword', 'sqldb']
         connectionDict = {}
         if stage is None:
@@ -108,20 +108,20 @@ class ifmsConfigClient(ifmsConfigCommon):
         return connectionDict
 
 
-    def getSQLHostForClientAndStage(self, stage):
-        return self.getSQLConnectParams(stage).get('host')
+    def get_sql_host_for_client_and_stage(self, stage):
+        return self.get_sql_connection_params(stage).get('host')
 
 
-    def getSQLUserForClientAndStage(self, stage):
-        return self.getSQLConnectParams(stage).get('user')
+    def get_sql_user_for_client_and_stage(self, stage):
+        return self.get_sql_connection_params(stage).get('user')
 
 
-    def getSQLPasswordForClientAndStage(self, stage):
-        return self.getSQLConnectParams(stage).get('password')
+    def get_sql_password_for_client_and_stage(self, stage):
+        return self.get_sql_connection_params(stage).get('password')
 
 
-    def getSQLDbForClientAndStage(self, stage):
-        return self.getSQLConnectParams(stage).get('db')
+    def get_sql_db_for_client_and_stage(self, stage):
+        return self.get_sql_connection_params(stage).get('db')
 
 
 
