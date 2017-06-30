@@ -11,14 +11,6 @@ class DbConnector:
         self.user = connect_parameters.get('user')
         self.password = connect_parameters.get('password')
         self.db = connect_parameters.get('db')
-        self.connection = pymysql.connect(host=self.host,
-                                          user=self.user,
-                                          password=self.password,
-                                          db=self.db,
-                                          charset='utf8',
-                                          cursorclass=pymysql.cursors.DictCursor)
-
-        # sql-property section
         self.hide_columns = None
         self.attempts = 5
         self.mode = 'detailed'
@@ -72,10 +64,10 @@ class DbConnector:
                 self.schema_columns = kwargs.get(key)  # TODO: add split?
 
     @staticmethod
-    def parallel_select(client_config, client, query, db_properties, result_type="frozenset"):
+    def parallel_select(client_config, client, query, result_type="frozenset"):
         pool = Pool(2)
         sql_params = pool.map(client_config.get_sql_connection_params, ["prod", "test"])
-        result = pool.map((lambda x: DbConnector(x, client=client, **db_properties).select(query, result_type)),
+        result = pool.map((lambda x: DbConnector(x, client=client).select(query, result_type)),
                           sql_params)
         pool.close()
         pool.join()
@@ -100,10 +92,16 @@ class DbConnector:
         return prod, test
 
     def select(self, query, result_type="frozenset"):
+        connection = pymysql.connect(host=self.host,
+                                     user=self.user,
+                                     password=self.password,
+                                     db=self.db,
+                                     charset='utf8',
+                                     cursorclass=pymysql.cursors.DictCursor)
         error_count = 0
         while error_count < self.attempts:
             try:
-                with self.connection.cursor() as cursor:
+                with connection.cursor() as cursor:
                     sql_query = query.replace('DBNAME', self.db)
                     logger.debug(sql_query)
                     cursor.execute(sql_query)
@@ -125,54 +123,59 @@ class DbConnector:
                 logger.error("There are some SQL query error " + str(pymysql.OperationalError))
             finally:
                 try:
-                    self.connection.close()
+                    connection.close()
                 except pymysql.Error:
                     logger.info("Connection already closed...")
                     return []
 
-    def get_amount_records(self, table, date, client_config, client):
-        if date is None:
-            query = "SELECT COUNT(*) FROM `{}`;".format(table)
-        else:
-            query = "SELECT COUNT(*) FROM `{}` WHERE dt > '{}';".format(table, date)
-        return DbConnector.parallel_select(client_config, client, query, db_properties)
-
     def get_tables(self):
+        connection = pymysql.connect(host=self.host,
+                                     user=self.user,
+                                     password=self.password,
+                                     db=self.db,
+                                     charset='utf8',
+                                     cursorclass=pymysql.cursors.DictCursor)
         try:
-            with self.connection.cursor() as cursor:
-                showTables = "SELECT DISTINCT(table_name) FROM information_schema.columns WHERE table_schema LIKE '{}';".format(self.db)
-                listTable = []
-                cursor.execute(showTables)
+            with connection.cursor() as cursor:
+                show_tables = "SELECT DISTINCT(table_name) FROM information_schema.columns " \
+                              "WHERE table_schema LIKE '{}';".format(self.db)
+                list_table = []
+                cursor.execute(show_tables)
                 result = cursor.fetchall()
                 for item in result:
-                    listTable.append(item.get('table_name'))
+                    list_table.append(item.get('table_name'))
         finally:
-            self.connection.close()
-        return listTable
+            connection.close()
+        return list_table
 
-
-def get_column_list(sql, table):
-    # Function returns column list for sql-query for report table
-    try:
-        with sql.connection.cursor() as cursor:
-            column_list = []
-            query = "SELECT column_name FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = '%s' " \
-                                 "AND table_schema = '%s';" % (table, sql.db)
-            logger.debug(query)
-            cursor.execute(query)
-            column_dict = cursor.fetchall()
-            for i in column_dict:
-                element = 't.' + str(i.get('column_name')).lower()  # TODO: get rid of this hack
-                column_list.append(element)
-            for column in sql.hide_columns:
-                if 't.' + column.replace('_', '') in column_list:
-                    column_list.remove('t.' + column)
-            if not column_list:
-                return False
-            column_string = ','.join(column_list)
-            return column_string.lower()
-    finally:
-        sql.connection.close()
+    def get_column_list(self, table):
+        connection = pymysql.connect(host=self.host,
+                                     user=self.user,
+                                     password=self.password,
+                                     db=self.db,
+                                     charset='utf8',
+                                     cursorclass=pymysql.cursors.DictCursor)
+        try:
+            with connection.cursor() as cursor:
+                column_list = []
+                query = "SELECT column_name FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = '%s' " \
+                        "AND table_schema = '%s';" % (table, self.db)
+                logger.debug(query)
+                cursor.execute(query)
+                column_dict = cursor.fetchall()
+                for i in column_dict:
+                    element = str(i.get('column_name')).lower()  # TODO: get rid of this hack
+                    column_list.append(element)
+                for column in self.hide_columns:
+                    if column.replace('_', '') in column_list:
+                        column_list.remove(column)
+                if not column_list:
+                    return ""
+                column_string = ','.join(column_list)
+                return column_string.lower()
+        finally:
+            if connection.open:
+                connection.close()
 
 
 def get_column_list_for_sum(set_column_list):

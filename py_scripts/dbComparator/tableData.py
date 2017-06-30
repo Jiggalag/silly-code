@@ -2,6 +2,7 @@ from py_scripts.helpers.loggingHelper import Logger
 
 logger = Logger(20)
 
+
 class Info:
     def __init__(self):
         self.tables = set()
@@ -45,9 +46,9 @@ class Info:
     def update_diff_data(self, value):
             self.diff_data.append(value)
 
-    def get_tables(self, client_ignored_tables):
+    def get_tables(self, excluded_tables, client_ignored_tables):
         self.tables = self.prod_list & self.test_list
-        for table in self.excluded_tables:
+        for table in excluded_tables:
             if table in self.tables:
                 self.tables.remove(table)
         if self.diff_schema is not None:
@@ -58,7 +59,9 @@ class Info:
             for table in client_ignored_tables.split(","):
                 if table in self.tables:
                     self.tables.remove(table)
-        return self.tables
+        table_list = list(self.tables)
+        table_list.sort()
+        return table_list
 
     def get_both_empty(self):
         self.empty = self.prod_empty & self.test_empty

@@ -6,7 +6,7 @@ from py_scripts.dbComparator import queryConstructor, tableData, sqlComparing
 
 propertyFile = os.getcwd() + "/resources/properties/sqlComparator.properties"
 logFile = "/home/jiggalag/comparatorLog.txt"
-config = configHelper.ifmsConfigCommon(propertyFile)
+config = configHelper.IfmsConfigCommon(propertyFile)
 
 logger = loggingHelper.Logger(config.getPropertyFromMainSection("loggingLevel"))
 
