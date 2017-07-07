@@ -21,7 +21,8 @@ class Object:
             'enableSchemaChecking': client_config.getProperty("sqlProperties", "enableSchemaChecking"),
             'depthReportCheck': client_config.getProperty("sqlProperties", "depthReportCheck"),
             'failWithFirstError': client_config.getProperty("sqlProperties", "failWithFirstError"),
-            'schemaColumns': client_config.getProperty("sqlProperties", "includeSchemaColumns")
+            'schemaColumns': client_config.getProperty("sqlProperties", "schemaColumns"),
+            'separateChecking': client_config.getProperty("sqlProperties", "separateChecking")
         }
         self.excluded_tables = set(client_config.getProperty("sqlProperties", "tablesNotToCompare"))
         self.prod_sql = dbHelper.DbConnector(self.client_config.get_sql_connection_params("prod"), **self.db_properties)
@@ -35,8 +36,7 @@ class Object:
             start_table_check_time = datetime.datetime.now()
             local_break = False
             query_object = queryConstructor.InitializeQuery(self.prod_sql)
-            if (('report' in table) or ('statistic' in table)) and \
-                    ('dt' in dbHelper.DbConnector.get_column_list(self.prod_sql, table)):
+            if (('report' in table) or ('statistic' in table)) and ('dt' in dbHelper.DbConnector.get_column_list(self.prod_sql, table)) and 'onlyEntities' not in self.db_properties.get('separateChecking'):
                 if not global_break:
                     self.compare_report_table(global_break, mapping, local_break, table, service_dir, start_time)
                     logger.info("Table {} checked in {}..."
@@ -46,6 +46,8 @@ class Object:
                                 .format(table, datetime.datetime.now() - start_table_check_time))
                     break
             else:
+                if 'onlyReports' in self.db_properties.get('separateChecking'):
+                    continue
                 prod_record_amount, test_record_amount = dbHelper.get_amount_records(table, None, self.client_config,
                                                                                      self.client, self.db_properties)
                 if prod_record_amount == 0 and test_record_amount == 0:

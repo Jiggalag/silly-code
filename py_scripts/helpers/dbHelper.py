@@ -20,6 +20,7 @@ class DbConnector:
         self.check_schema = True
         self.check_depth = 7
         self.quick_fall = False
+        self.separate_checking = "both"
         self.schema_columns = [
             "TABLE_CATALOG",
             "TABLE_NAME",
@@ -62,6 +63,8 @@ class DbConnector:
                 self.quick_fall = kwargs.get(key)
             if 'schemaColumns' in key:
                 self.schema_columns = kwargs.get(key)  # TODO: add split?
+            if 'separateChecking' in key:
+                self.separate_checking = kwargs.get(key)
 
     @staticmethod
     def parallel_select(client_config, client, query, result_type="frozenset"):

@@ -1,11 +1,18 @@
 import datetime
 import os
 import shutil
+import platform
 from py_scripts.helpers import configHelper, converters, helper, loggingHelper, dbHelper
 from py_scripts.dbComparator import queryConstructor, tableData, sqlComparing
 
-propertyFile = os.getcwd() + "/resources/properties/sqlComparator.properties"
-logFile = "/home/jiggalag/comparatorLog.txt"
+if "Win" in platform.system():
+    OS = "Windows"
+else:
+    OS = "Linux"
+if "Linux" in OS:
+    propertyFile = os.getcwd() + "/resources/properties/sqlComparator.properties"
+else:
+    propertyFile = os.getcwd() + "\\resources\\properties\\sqlComparator.properties"
 config = configHelper.IfmsConfigCommon(propertyFile)
 
 logger = loggingHelper.Logger(config.getPropertyFromMainSection("loggingLevel"))
@@ -13,7 +20,6 @@ logger = loggingHelper.Logger(config.getPropertyFromMainSection("loggingLevel"))
 sendMailFrom = config.getPropertyFromMainSection("sendMailFrom")
 sendMailTo = config.getPropertyFromMainSection("sendMailTo")
 mailPassword = config.getPropertyFromMainSection("mailPassword")
-service_dir = config.getPropertyFromMainSection("serviceDir")
 check_schema = config.getProperty("sqlProperties", "enableSchemaChecking")
 quick_fall = config.getProperty("sqlProperties", "quick_fall")
 mode = config.getProperty("sqlProperties", "reportCheckType")
@@ -76,6 +82,10 @@ def get_test_result_text(body, comparing_info):
     return body
 
 
+if OS == "Windows":
+    service_dir = "C:\\comparator"
+else:
+    service_dir = "/tmp/comparator/"
 check_service_dir(service_dir)
 for client in config.getClients():
     client_config = configHelper.IfmsConfigClient(propertyFile, client)
@@ -84,7 +94,10 @@ for client in config.getClients():
     comparing_info.update_table_list("prod", dbHelper.DbConnector(client_config.get_sql_connection_params("prod")).get_tables())
     comparing_info.update_table_list("test", dbHelper.DbConnector(client_config.get_sql_connection_params("test")).get_tables())
     global_break = False
-    create_test_dir("/mxf/data/test_results/", client)
+    if "Linux" in OS:
+        create_test_dir("/mxf/data/test_results/", client)
+    else:
+        create_test_dir("C:\\dbComparator\\", client)
     start_time = datetime.datetime.now()
     logger.info("Start {} processing!".format(client))
     mapping = queryConstructor.prepare_column_mapping(dbHelper.DbConnector(client_config.get_sql_connection_params("prod")))
