@@ -67,9 +67,8 @@ class DbConnector:
                 self.separate_checking = kwargs.get(key)
 
     @staticmethod
-    def parallel_select(client_config, client, query, result_type="frozenset"):
+    def parallel_select(sql_params, client, query, result_type="frozenset"):
         pool = Pool(2)
-        sql_params = pool.map(client_config.get_sql_connection_params, ["prod", "test"])
         result = pool.map((lambda x: DbConnector(x, client=client).select(query, result_type)),
                           sql_params)
         pool.close()
@@ -191,9 +190,9 @@ def get_column_list_for_sum(set_column_list):
     return column_list_with_sums
 
 
-def get_amount_records(table, date, client_config, client, db_properties):
+def get_amount_records(table, date, sql_dicts, client):
     if date is None:
         query = "SELECT COUNT(*) FROM `{}`;".format(table)
     else:
         query = "SELECT COUNT(*) FROM `{}` WHERE dt > '{}';".format(table, date)
-    return DbConnector.parallel_select(client_config, client, query, db_properties)
+    return DbConnector.parallel_select(sql_dicts, client, query)

@@ -8,19 +8,19 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import pyqtSlot
 import py_scripts.dbComparator.comparatorWithUI as backend
 
+# TODO: add 'mode' property to UI
+# TODO:
+
+
 class Example(QWidget):
     def __init__(self):
         super().__init__()
-        self.initUI()
+        self.init_ui()
 
-    def initUI(self):
-        self.setGeometry(0, 0, 900, 600)
-        self.setWindowTitle('dbComparator')
-        self.setWindowIcon(QIcon('./resources/av.jpg'))
-
+    def init_sql_fields(self):
         self.prod_host_label = QLabel('prod.sql-host', self)
         self.prod_host_label.setToolTip('Input host, where prod-db located.\nExample: samaradb03.maxifier.com')
-        self.prod_host_label.move(10,25)
+        self.prod_host_label.move(10, 25)
         self.prod_host = QLineEdit(self)
         self.prod_host.setToolTip('Input host, where prod-db located.\nExample: samaradb03.maxifier.com')
         self.prod_host.move(160, 20)
@@ -28,7 +28,7 @@ class Example(QWidget):
 
         self.prod_user_label = QLabel('prod.sql-user', self)
         self.prod_user_label.setToolTip('Input user for connection to prod-db.\nExample: itest')
-        self.prod_user_label.move(10,55)
+        self.prod_user_label.move(10, 55)
         self.prod_user = QLineEdit(self)
         self.prod_user.setToolTip('Input user for connection to prod-db.\nExample: itest')
         self.prod_user.move(160, 50)
@@ -36,7 +36,7 @@ class Example(QWidget):
 
         self.prod_password_label = QLabel('prod.sql-password', self)
         self.prod_password_label.setToolTip('Input password for user from prod.sql-user field')
-        self.prod_password_label.move(10,85)
+        self.prod_password_label.move(10, 85)
         self.prod_password = QLineEdit(self)
         self.prod_password.setToolTip('Input password for user from prod.sql-user field')
         self.prod_password.move(160, 80)
@@ -44,7 +44,7 @@ class Example(QWidget):
 
         self.prod_db_label = QLabel('prod.sql-db', self)
         self.prod_db_label.setToolTip('Input prod-db name.\nExample: irving')
-        self.prod_db_label.move(10,115)
+        self.prod_db_label.move(10, 115)
         self.prod_db = QLineEdit(self)
         self.prod_db.setToolTip('Input prod-db name.\nExample: irving')
         self.prod_db.move(160, 110)
@@ -52,7 +52,7 @@ class Example(QWidget):
 
         self.test_host_label = QLabel('test.sql-host', self)
         self.test_host_label.setToolTip('Input host, where test-db located.\nExample: samaradb03.maxifier.com')
-        self.test_host_label.move(500,25)
+        self.test_host_label.move(500, 25)
         self.test_host = QLineEdit(self)
         self.test_host.setToolTip('Input host, where test-db located.\nExample: samaradb03.maxifier.com')
         self.test_host.move(650, 20)
@@ -60,7 +60,7 @@ class Example(QWidget):
 
         self.test_user_label = QLabel('test.sql-user', self)
         self.test_user_label.setToolTip('Input user for connection to test-db.\nExample: itest')
-        self.test_user_label.move(500,55)
+        self.test_user_label.move(500, 55)
         self.test_user = QLineEdit(self)
         self.test_user.setToolTip('Input user for connection to test-db.\nExample: itest')
         self.test_user.move(650, 50)
@@ -68,7 +68,7 @@ class Example(QWidget):
 
         self.test_password_label = QLabel('test.sql-password', self)
         self.test_password_label.setToolTip('Input password for user from test.sql-user field')
-        self.test_password_label.move(500,85)
+        self.test_password_label.move(500, 85)
         self.test_password = QLineEdit(self)
         self.test_password.setToolTip('Input password for user from test.sql-user field')
         self.test_password.move(650, 80)
@@ -76,11 +76,18 @@ class Example(QWidget):
 
         self.test_db_label = QLabel('test.sql-db', self)
         self.test_db_label.setToolTip('Input test-db name.\nExample: irving')
-        self.test_db_label.move(500,115)
+        self.test_db_label.move(500, 115)
         self.test_db = QLineEdit(self)
         self.test_db.setToolTip('Input test-db name.\nExample: irving')
         self.test_db.move(650, 110)
         self.test_db.resize(200, 30)
+
+    def init_ui(self):
+        self.setGeometry(0, 0, 900, 600)
+        self.setWindowTitle('dbComparator')
+        self.setWindowIcon(QIcon('./resources/av.jpg'))
+
+        self.init_sql_fields()
 
         self.cb_enableSchemaChecking = QCheckBox('Compare schema', self)
         self.cb_enableSchemaChecking.setToolTip('If you set this option, program will compare also schemas of dbs')
@@ -108,7 +115,7 @@ class Example(QWidget):
 
         self.send_mail_to_label = QLabel('Send mail to', self)
         self.send_mail_to_label.setToolTip('Add one or list of e-mails for receiving results of comparing')
-        self.send_mail_to_label.move(10,145)
+        self.send_mail_to_label.move(10, 145)
         self.send_mail_to = QLineEdit(self)
         self.send_mail_to.setToolTip('Add one or list of e-mails for receiving results of comparing')
         self.send_mail_to.move(160, 140)
@@ -185,7 +192,6 @@ class Example(QWidget):
         else:
             fail_with_first_error = False
 
-        # TODO: add function, which prepares data to transfering it to "backend"
         prod_dict = {
             'host': prod_host,
             'user': prod_user,
@@ -204,9 +210,10 @@ class Example(QWidget):
         }
         properties = {
             'check_schema': check_schema,
-            'fail_with_first_error': fail_with_first_error
+            'fail_with_first_error': fail_with_first_error,
+            'send_mail_to': self.send_mail_to.text()
         }
-        backend.main(connection_dict, properties)
+        backend.runComparing(connection_dict, properties)
 
 
 if __name__ == '__main__':

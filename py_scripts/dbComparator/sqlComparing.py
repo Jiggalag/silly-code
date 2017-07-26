@@ -8,25 +8,38 @@ logger = Logger(20)
 
 
 class Object:
-    def __init__(self, client_config, comparing_info, client):
+    def __init__(self, sql_connection_properties, sql_comparing_properties, comparing_info, client=None):
         self.client = client
-        self.client_config = client_config
+        self.sql_connection_properties = sql_connection_properties
+        self.prod_sql = sql_connection_properties.get('prod')
+        self.test_sql = sql_connection_properties.get('test')
+        self.sql_comparing_properties = sql_comparing_properties
         self.comparing_info = comparing_info
-        self.db_properties = {
-            'attempts': client_config.getProperty("sqlProperties", "retryAttempts"),
-            'comparingStep': client_config.getProperty("sqlProperties", "comparingStep"),
-            'hideColumns': client_config.getProperty("sqlProperties", "hideColumns"),
-            'mode': client_config.getProperty("sqlProperties", "reportCheckType"),
-            'clientIgnoredTables': client_config.getProperty("specificIgnoredTables", client + ".ignoreTables"),
-            'enableSchemaChecking': client_config.getProperty("sqlProperties", "enableSchemaChecking"),
-            'depthReportCheck': client_config.getProperty("sqlProperties", "depthReportCheck"),
-            'failWithFirstError': client_config.getProperty("sqlProperties", "failWithFirstError"),
-            'schemaColumns': client_config.getProperty("sqlProperties", "schemaColumns"),
-            'separateChecking': client_config.getProperty("sqlProperties", "separateChecking")
-        }
-        self.excluded_tables = set(client_config.getProperty("sqlProperties", "tablesNotToCompare"))
-        self.prod_sql = dbHelper.DbConnector(self.client_config.get_sql_connection_params("prod"), **self.db_properties)
-        self.test_sql = dbHelper.DbConnector(self.client_config.get_sql_connection_params("test"), **self.db_properties)
+        self.sql_comparing_properties = {}
+        # TODO: add checkong if client is None - we should handle this case separately
+        # TODO: add initializing of all properties, which we will try to read from property dictionary
+        if 'attempts' in sql_comparing_properties.keys():
+            self.attempts = sql_comparing_properties.get('attempts')
+        elif 'comparingStep' in sql_comparing_properties.keys():
+            self.comparing_step = sql_comparing_properties.get('comparingStep')
+        elif 'hideColumns' in sql_comparing_properties.keys():
+            self.hide_columns = sql_comparing_properties.get('hideColumns')
+        elif 'mode' in sql_comparing_properties.keys():
+            self.mode = sql_comparing_properties.get('mode')
+        elif 'clientIgnoredTables' in sql_comparing_properties.keys():
+            self.clientIgnoredTables = sql_comparing_properties.get('clientIgnoredTables')
+        elif 'enableSchemaChecking' in sql_comparing_properties.keys():
+            self.enableSchemaChecking = sql_comparing_properties.get('enableSchemaChecking')
+        elif 'depthReportCheck' in sql_comparing_properties.keys():
+            self.depthReportCheck = sql_comparing_properties.get('depthReportCheck')
+        elif 'failWithFirstError' in sql_comparing_properties.keys():
+            self.failWithFirstError = sql_comparing_properties.get('failWithFirstError')
+        elif 'schemaColumns' in sql_comparing_properties.keys():
+            self.schemaColumns = sql_comparing_properties.get('schemaColumns')
+        elif 'separateChecking' in sql_comparing_properties.keys():
+            self.separate_checking = sql_comparing_properties.get('separateChecking')
+        elif 'tablesNotToCompare' in sql_comparing_properties.keys():
+            self.excluded_tables = sql_comparing_properties.get('tablesNotToCompare')
 
     def compare_data(self, global_break, start_time, service_dir, mapping):
         tables = self.comparing_info.get_tables(self.excluded_tables, self.prod_sql.client_ignored_tables)
@@ -36,7 +49,7 @@ class Object:
             start_table_check_time = datetime.datetime.now()
             local_break = False
             query_object = queryConstructor.InitializeQuery(self.prod_sql)
-            if (('report' in table) or ('statistic' in table)) and ('dt' in dbHelper.DbConnector.get_column_list(self.prod_sql, table)) and 'onlyEntities' not in self.db_properties.get('separateChecking'):
+            if (('report' in table) or ('statistic' in table)) and ('dt' in dbHelper.DbConnector.get_column_list(self.prod_sql, table)) and 'onlyEntities' not in self.separate_checking:
                 if not global_break:
                     self.compare_report_table(global_break, mapping, local_break, table, service_dir, start_time)
                     logger.info("Table {} checked in {}..."
@@ -46,10 +59,9 @@ class Object:
                                 .format(table, datetime.datetime.now() - start_table_check_time))
                     break
             else:
-                if 'onlyReports' in self.db_properties.get('separateChecking'):
+                if 'onlyReports' in self.separate_checking:
                     continue
-                prod_record_amount, test_record_amount = dbHelper.get_amount_records(table, None, self.client_config,
-                                                                                     self.client, self.db_properties)
+                prod_record_amount, test_record_amount = dbHelper.get_amount_records(table, None, self.sql_connection_properties, self.client)
                 if prod_record_amount == 0 and test_record_amount == 0:
                     logger.warn("Table {} is empty on both servers!".format(table))
                     continue
@@ -112,8 +124,7 @@ class Object:
             query = "SELECT {} FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'DBNAME' " \
                     "AND TABLE_NAME='TABLENAME' ORDER BY COLUMN_NAME;"\
                 .replace("TABLENAME", table).format(', '.join(self.prod_sql.schema_columns))
-            prod_columns, test_columns = dbHelper.DbConnector.\
-                parallel_select(self.client_config, self.client, query, self.db_properties)
+            prod_columns, test_columns = dbHelper.DbConnector.parallel_select(self.sql_connection_properties, self.client, query)
             uniq_for_prod = list(set(prod_columns) - set(test_columns))
             uniq_for_test = list(set(test_columns) - set(prod_columns))
             if len(uniq_for_prod) > 0:
@@ -149,8 +160,7 @@ class Object:
 
     def compare_reports_detailed(self, table, query, service_dir):
         header = get_header(query)
-        prod_reports, test_reports = dbHelper.DbConnector.\
-            parallel_select(self.client_config, self.client, query, self.db_properties)
+        prod_reports, test_reports = dbHelper.DbConnector.parallel_select(self.sql_connection_properties, self.client, query)
         prod_unique_reports = prod_reports - test_reports
         test_unique_reports = test_reports - prod_reports
         if len(prod_unique_reports) > 0:
@@ -165,8 +175,7 @@ class Object:
             return True
 
     def compare_report_sums(self, table, query):
-        prod_reports, test_reports = dbHelper.DbConnector.\
-            parallel_select(self.client_config, self.client, query, "list")
+        prod_reports, test_reports = dbHelper.DbConnector.parallel_select(self.sql_connection_properties, self.client, query, "list")
         clicks = True
         imps = True
         prod_imps = prod_reports[0]
@@ -190,8 +199,7 @@ class Object:
 
     def compare_entity_table(self, table, query, service_dir):
         header = get_header(query)
-        prod_entities, test_entities = dbHelper.DbConnector.parallel_select(self.client_config, self.client,
-                                                                            query, self.db_properties)
+        prod_entities, test_entities = dbHelper.DbConnector.parallel_select(self.sql_connection_properties, self.client, query)
         prod_unique_entities = set(prod_entities) - set(test_entities)
         test_unique_entities = set(test_entities) - set(prod_entities)
         if len(prod_unique_entities) > 0:
@@ -209,8 +217,7 @@ class Object:
         dates = converters.convertToList(self.compare_dates(table))
         dates.sort()
         if dates:
-            prod_record_amount, test_record_amount = dbHelper.get_amount_records(table, dates[0], self.client_config,
-                                                                                 self.client, self.db_properties)
+            prod_record_amount, test_record_amount = dbHelper.get_amount_records(table, dates[0], self.sql_connection_properties, self.client)
             for dt in reversed(dates):
                 if not all([global_break, local_break]):
                     max_amount = max(prod_record_amount, test_record_amount)
@@ -228,7 +235,7 @@ class Object:
 
     def compare_dates(self, table):
         select_query = "SELECT distinct(`dt`) from {};".format(table)
-        prod_dates, test_dates = dbHelper.DbConnector.parallel_select(self.client_config, self.client, select_query)
+        prod_dates, test_dates = dbHelper.DbConnector.parallel_select(self.sql_connection_properties, self.client, select_query)
         if all([prod_dates, test_dates]):
             return self.calculate_comparing_timeframe(prod_dates, test_dates, table)
         else:

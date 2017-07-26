@@ -2,7 +2,7 @@ import datetime
 import os
 import shutil
 import platform
-from py_scripts.helpers import configHelper, converters, helper, loggingHelper, dbHelper
+from py_scripts.helpers import converters, helper, loggingHelper, dbHelper
 from py_scripts.dbComparator import queryConstructor, tableData, sqlComparing
 
 if "Win" in platform.system():
@@ -13,16 +13,8 @@ if "Linux" in OS:
     propertyFile = os.getcwd() + "/resources/properties/sqlComparator.properties"
 else:
     propertyFile = os.getcwd() + "\\resources\\properties\\sqlComparator.properties"
-config = configHelper.IfmsConfigCommon(propertyFile)
 
-logger = loggingHelper.Logger(config.getPropertyFromMainSection("loggingLevel"))
-
-sendMailFrom = config.getPropertyFromMainSection("sendMailFrom")
-sendMailTo = config.getPropertyFromMainSection("sendMailTo")
-mailPassword = config.getPropertyFromMainSection("mailPassword")
-check_schema = config.getProperty("sqlProperties", "enableSchemaChecking")
-quick_fall = config.getProperty("sqlProperties", "quick_fall")
-mode = config.getProperty("sqlProperties", "reportCheckType")
+logger = loggingHelper.Logger(10)
 
 
 def check_service_dir(service_dir):
@@ -36,23 +28,23 @@ def create_test_dir(path):
         os.mkdir(path)
 
 
-def generate_mail_text(comparing_info, mode, data_comparing_time, schema_comparing_time=None,):
+def generate_mail_text(comparing_info, sql_comparing_properties, data_comparing_time, schema_comparing_time):
     text = "Initial conditions:\n\n"
-    if check_schema:
+    if sql_comparing_properties.get('check_schema'):
         text = text + "1. Schema checking enabled.\n"
     else:
         text = text + "1. Schema checking disabled.\n"
-    if quick_fall:
+    if sql_comparing_properties.get('fail_with_first_error'):
         text = text + "2. Failed with first founded error.\n"
     else:
         text = text + "2. Find all errors\n"
-        text = text + "3. Report checkType is " + mode + "\n\n"
+        text = text + "3. Report checkType is " + sql_comparing_properties.get('mode') + "\n\n"
     if any([comparing_info.empty, comparing_info.diff_data, comparing_info.no_crossed_tables,
             comparing_info.prod_uniq_tables, comparing_info.test_uniq_tables]):
         text = get_test_result_text(text, comparing_info)
     else:
         text = text + "It is impossible! There is no any problems founded!"
-    if check_schema:
+    if sql_comparing_properties.get('check_schema'):
         text = text + "Schema checked in " + str(schema_comparing_time) + "\n"
     text = text + "Dbs checked in " + str(data_comparing_time) + "\n"
     return text
@@ -79,19 +71,14 @@ def get_test_result_text(body, comparing_info):
             converters.convertToList(comparing_info.test_uniq_tables)) + "\n\n"
     return body
 
-def getProdSQLProperties():
-    pass
-
-
-def main(bases, properties):
+def runComparing(sql_connection_properties, sql_comparing_properties):
     if OS == "Windows":
         service_dir = "C:\\comparator"
     else:
         service_dir = "/tmp/comparator/"
     check_service_dir(service_dir)
-    # TODO: add getProdSQLProperties()
-    prod_sql_dict = bases.get('prod')
-    test_sql_dict = bases.get('test')
+    prod_sql_dict = sql_connection_properties.get('prod')
+    test_sql_dict = sql_connection_properties.get('test')
     comparing_info = tableData.Info()
     comparing_info.update_table_list("prod", dbHelper.DbConnector(prod_sql_dict).get_tables())
     comparing_info.update_table_list("test", dbHelper.DbConnector(test_sql_dict).get_tables())
@@ -104,22 +91,26 @@ def main(bases, properties):
     logger.info("Start processing!")
     mapping = queryConstructor.prepare_column_mapping(
         dbHelper.DbConnector(prod_sql_dict))
-    if check_schema:
-        schema_comparing_time = sqlComparing.Object(client_config, comparing_info, client).compare_metadata(start_time)
-        data_comparing_time = sqlComparing.Object(client_config, comparing_info, client).compare_data(global_break,
+    if sql_comparing_properties.get('check_schema'):
+        schema_comparing_time = sqlComparing.Object(sql_connection_properties, sql_comparing_properties, comparing_info).compare_metadata(start_time)
+        data_comparing_time = sqlComparing.Object(sql_connection_properties, sql_comparing_properties, comparing_info).compare_data(global_break,
                                                                                                       start_time,
                                                                                                       service_dir,
                                                                                                       mapping)
     else:
         logger.info("Schema checking disabled...")
-        data_comparing_time = sqlComparing.Object(client_config, comparing_info, client).compare_data(global_break,
+        schema_comparing_time = None
+        data_comparing_time = sqlComparing.Object(sql_connection_properties, sql_comparing_properties, comparing_info).compare_data(global_break,
                                                                                                       start_time,
                                                                                                       service_dir,
                                                                                                       mapping)
-    subject = "[Test] Check databases for client {}".format(client)
+    subject = "[Test] Check databases"
     # TODO: schema_comparing_time may be referenced before assignment - fix it
-    text = generate_mail_text(comparing_info, mode, data_comparing_time, schema_comparing_time)
+    text = generate_mail_text(comparing_info, sql_comparing_properties, data_comparing_time, schema_comparing_time)
     helper.sendmail(text, sendMailFrom, sendMailTo, mailPassword, subject, None)
+
+def main():
+    pass
 
 if __name__ == "__main__":
     main()
