@@ -18,6 +18,18 @@ class Object:
         self.sql_comparing_properties = {}
         # TODO: add checkong if client is None - we should handle this case separately
         # TODO: add initializing of all properties, which we will try to read from property dictionary
+
+        self.attempts = 5
+        self.comparing_step = 10000
+        self.hide_columns = []
+        self.mode = 'day-sum'
+        self.client_ignored_tables = []
+        self.check_schema = True
+        self.depth_report_check = 7
+        self.fail_with_first_error = False
+        self.schema_columns = []
+        self.excluded_tables = []
+
         if 'attempts' in sql_comparing_properties.keys():
             self.attempts = sql_comparing_properties.get('attempts')
         elif 'comparingStep' in sql_comparing_properties.keys():
@@ -27,15 +39,15 @@ class Object:
         elif 'mode' in sql_comparing_properties.keys():
             self.mode = sql_comparing_properties.get('mode')
         elif 'clientIgnoredTables' in sql_comparing_properties.keys():
-            self.clientIgnoredTables = sql_comparing_properties.get('clientIgnoredTables')
-        elif 'enableSchemaChecking' in sql_comparing_properties.keys():
-            self.enableSchemaChecking = sql_comparing_properties.get('enableSchemaChecking')
+            self.client_ignored_tables = sql_comparing_properties.get('clientIgnoredTables')
+        elif 'check_schema' in sql_comparing_properties.keys():
+            self.check_schema = sql_comparing_properties.get('check_schema')
         elif 'depthReportCheck' in sql_comparing_properties.keys():
-            self.depthReportCheck = sql_comparing_properties.get('depthReportCheck')
-        elif 'failWithFirstError' in sql_comparing_properties.keys():
-            self.failWithFirstError = sql_comparing_properties.get('failWithFirstError')
+            self.depth_report_check = sql_comparing_properties.get('depthReportCheck')
+        elif 'fail_with_first_error' in sql_comparing_properties.keys():
+            self.fail_with_first_error = sql_comparing_properties.get('fail_with_first_error')
         elif 'schemaColumns' in sql_comparing_properties.keys():
-            self.schemaColumns = sql_comparing_properties.get('schemaColumns')
+            self.schema_columns = sql_comparing_properties.get('schemaColumns')
         elif 'separateChecking' in sql_comparing_properties.keys():
             self.separate_checking = sql_comparing_properties.get('separateChecking')
         elif 'tablesNotToCompare' in sql_comparing_properties.keys():
@@ -118,7 +130,7 @@ class Object:
         return global_break, local_break
 
     def compare_metadata(self, start_time):
-        tables = self.comparing_info.get_tables(self.excluded_tables, self.prod_sql.client_ignored_tables)
+        tables = self.comparing_info.get_tables(self.excluded_tables, self.client_ignored_tables)
         for table in tables:
             logger.info("Check schema for table {}...".format(table))
             query = "SELECT {} FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'DBNAME' " \

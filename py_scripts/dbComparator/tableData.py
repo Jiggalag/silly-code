@@ -56,7 +56,7 @@ class Info:
                 if table in self.tables:
                     self.tables.remove(table)
         if not client_ignored_tables:
-            for table in client_ignored_tables.split(","):
+            for table in client_ignored_tables:
                 if table in self.tables:
                     self.tables.remove(table)
         table_list = list(self.tables)

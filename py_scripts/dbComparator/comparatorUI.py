@@ -2,17 +2,17 @@
 # -*- coding: utf-8 -*-
 
 import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QCheckBox, QLineEdit, QPushButton, QLabel, QMessageBox, QRadioButton
+import os
+from PyQt5.QtWidgets import QAction, QApplication, QMainWindow, QCheckBox, QFileDialog, QLineEdit, QPushButton, QLabel, QMessageBox, QRadioButton
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import pyqtSlot
 import py_scripts.dbComparator.comparatorWithUI as backend
 
 # TODO: add 'mode' property to UI
-# TODO:
 
 
-class Example(QWidget):
+class Example(QMainWindow):
     def __init__(self):
         super().__init__()
         self.init_ui()
@@ -88,6 +88,16 @@ class Example(QWidget):
         self.setWindowIcon(QIcon('./resources/av.jpg'))
 
         self.init_sql_fields()
+        self.statusBar()
+
+        openFile = QAction(QIcon('1.jpg'), 'Open property file', self)
+        openFile.setShortcut('Ctrl+O')
+        openFile.setStatusTip('Open new file')
+        openFile.triggered.connect(self.showDialog)
+
+        menubar = self.menuBar()
+        fileMenu = menubar.addMenu('&File')
+        fileMenu.addAction(openFile)
 
         self.cb_enableSchemaChecking = QCheckBox('Compare schema', self)
         self.cb_enableSchemaChecking.setToolTip('If you set this option, program will compare also schemas of dbs')
@@ -122,6 +132,40 @@ class Example(QWidget):
         self.send_mail_to.resize(200, 30)
 
         self.show()
+
+    def showDialog(self):
+        current_dir = os.getcwd()
+        fname = QFileDialog.getOpenFileName(self, 'Open file', current_dir)[0]
+        with open(fname, 'r') as file:
+            data = file.read()
+            for record in data.split('\n'):
+                string = record.replace(' ', '')
+                if 'prod' in string:
+                    if 'host' in string:
+                        host = string[string.find('=') + 1:]
+                        self.prod_host.setText(host)
+                    elif 'user' in string:
+                        user = string[string.find('=') + 1:]
+                        self.prod_user.setText(user)
+                    elif 'password' in string:
+                        password = string[string.find('=') + 1:]
+                        self.prod_password.setText(password)
+                    elif 'db' in string:
+                        db = string[string.find('=') + 1:]
+                        self.prod_db.setText(db)
+                elif 'test' in string:
+                    if 'host' in string:
+                        host = string[string.find('=') + 1:]
+                        self.test_host.setText(host)
+                    elif 'user' in string:
+                        user = string[string.find('=') + 1:]
+                        self.test_user.setText(user)
+                    elif 'password' in string:
+                        password = string[string.find('=') + 1:]
+                        self.test_password.setText(password)
+                    elif 'db' in string:
+                        db = string[string.find('=') + 1:]
+                        self.test_db.setText(db)
 
     def on_radio_button_toggled(self):
         pass
@@ -177,7 +221,7 @@ class Example(QWidget):
         prod_host = self.prod_host.text()
         prod_user = self.prod_user.text()
         prod_password = self.prod_password.text()
-        prod_db = self.prod_password.text()
+        prod_db = self.prod_db.text()
         test_host = self.test_host.text()
         test_user = self.test_user.text()
         test_password = self.test_password.text()
