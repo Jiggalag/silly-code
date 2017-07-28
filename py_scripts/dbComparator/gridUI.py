@@ -3,8 +3,10 @@
 
 import sys
 
+import os
 from PyQt5.QtCore import Qt, pyqtSlot
-from PyQt5.QtWidgets import QApplication, QLabel, QGridLayout, QWidget, QLineEdit, QCheckBox, QPushButton, QMessageBox
+from PyQt5.QtWidgets import QApplication, QLabel, QGridLayout, QWidget, QLineEdit, QCheckBox, QPushButton, QMessageBox, \
+    QAction, QFileDialog, QMainWindow
 from PyQt5.QtGui import QIcon
 import py_scripts.dbComparator.comparatorWithUI as backend
 import py_scripts.helpers.dbHelper as dbHelper
@@ -61,10 +63,12 @@ class Example(QWidget):
 
         btn_check_prod = QPushButton('Check prod connection', self)
         btn_check_prod.clicked.connect(self.check_prod)
-        btn_check_test = QPushButton('Check prod connection', self)
+        btn_check_test = QPushButton('Check test connection', self)
         btn_check_test.clicked.connect(self.check_test)
         btn_set_configuration = QPushButton('Compare!', self)
         btn_set_configuration.clicked.connect(self.on_click)
+        btn_load_sql_params = QPushButton('Load sql params', self)
+        btn_load_sql_params.clicked.connect(self.showDialog)
 
         # Set tooltips
 
@@ -111,6 +115,7 @@ class Example(QWidget):
         grid.addWidget(self.cb_enable_schema_checking, 9, 0)
         grid.addWidget(self.cb_fail_with_first_error, 10, 0)
         grid.addWidget(btn_set_configuration, 10, 3)
+        grid.addWidget(btn_load_sql_params, 6, 0)
 
         self.setGeometry(0, 0, 900, 600)
         self.setWindowTitle('dbComparator')
@@ -123,12 +128,48 @@ class Example(QWidget):
         else:
             self.enableSchemaChecking = False
 
-
     def failWithFirstErrorConstruct(self, state):
         if state == Qt.Checked:
             self.failWithFirstError = True
         else:
             self.failWithFirstError = False
+
+    def showDialog(self):
+        current_dir = os.getcwd()
+        fname = QFileDialog.getOpenFileName(self, 'Open file', current_dir)[0]
+        with open(fname, 'r') as file:
+            data = file.read()
+            for record in data.split('\n'):
+                string = record.replace(' ', '')
+                if 'prod' in string:
+                    if 'host' in string:
+                        host = string[string.find('=') + 1:]
+                        self.prod_host.setText(host)
+                    elif 'user' in string:
+                        user = string[string.find('=') + 1:]
+                        self.prod_user.setText(user)
+                    elif 'password' in string:
+                        password = string[string.find('=') + 1:]
+                        self.prod_password.setText(password)
+                    elif 'db' in string:
+                        db = string[string.find('=') + 1:]
+                        self.prod_db.setText(db)
+                elif 'test' in string:
+                    if 'host' in string:
+                        host = string[string.find('=') + 1:]
+                        self.test_host.setText(host)
+                    elif 'user' in string:
+                        user = string[string.find('=') + 1:]
+                        self.test_user.setText(user)
+                    elif 'password' in string:
+                        password = string[string.find('=') + 1:]
+                        self.test_password.setText(password)
+                    elif 'db' in string:
+                        db = string[string.find('=') + 1:]
+                        self.test_db.setText(db)
+
+    def exit(self):
+        sys.exit(0)
 
     def check_prod(self):
         empty_fields = []
@@ -159,6 +200,7 @@ class Example(QWidget):
         }
         try:
             dbHelper.DbConnector(prod_dict).get_tables()
+            print('Prod OK!')
             # TODO: add modal window with OK information
         except:
             # TODO: add sense
@@ -193,6 +235,7 @@ class Example(QWidget):
         }
         try:
             dbHelper.DbConnector(test_dict).get_tables()
+            print('Test OK!')
             # TODO: add modal window with OK information
         except:
             # TODO: add sense
