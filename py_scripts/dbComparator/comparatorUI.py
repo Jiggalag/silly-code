@@ -10,7 +10,7 @@ from PyQt5.QtCore import pyqtSlot
 import py_scripts.dbComparator.comparatorWithUI as backend
 
 # TODO: add 'mode' property to UI
-
+# TODO: fix bug with disappearing some parts of records on UI
 
 class Example(QMainWindow):
     def __init__(self):
@@ -94,10 +94,15 @@ class Example(QMainWindow):
         openFile.setShortcut('Ctrl+O')
         openFile.setStatusTip('Open new file')
         openFile.triggered.connect(self.showDialog)
+        exit = QAction(QIcon('1.jpg'), 'Exit', self)
+        exit.setStatusTip('Exit')
+        exit.triggered.connect(self.exit)
 
         menubar = self.menuBar()
         fileMenu = menubar.addMenu('&File')
         fileMenu.addAction(openFile)
+        exitMenu = menubar.addMenu('&Exit')
+        exitMenu.addAction(exit)
 
         self.cb_enableSchemaChecking = QCheckBox('Compare schema', self)
         self.cb_enableSchemaChecking.setToolTip('If you set this option, program will compare also schemas of dbs')
@@ -166,6 +171,9 @@ class Example(QMainWindow):
                     elif 'db' in string:
                         db = string[string.find('=') + 1:]
                         self.test_db.setText(db)
+
+    def exit(self):
+        sys.exit(0)
 
     def on_radio_button_toggled(self):
         pass

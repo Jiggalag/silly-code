@@ -107,7 +107,7 @@ def runComparing(sql_connection_properties, sql_comparing_properties):
     subject = "[Test] Check databases"
     # TODO: schema_comparing_time may be referenced before assignment - fix it
     text = generate_mail_text(comparing_info, sql_comparing_properties, data_comparing_time, schema_comparing_time)
-    helper.sendmail(text, sendMailFrom, sendMailTo, mailPassword, subject, None)
+    helper.sendmail(text, 'do-not-reply@inventale.com', 'AKIAJHBVE2GQUQBRSQVA', 'pavel.kiselev@best4ad.com', subject, None)
 
 def main():
     pass

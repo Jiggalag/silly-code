@@ -60,7 +60,7 @@ class InitializeQuery:
         return query_list
 
     def prepare_query_sections(self, mapping, table):
-        column_string = dbHelper.DbConnector.get_column_list(self.sql, table)
+        column_string = dbHelper.DbConnector(self.sql).get_column_list(table)
         set_column_list, set_join_section = self.construct_column_and_join_section(column_string, mapping, table)
         # if set_column_list[-1:] == ",":
         #     set_column_list = set_column_list[:-1]
@@ -77,7 +77,7 @@ class InitializeQuery:
                 if "remoteid" in column:
                     set_column_list.append("{}.`remoteid` AS {}".format(linked_table, column))
                 elif "id" in column:
-                    if "remoteid" in dbHelper.DbConnector.get_column_list(self.sql, linked_table.replace("`", "")):
+                    if "remoteid" in dbHelper.DbConnector(self.sql).get_column_list(linked_table.replace("`", "")):
                         set_column_list.append("{}.`remoteid` AS {}".format(linked_table, column))
                     else:
                         set_column_list.append("{}.`id` AS {}".format(linked_table, column))

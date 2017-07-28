@@ -21,14 +21,53 @@ class Object:
 
         self.attempts = 5
         self.comparing_step = 10000
-        self.hide_columns = []
+        self.hide_columns = [
+            'archived',
+            'addonFields',
+            'hourOfDayS',
+            'dayOfWeekS',
+            'impCost',
+            'id']
         self.mode = 'day-sum'
         self.client_ignored_tables = []
         self.check_schema = True
         self.depth_report_check = 7
         self.fail_with_first_error = False
-        self.schema_columns = []
-        self.excluded_tables = []
+        self.separate_checking = 'both'
+        self.schema_columns = [
+            'TABLE_CATALOG',
+            'TABLE_NAME',
+            'COLUMN_NAME',
+            'ORDINAL_POSITION',
+            'COLUMN_DEFAULT',
+            'IS_NULLABLE',
+            'DATA_TYPE',
+            'CHARACTER_MAXIMUM_LENGTH',
+            'CHARACTER_OCTET_LENGTH',
+            'NUMERIC_PRECISION',
+            'NUMERIC_SCALE',
+            'DATETIME_PRECISION',
+            'CHARACTER_SET_NAME',
+            'COLLATION_NAME',
+            'COLUMN_TYPE',
+            'COLUMN_KEY',
+            'EXTRA',
+            'COLUMN_COMMENT',
+            'GENERATION_EXPRESSION'
+        ]
+        self.excluded_tables = [
+            'databasechangelog',
+            'download',
+            'migrationhistory',
+            'mntapplog',
+            'reportinfo',
+            'synchistory',
+            'syncstage',
+            'synctrace',
+            'synctracelink',
+            'syncpersistentjob',
+            'forecaststatistics',
+            'migrationhistory']
 
         if 'attempts' in sql_comparing_properties.keys():
             self.attempts = sql_comparing_properties.get('attempts')
@@ -54,14 +93,14 @@ class Object:
             self.excluded_tables = sql_comparing_properties.get('tablesNotToCompare')
 
     def compare_data(self, global_break, start_time, service_dir, mapping):
-        tables = self.comparing_info.get_tables(self.excluded_tables, self.prod_sql.client_ignored_tables)
+        tables = self.comparing_info.get_tables(self.excluded_tables, self.client_ignored_tables)
         for table in tables:
             # table = "migrationhistory"  # TODO: remove this hack after refactor finishing
             logger.info("Table {} processing now...".format(table))
             start_table_check_time = datetime.datetime.now()
             local_break = False
             query_object = queryConstructor.InitializeQuery(self.prod_sql)
-            if (('report' in table) or ('statistic' in table)) and ('dt' in dbHelper.DbConnector.get_column_list(self.prod_sql, table)) and 'onlyEntities' not in self.separate_checking:
+            if (('report' in table) or ('statistic' in table)) and ('dt' in dbHelper.DbConnector(self.prod_sql).get_column_list(table)) and 'onlyEntities' not in self.separate_checking:
                 if not global_break:
                     self.compare_report_table(global_break, mapping, local_break, table, service_dir, start_time)
                     logger.info("Table {} checked in {}..."
@@ -84,10 +123,10 @@ class Object:
                     logger.warn("Table {} is empty on test-server!".format(table))
                     continue
                 max_amount = max(prod_record_amount, test_record_amount)
-                query_list = query_object.entity(table, max_amount, self.prod_sql.comparing_step, mapping)
+                query_list = query_object.entity(table, max_amount, self.comparing_step, mapping)
                 if not global_break:
                     for query in query_list:
-                        if (not self.compare_entity_table(table, query, service_dir)) and self.prod_sql.quick_fall:
+                        if (not self.compare_entity_table(table, query, service_dir)) and self.fail_with_first_error:
                             logger.info("First error founded, checking failed. Comparing takes {}".format(
                                 datetime.datetime.now() - start_time))
                             global_break = True
@@ -107,9 +146,9 @@ class Object:
     def iteration_comparing_by_queries(self, query_list, global_break, table, start_time, service_dir):
         local_break = False
         for query in query_list:
-            if self.prod_sql.mode == "day-sum":
-                if ("impressions" and "clicks") in dbHelper.DbConnector.get_column_list(self.prod_sql, table):
-                    if not self.compare_report_sums(table, query) and self.prod_sql.quick_fall:
+            if self.mode == "day-sum":
+                if ("impressions" and "clicks") in dbHelper.DbConnector(self.prod_sql).get_column_list(table):
+                    if not self.compare_report_sums(table, query) and self.fail_with_first_error:
                         logger.critical("First error founded, checking failed. Comparing takes {}.".format(
                             datetime.datetime.now() - start_time))
                         global_break = True
@@ -118,11 +157,11 @@ class Object:
                     logger.warn("There is no impression of click column in table {}".format(table))
                     local_break = True
                     return global_break, local_break
-            elif self.prod_sql.mode in ["section-sum", "detailed"]:
-                if self.prod_sql.mode == "section-sum":
+            elif self.mode in ["section-sum", "detailed"]:
+                if self.mode == "section-sum":
                     section = calculate_section_name(query)
                     logger.info("Check section {} for table {}".format(section, table))
-                if not self.compare_reports_detailed(table, query, service_dir) and self.prod_sql.quick_fall:
+                if not self.compare_reports_detailed(table, query, service_dir) and self.fail_with_first_error:
                     logger.critical("First error founded, checking failed. Comparing takes {}.".format(
                         datetime.datetime.now() - start_time))
                     global_break = True
@@ -135,14 +174,14 @@ class Object:
             logger.info("Check schema for table {}...".format(table))
             query = "SELECT {} FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'DBNAME' " \
                     "AND TABLE_NAME='TABLENAME' ORDER BY COLUMN_NAME;"\
-                .replace("TABLENAME", table).format(', '.join(self.prod_sql.schema_columns))
+                .replace("TABLENAME", table).format(', '.join(self.schema_columns))
             prod_columns, test_columns = dbHelper.DbConnector.parallel_select(self.sql_connection_properties, self.client, query)
             uniq_for_prod = list(set(prod_columns) - set(test_columns))
             uniq_for_test = list(set(test_columns) - set(prod_columns))
             if len(uniq_for_prod) > 0:
                 logger.error("Elements, unique for table {} in {} db:{}".
-                             format(table, self.prod_sql.db, list(uniq_for_prod[0])))
-                if self.prod_sql.quick_fall:
+                             format(table, self.prod_sql.get('db'), list(uniq_for_prod[0])))
+                if self.fail_with_first_error:
                     logger.critical("First error founded, comparing failed. "
                                     "To find all discrepancies set failWithFirstError property in false\n")
                     schema_comparing_time = datetime.datetime.now() - start_time 
@@ -150,8 +189,8 @@ class Object:
                     return schema_comparing_time
             if len(uniq_for_test) > 0:
                 logger.error("Elements, unique for table {} in {} db:{}".
-                             format(table, self.test_sql.db, list(uniq_for_test[0])))
-                if self.prod_sql.quick_fall:
+                             format(table, self.test_sql.get('db'), list(uniq_for_test[0])))
+                if self.fail_with_first_error:
                     logger.critical("First error founded, comparing failed. "
                                     "To find all discrepancies set failWithFirstError property in false\n")
                     schema_comparing_time = datetime.datetime.now() - start_time
@@ -160,7 +199,7 @@ class Object:
             if not all([len(uniq_for_prod) == 0, len(uniq_for_test) == 0]):
                 logger.error(" [ERROR] Tables {} differs!".format(table))
                 self.comparing_info.update_diff_schema(table)
-                if self.prod_sql.quick_fall:
+                if self.fail_with_first_error:
                     logger.critical("First error founded, comparing failed. "
                                     "To find all discrepancies set failWithFirstError property in false\n")
                     schema_comparing_time = datetime.datetime.now() - start_time
@@ -234,8 +273,8 @@ class Object:
                 if not all([global_break, local_break]):
                     max_amount = max(prod_record_amount, test_record_amount)
                     cmp_object = queryConstructor.InitializeQuery(self.prod_sql)
-                    query_list = cmp_object.report(table, dt, self.prod_sql.mode, max_amount,
-                                                   self.prod_sql.comparing_step, mapping)
+                    query_list = cmp_object.report(table, dt, self.mode, max_amount,
+                                                   self.comparing_step, mapping)
                     global_break, local_break = self.iteration_comparing_by_queries(query_list, global_break, table,
                                                                                     start_time, service_dir)
                 else:
@@ -255,16 +294,16 @@ class Object:
                 logger.warn("Table {} is empty in both dbs...".format(table))
                 self.comparing_info.empty.append(table)
             elif not prod_dates:
-                logger.warn("Table {} on {} is empty!".format(table, self.prod_sql.db))
+                logger.warn("Table {} on {} is empty!".format(table, self.prod_sql.get('db')))
                 self.comparing_info.update_empty("prod", table)
             else:
-                logger.warn("Table {} on {} is empty!".format(table, self.test_sql.db))
+                logger.warn("Table {} on {} is empty!".format(table, self.test_sql.get('db')))
                 self.comparing_info.update_empty("test", table)
             return []
 
     def calculate_comparing_timeframe(self, prod_dates, test_dates, table):
         actual_dates = set()
-        days = self.prod_sql.check_depth
+        days = self.depth_report_check
         for day in range(1, days):
             actual_dates.add(calculate_date(day))
         if prod_dates[-days:] == test_dates[-days:]:
@@ -278,16 +317,16 @@ class Object:
         if prod_set - test_set:  # this code (4 strings below) should be moved to different function
             unique_dates = get_unique_dates(prod_set, test_set)
             logger.warn("This dates absent in {}: {} in report table {}..."
-                        .format(self.test_sql.db, ",".join(unique_dates), table))
+                        .format(self.test_sql.get('db'), ",".join(unique_dates), table))
         if test_set - prod_set:
             unique_dates = get_unique_dates(test_set, prod_set)
             logger.warn("This dates absent in {}: {} in report table {}..."
-                        .format(self.prod_sql.db, ",".join(unique_dates), table))
+                        .format(self.prod_sql.get('db'), ",".join(unique_dates), table))
         return prod_set & test_set
 
     def get_comparing_timeframe(self, prod_dates):
         comparing_timeframe = []
-        for item in prod_dates[-self.prod_sql.check_depth:]:
+        for item in prod_dates[-self.depth_report_check:]:
             comparing_timeframe.append(item.date().strftime("%Y-%m-%d"))
         return comparing_timeframe
 

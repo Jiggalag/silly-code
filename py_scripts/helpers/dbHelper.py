@@ -11,7 +11,13 @@ class DbConnector:
         self.user = connect_parameters.get('user')
         self.password = connect_parameters.get('password')
         self.db = connect_parameters.get('db')
-        self.hide_columns = None
+        self.hide_columns = [
+            'archived',
+            'addonFields',
+            'hourOfDayS',
+            'dayOfWeekS',
+            'impCost',
+            'id']
         self.attempts = 5
         self.mode = 'detailed'
         self.comparing_step = 10000
@@ -68,9 +74,12 @@ class DbConnector:
 
     @staticmethod
     def parallel_select(sql_params, client, query, result_type="frozenset"):
+        sql_properties = []
+        sql_properties.append(sql_params.get('prod'))
+        sql_properties.append(sql_params.get('test'))
         pool = Pool(2)
         result = pool.map((lambda x: DbConnector(x, client=client).select(query, result_type)),
-                          sql_params)
+                          sql_properties)
         pool.close()
         pool.join()
         if result_type == "list":
