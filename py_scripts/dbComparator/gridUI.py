@@ -6,12 +6,13 @@ import sys
 import os
 from PyQt5.QtCore import Qt, pyqtSlot
 from PyQt5.QtWidgets import QApplication, QLabel, QGridLayout, QWidget, QLineEdit, QCheckBox, QPushButton, QMessageBox, \
-    QAction, QFileDialog, QMainWindow
+    QAction, QFileDialog, QMainWindow, QRadioButton
 from PyQt5.QtGui import QIcon
 import py_scripts.dbComparator.comparatorWithUI as backend
 import py_scripts.helpers.dbHelper as dbHelper
 
 # TODO: add 'mode' property to UI
+# TODO: probably, add menu
 # TODO: fix bug with disappearing some parts of records on UI
 
 class Example(QWidget):
@@ -69,6 +70,15 @@ class Example(QWidget):
         btn_set_configuration.clicked.connect(self.on_click)
         btn_load_sql_params = QPushButton('Load sql params', self)
         btn_load_sql_params.clicked.connect(self.showDialog)
+        btn_clear_all = QPushButton('Clear all', self)
+        btn_clear_all.clicked.connect(self.clear_all)
+
+        # Radiobuttons
+
+        self.mode = QRadioButton("Checking mode")
+        self.mode.setChecked(True)
+        self.mode.move(500, 500)
+        self.mode.toggled.connect(self.on_radio_button_toggled)
 
         # Set tooltips
 
@@ -91,6 +101,7 @@ class Example(QWidget):
         send_mail_to_label.setToolTip('Add one or list of e-mails for receiving results of comparing')
         self.send_mail_to.setToolTip('Add one or list of e-mails for receiving results of comparing')
         btn_set_configuration.setToolTip('Start comparing of dbs')
+        # TODO: add tooltips for all widgets
 
         grid.addWidget(prod_host_label, 0, 0)
         grid.addWidget(self.prod_host, 0, 1)
@@ -116,6 +127,7 @@ class Example(QWidget):
         grid.addWidget(self.cb_fail_with_first_error, 10, 0)
         grid.addWidget(btn_set_configuration, 10, 3)
         grid.addWidget(btn_load_sql_params, 6, 0)
+        grid.addWidget(btn_clear_all, 6, 1)
 
         self.setGeometry(0, 0, 900, 600)
         self.setWindowTitle('dbComparator')
@@ -133,6 +145,18 @@ class Example(QWidget):
             self.failWithFirstError = True
         else:
             self.failWithFirstError = False
+
+    def clear_all(self):
+        self.prod_host.clear()
+        self.prod_user.clear()
+        self.prod_password.clear()
+        self.prod_password.clear()
+        self.test_host.clear()
+        self.test_user.clear()
+        self.test_password.clear()
+        self.test_db.clear()
+        self.send_mail_to.clear()
+        pass
 
     def showDialog(self):
         current_dir = os.getcwd()
