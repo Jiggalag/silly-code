@@ -10,10 +10,9 @@ from PyQt5.QtWidgets import QApplication, QLabel, QGridLayout, QWidget, QLineEdi
 from PyQt5.QtGui import QIcon
 import py_scripts.dbComparator.comparatorWithUI as backend
 import py_scripts.helpers.dbHelper as dbHelper
-
-# TODO: add 'mode' property to UI
+# TODO: add useful redacting of skip table field
+# TODO:instead of QLineEdit for "skip" params you should use button with modal window
 # TODO: probably, add menu
-# TODO: fix bug with disappearing some parts of records on UI
 
 class Example(QWidget):
     def __init__(self):
@@ -36,6 +35,9 @@ class Example(QWidget):
         test_password_label = QLabel('test.sql-password', self)
         test_db_label = QLabel('test.sql-db', self)
         send_mail_to_label = QLabel('Send mail to', self)
+        checking_mode_label = QLabel('Checking mode:', self)
+        skip_tables_label = QLabel('Skip tables', self)
+        skip_columns_label = QLabel('Skip columns', self)
 
         # Line edits
 
@@ -48,6 +50,10 @@ class Example(QWidget):
         self.test_password = QLineEdit(self)
         self.test_db = QLineEdit(self)
         self.send_mail_to = QLineEdit(self)
+        self.skip_tables = QLineEdit(self)
+        self.skip_tables.setText('databasechangelog,download,migrationhistory,mntapplog,reportinfo,synchistory,syncstage,synctrace,synctracelink,syncpersistentjob,forecaststatistics,migrationhistory')
+        self.skip_columns = QLineEdit(self)
+        self.skip_columns.setText('archived,addonFields,hourOfDayS,dayOfWeekS,impCost,id')
 
         # Checkboxes
 
@@ -75,10 +81,15 @@ class Example(QWidget):
 
         # Radiobuttons
 
-        self.mode = QRadioButton("Checking mode")
-        self.mode.setChecked(True)
-        self.mode.move(500, 500)
-        self.mode.toggled.connect(self.on_radio_button_toggled)
+        self.day_summary_mode = QRadioButton('Day summary')
+        self.day_summary_mode.setChecked(True)
+        self.day_summary_mode.toggled.connect(self.day_summary_toggled)
+        self.section_summary_mode = QRadioButton('Section summary mode')
+        self.section_summary_mode.setChecked(False)
+        self.section_summary_mode.toggled.connect(self.section_summary_toggled)
+        self.detailed_mode = QRadioButton('Detailed mode')
+        self.detailed_mode.setChecked(False)
+        self.detailed_mode.toggled.connect(self.detailed_summary_toggled)
 
         # Set tooltips
 
@@ -100,6 +111,10 @@ class Example(QWidget):
         self.test_db.setToolTip('Input test-db name.\nExample: irving')
         send_mail_to_label.setToolTip('Add one or list of e-mails for receiving results of comparing')
         self.send_mail_to.setToolTip('Add one or list of e-mails for receiving results of comparing')
+        skip_tables_label.setToolTip(self.skip_tables.text().replace(',', ',\n'))
+        self.skip_tables.setToolTip(self.skip_tables.text().replace(',', ',\n'))
+        skip_columns_label.setToolTip(self.skip_columns.text().replace(',', ',\n'))
+        self.skip_columns.setToolTip(self.skip_columns.text().replace(',', ',\n'))
         btn_set_configuration.setToolTip('Start comparing of dbs')
         # TODO: add tooltips for all widgets
 
@@ -121,18 +136,35 @@ class Example(QWidget):
         grid.addWidget(self.test_db, 3, 3)
         grid.addWidget(btn_check_prod, 4, 1)
         grid.addWidget(btn_check_test, 4, 3)
-        grid.addWidget(send_mail_to_label, 5, 0)
-        grid.addWidget(self.send_mail_to, 5, 1)
+        grid.addWidget(send_mail_to_label, 6, 0)
+        grid.addWidget(self.send_mail_to, 6, 1)
+        grid.addWidget(skip_tables_label, 7, 0)
+        grid.addWidget(self.skip_tables, 7, 1)
+        grid.addWidget(skip_columns_label, 8, 0)
+        grid.addWidget(self.skip_columns, 8, 1)
         grid.addWidget(self.cb_enable_schema_checking, 9, 0)
         grid.addWidget(self.cb_fail_with_first_error, 10, 0)
         grid.addWidget(btn_set_configuration, 10, 3)
-        grid.addWidget(btn_load_sql_params, 6, 0)
-        grid.addWidget(btn_clear_all, 6, 1)
+        grid.addWidget(btn_load_sql_params, 5, 0)
+        grid.addWidget(checking_mode_label, 5, 3)
+        grid.addWidget(self.day_summary_mode, 6, 3)
+        grid.addWidget(self.section_summary_mode, 7, 3)
+        grid.addWidget(self.detailed_mode, 8, 3)
+        grid.addWidget(btn_clear_all, 5, 1)
 
         self.setGeometry(0, 0, 900, 600)
         self.setWindowTitle('dbComparator')
         self.setWindowIcon(QIcon('./resources/slowpoke.png'))
         self.show()
+
+    def day_summary_toggled(self):
+        pass
+
+    def section_summary_toggled(self):
+        pass
+
+    def detailed_summary_toggled(self):
+        pass
 
     def enableSchemaCheckingConstruct(self, state):
         if state == Qt.Checked:
@@ -156,7 +188,6 @@ class Example(QWidget):
         self.test_password.clear()
         self.test_db.clear()
         self.send_mail_to.clear()
-        pass
 
     def showDialog(self):
         current_dir = os.getcwd()
@@ -309,6 +340,13 @@ class Example(QWidget):
             else:
                 fail_with_first_error = False
 
+            if self.day_summary_mode.isChecked():
+                mode = 'day-sum'
+            elif self.section_summary_mode.isChecked():
+                mode = 'section-sum'
+            else:
+                mode = 'detailed'
+
             prod_dict = {
                 'host': prod_host,
                 'user': prod_user,
@@ -328,7 +366,8 @@ class Example(QWidget):
             properties = {
                 'check_schema': check_schema,
                 'fail_with_first_error': fail_with_first_error,
-                'send_mail_to': self.send_mail_to.text()
+                'send_mail_to': self.send_mail_to.text(),
+                'mode': mode
             }
             backend.runComparing(connection_dict, properties)
 
