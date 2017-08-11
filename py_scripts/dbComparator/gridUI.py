@@ -4,9 +4,11 @@
 import sys
 
 import os
+
+import pymysql
+
 from PyQt5.QtCore import Qt, pyqtSlot
-from PyQt5.QtWidgets import QApplication, QLabel, QGridLayout, QWidget, QLineEdit, QCheckBox, QPushButton, QMessageBox, \
-    QAction, QFileDialog, QMainWindow, QRadioButton
+from PyQt5.QtWidgets import QApplication, QLabel, QGridLayout, QWidget, QLineEdit, QCheckBox, QPushButton, QMessageBox, QFileDialog, QRadioButton
 from PyQt5.QtGui import QIcon
 import py_scripts.dbComparator.comparatorWithUI as backend
 import py_scripts.helpers.dbHelper as dbHelper
@@ -256,10 +258,12 @@ class Example(QWidget):
         try:
             dbHelper.DbConnector(prod_dict).get_tables()
             print('Prod OK!')
-            # TODO: add modal window with OK information
-        except:
-            # TODO: add sense
-            pass
+            QMessageBox.information(self, 'Information', "Successfully connected to\n {}/{}".format(prod_dict.get('host'), prod_dict.get('db')),
+                                 QMessageBox.Ok, QMessageBox.Ok)
+        except pymysql.OperationalError as err:
+            QMessageBox.warning(self, 'Warning', "Connection to {}/{} failed\n\n{}".format(prod_dict.get('host'), prod_dict.get('db'), err.args[1]), QMessageBox.Ok, QMessageBox.Ok)
+        except pymysql.InternalError as err:
+            QMessageBox.warning(self, 'Warning', "Connection to {}/{} failed\n\n{}".format(prod_dict.get('host'), prod_dict.get('db'), err.args[1]), QMessageBox.Ok, QMessageBox.Ok)
 
     def check_test(self):
         empty_fields = []
@@ -291,10 +295,12 @@ class Example(QWidget):
         try:
             dbHelper.DbConnector(test_dict).get_tables()
             print('Test OK!')
-            # TODO: add modal window with OK information
-        except:
-            # TODO: add sense
-            pass
+            QMessageBox.information(self, 'Information', "Successfully connected to\n {}/{}".format(test_dict.get('host'), test_dict.get('db')),
+                                 QMessageBox.Ok, QMessageBox.Ok)
+        except pymysql.OperationalError as err:
+            QMessageBox.warning(self, 'Warning', "Connection to {}/{} failed\n\n{}".format(test_dict.get('host'), test_dict.get('db'), err.args[1]), QMessageBox.Ok, QMessageBox.Ok)
+        except pymysql.InternalError as err:
+            QMessageBox.warning(self, 'Warning', "Connection to {}/{} failed\n\n{}".format(test_dict.get('host'), test_dict.get('db'), err.args[1]), QMessageBox.Ok, QMessageBox.Ok)
 
     @pyqtSlot()
     def on_click(self):
