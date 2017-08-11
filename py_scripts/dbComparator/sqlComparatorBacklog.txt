@@ -7,14 +7,6 @@ Epics:
 
 
 For UI version
+0. Add refactored Logger
 1. Transfer mailPassword = AKIAJHBVE2GQUQBRSQVA
-2. Add logging and loggingLevel = 10
-3. Support amountCheckingRecords?
-# amountCheckingRecords - it's a threshold for huge tables. It equals amount of records (from beginning) which would be compared in both tables
-4. Support comparingStep = 10000
-5. Support depthReportCheck = 7
-6. Support schemaColumns = TABLE_CATALOG,TABLE_NAME,COLUMN_NAME,ORDINAL_POSITION,COLUMN_DEFAULT,IS_NULLABLE,DATA_TYPE,CHARACTER_MAXIMUM_LENGTH,CHARACTER_OCTET_LENGTH,NUMERIC_PRECISION,NUMERIC_SCALE,DATETIME_PRECISION,CHARACTER_SET_NAME,COLLATION_NAME,COLUMN_TYPE,COLUMN_KEY,EXTRA,COLUMN_COMMENT,GENERATION_EXPRESSION
-7. Support retryAttempts = 5
-8. Support separateChecking
-# separateChecking can be setted as onlyEntities, onlyReports, both
-separateChecking = both
+2. Add getting parameters from advanced settings window

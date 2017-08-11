@@ -10,6 +10,7 @@ import pymysql
 from PyQt5.QtCore import Qt, pyqtSlot
 from PyQt5.QtWidgets import QApplication, QLabel, QGridLayout, QWidget, QLineEdit, QCheckBox, QPushButton, QMessageBox, QFileDialog, QRadioButton
 from PyQt5.QtGui import QIcon
+from py_scripts.dbComparator.advanced_settings import AdvancedSettings
 import py_scripts.dbComparator.comparatorWithUI as backend
 import py_scripts.helpers.dbHelper as dbHelper
 # TODO: add useful redacting of skip table field
@@ -80,6 +81,8 @@ class Example(QWidget):
         btn_load_sql_params.clicked.connect(self.showDialog)
         btn_clear_all = QPushButton('Clear all', self)
         btn_clear_all.clicked.connect(self.clear_all)
+        btn_advanced = QPushButton('Advanced', self)
+        btn_advanced.clicked.connect(self.show_advanced_settings)
 
         # Radiobuttons
 
@@ -153,6 +156,7 @@ class Example(QWidget):
         grid.addWidget(self.section_summary_mode, 7, 3)
         grid.addWidget(self.detailed_mode, 8, 3)
         grid.addWidget(btn_clear_all, 5, 1)
+        grid.addWidget(btn_advanced, 10, 1)
 
         self.setGeometry(0, 0, 900, 600)
         self.setWindowTitle('dbComparator')
@@ -224,6 +228,10 @@ class Example(QWidget):
                     elif 'db' in string:
                         db = string[string.find('=') + 1:]
                         self.test_db.setText(db)
+
+    def show_advanced_settings(self):
+        self.advanced_settings = AdvancedSettings()
+        self.advanced_settings.show()
 
     def exit(self):
         sys.exit(0)
@@ -303,6 +311,7 @@ class Example(QWidget):
             QMessageBox.warning(self, 'Warning', "Connection to {}/{} failed\n\n{}".format(test_dict.get('host'), test_dict.get('db'), err.args[1]), QMessageBox.Ok, QMessageBox.Ok)
 
     @pyqtSlot()
+    # TODO: add getting parameters from advanced settings window
     def on_click(self):
         empty_fields = []
         if not self.prod_host.text():
