@@ -7,6 +7,9 @@ Epics:
 
 
 For UI version
-0. Add refactored Logger
 1. Transfer mailPassword = AKIAJHBVE2GQUQBRSQVA
 2. Add getting parameters from advanced settings window
+
+Enchancement:
+
+1. Transfer os-type from UI module through all system, not define it in comparatirWithUI.py.

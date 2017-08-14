@@ -1,5 +1,15 @@
+import os
+import platform
 from PyQt5.QtWidgets import QGridLayout, QWidget, QLabel, QLineEdit, QRadioButton, QPushButton
 
+if "Win" in platform.system():
+    OS = "Windows"
+else:
+    OS = "Linux"
+if "Linux" in OS:
+    propertyFile = os.getcwd() + "/resources/properties/sqlComparator.properties"
+else:
+    propertyFile = os.getcwd() + "\\resources\\properties\\sqlComparator.properties"
 
 class AdvancedSettings(QWidget):
     def __init__(self):
@@ -19,6 +29,7 @@ class AdvancedSettings(QWidget):
         depth_report_check_label = QLabel('Days in past', self)
         schema_columns_label = QLabel('Schema columns', self)
         retry_attempts_label = QLabel('Retry attempts', self)
+        path_to_logs_label = QLabel('Path to logs', self)
 
         # Line edits
 
@@ -35,6 +46,17 @@ class AdvancedSettings(QWidget):
         self.schema_columns.setText('TABLE_CATALOG,TABLE_NAME,COLUMN_NAME,ORDINAL_POSITION,COLUMN_DEFAULT,IS_NULLABLE,DATA_TYPE,CHARACTER_MAXIMUM_LENGTH,CHARACTER_OCTET_LENGTH,NUMERIC_PRECISION,NUMERIC_SCALE,DATETIME_PRECISION,CHARACTER_SET_NAME,COLLATION_NAME,COLUMN_TYPE,COLUMN_KEY,EXTRA,COLUMN_COMMENT,GENERATION_EXPRESSION')
         self.retry_attempts = QLineEdit(self)
         self.retry_attempts.setText('5')
+        self.path_to_logs = QLineEdit(self)
+        if OS == 'Windows':
+            # TODO: add defining disc
+            if not os.path.exists('C:\\DbComparator\\'):
+                os.mkdir('C:\\DbComparator\\')
+            self.path_to_logs.setText('C:\\DbComparator\\DbComparator.log')
+        elif OS == 'Linux':
+            log_path = os.path.expanduser('~') + '/DbComparator/'
+            if not os.path.exists(log_path):
+                os.mkdir(log_path)
+            self.path_to_logs.setText(log_path + 'DbComparator.log')
 
 # TODO: add tooltips
 
@@ -70,7 +92,9 @@ class AdvancedSettings(QWidget):
         grid_advanced.addWidget(self.only_entities, 0, 2)
         grid_advanced.addWidget(self.only_reports, 1, 2)
         grid_advanced.addWidget(self.both, 2, 2)
-        grid_advanced.addWidget(btn_advanced_ok, 5, 2)
+        grid_advanced.addWidget(path_to_logs_label, 6, 0)
+        grid_advanced.addWidget(self.path_to_logs, 6, 1)
+        grid_advanced.addWidget(btn_advanced_ok, 6, 2)
 
     def only_entities_toggled(self):
         pass
