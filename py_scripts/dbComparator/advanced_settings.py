@@ -105,5 +105,26 @@ class AdvancedSettings(QWidget):
     def both_toggled(self):
         pass
 
+    def get_advanced_properties(self):
+        if self.only_entities.isChecked():
+            check_tables_type = 'Only entities'
+        elif self.only_reports.isChecked():
+            check_tables_type = 'Only reports'
+        else:
+            check_tables_type = 'both'
+        advanced_parameters = {
+            'logging_level': self.logging_level.text(),
+            'record_chunk': self.amount_checking_records.text(),
+            'comparing_step': self.comparing_step.text(),
+            'depth_report_check': self.depth_report_check.text(),
+            'schema_columns': self.schema_columns.text(),
+            'retry_attempts': self.retry_attempts.text(),
+            'path_to_logs': self.path_to_logs.text(),
+            'check_tables_type': check_tables_type
+        }
+        return advanced_parameters
+
     def advanced_ok(self):
         self.close()
+        # TODO: clarify - is it neccessary?
+        return self.get_advanced_properties()

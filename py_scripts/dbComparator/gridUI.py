@@ -2,20 +2,31 @@
 # -*- coding: utf-8 -*-
 
 import sys
-
 import os
-
+import platform
 import pymysql
 
 from PyQt5.QtCore import Qt, pyqtSlot
-from PyQt5.QtWidgets import QApplication, QLabel, QGridLayout, QWidget, QLineEdit, QCheckBox, QPushButton, QMessageBox, QFileDialog, QRadioButton
+from PyQt5.QtWidgets import QApplication, QLabel, QGridLayout, QWidget, QLineEdit, QCheckBox, QPushButton, QMessageBox, \
+    QFileDialog, QRadioButton, QComboBox, QFrame, QSplitter
 from PyQt5.QtGui import QIcon
-from py_scripts.dbComparator.advanced_settings import AdvancedSettings
 import py_scripts.dbComparator.comparatorWithUI as backend
 import py_scripts.helpers.dbHelper as dbHelper
+
 # TODO: add useful redacting of skip table field
-# TODO:instead of QLineEdit for "skip" params you should use button with modal window
+# TODO: instead of QLineEdit for "skip" params you should use button with modal window
 # TODO: probably, add menu
+# TODO: add QSplitters
+# TODO: check that all parameters correctly transferred from UI to back
+
+if "Win" in platform.system():
+    OS = "Windows"
+else:
+    OS = "Linux"
+if "Linux" in OS:
+    propertyFile = os.getcwd() + "/resources/properties/sqlComparator.properties"
+else:
+    propertyFile = os.getcwd() + "\\resources\\properties\\sqlComparator.properties"
 
 class Example(QWidget):
     def __init__(self):
@@ -42,6 +53,30 @@ class Example(QWidget):
         skip_tables_label = QLabel('Skip tables', self)
         skip_columns_label = QLabel('Skip columns', self)
 
+        advanced_label = QLabel('Advanced settings', self)
+        logging_level_label = QLabel('Logging level', self)
+        amount_checking_records_label = QLabel('Amount of record chunk', self)
+        comparing_step_label = QLabel('Comparing step', self)
+        depth_report_check_label = QLabel('Days in past', self)
+        schema_columns_label = QLabel('Schema columns', self)
+        retry_attempts_label = QLabel('Retry attempts', self)
+        path_to_logs_label = QLabel('Path to logs', self)
+
+        # Splitters
+
+        # right = QFrame(self)
+        # right.setFrameShape(QFrame.StyledPanel)
+        # bottom = QFrame(self)
+        # bottom.setFrameShape(QFrame.StyledPanel)
+        # upped = QFrame(self)
+        # upped.setFrameShape(QFrame.StyledPanel)
+        #
+        # splitter1 = QSplitter(Qt.Vertical)
+        # splitter1.addWidget(right)
+        # splitter2 = QSplitter(Qt.Horizontal)
+        # splitter2.addWidget(bottom)
+        # splitter2.addWidget(upped)
+
         # Line edits
 
         self.prod_host = QLineEdit(self)
@@ -57,6 +92,34 @@ class Example(QWidget):
         self.skip_tables.setText('databasechangelog,download,migrationhistory,mntapplog,reportinfo,synchistory,syncstage,synctrace,synctracelink,syncpersistentjob,forecaststatistics,migrationhistory')
         self.skip_columns = QLineEdit(self)
         self.skip_columns.setText('archived,addonFields,hourOfDayS,dayOfWeekS,impCost,id')
+
+        self.amount_checking_records = QLineEdit(self)
+        self.amount_checking_records.setText('100000')
+        self.comparing_step = QLineEdit(self)
+        self.comparing_step.setText('10000')
+        self.depth_report_check = QLineEdit(self)
+        self.depth_report_check.setText('7')
+        self.schema_columns = QLineEdit(self)
+        # TODO: add possibility for useful redacting of schema columns parameter
+        self.schema_columns.setText('TABLE_CATALOG,TABLE_NAME,COLUMN_NAME,ORDINAL_POSITION,COLUMN_DEFAULT,IS_NULLABLE,DATA_TYPE,CHARACTER_MAXIMUM_LENGTH,CHARACTER_OCTET_LENGTH,NUMERIC_PRECISION,NUMERIC_SCALE,DATETIME_PRECISION,CHARACTER_SET_NAME,COLLATION_NAME,COLUMN_TYPE,COLUMN_KEY,EXTRA,COLUMN_COMMENT,GENERATION_EXPRESSION')
+        self.retry_attempts = QLineEdit(self)
+        self.retry_attempts.setText('5')
+        self.path_to_logs = QLineEdit(self)
+        if OS == 'Windows':
+            # TODO: add defining disc
+            if not os.path.exists('C:\\DbComparator\\'):
+                os.mkdir('C:\\DbComparator\\')
+            self.path_to_logs.setText('C:\\DbComparator\\DbComparator.log')
+        elif OS == 'Linux':
+            log_path = os.path.expanduser('~') + '/DbComparator/'
+            if not os.path.exists(log_path):
+                os.mkdir(log_path)
+            self.path_to_logs.setText(log_path + 'DbComparator.log')
+
+        # Combobox
+
+        self.logging_level = QComboBox(self)
+        self.logging_level.addItems(['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG'])
 
         # Checkboxes
 
@@ -75,14 +138,12 @@ class Example(QWidget):
         btn_check_prod.clicked.connect(self.check_prod)
         btn_check_test = QPushButton('Check test connection', self)
         btn_check_test.clicked.connect(self.check_test)
-        btn_set_configuration = QPushButton('Compare!', self)
+        btn_set_configuration = QPushButton('       Compare!       ', self)
         btn_set_configuration.clicked.connect(self.on_click)
         btn_load_sql_params = QPushButton('Load sql params', self)
         btn_load_sql_params.clicked.connect(self.showDialog)
         btn_clear_all = QPushButton('Clear all', self)
         btn_clear_all.clicked.connect(self.clear_all)
-        btn_advanced = QPushButton('Advanced', self)
-        btn_advanced.clicked.connect(self.show_advanced_settings)
 
         # Radiobuttons
 
@@ -95,6 +156,17 @@ class Example(QWidget):
         self.detailed_mode = QRadioButton('Detailed mode')
         self.detailed_mode.setChecked(False)
         self.detailed_mode.toggled.connect(self.detailed_summary_toggled)
+
+        self.only_entities = QRadioButton('Only entities')
+        self.only_entities.setChecked(False)
+        self.only_entities.toggled.connect(self.only_entities_toggled)
+        self.only_reports = QRadioButton('Only reports')
+        self.only_reports.setChecked(False)
+        self.only_reports.toggled.connect(self.only_reports_toggled)
+        self.both = QRadioButton('Detailed mode')
+        self.both.setChecked(True)
+        self.both.toggled.connect(self.both_toggled)
+
 
         # Set tooltips
 
@@ -149,19 +221,45 @@ class Example(QWidget):
         grid.addWidget(self.skip_columns, 8, 1)
         grid.addWidget(self.cb_enable_schema_checking, 9, 0)
         grid.addWidget(self.cb_fail_with_first_error, 10, 0)
-        grid.addWidget(btn_set_configuration, 10, 3)
+        grid.addWidget(btn_set_configuration, 11, 5)
         grid.addWidget(btn_load_sql_params, 5, 0)
-        grid.addWidget(checking_mode_label, 5, 3)
-        grid.addWidget(self.day_summary_mode, 6, 3)
-        grid.addWidget(self.section_summary_mode, 7, 3)
-        grid.addWidget(self.detailed_mode, 8, 3)
+        grid.addWidget(checking_mode_label, 6, 3)
+        grid.addWidget(self.day_summary_mode, 7, 3)
+        grid.addWidget(self.section_summary_mode, 8, 3)
+        grid.addWidget(self.detailed_mode, 9, 3)
         grid.addWidget(btn_clear_all, 5, 1)
-        grid.addWidget(btn_advanced, 10, 1)
+        grid.addWidget(advanced_label, 0, 4)
+        grid.addWidget(logging_level_label, 1, 4)
+        grid.addWidget(self.logging_level, 1, 5)
+        grid.addWidget(amount_checking_records_label, 2, 4)
+        grid.addWidget(self.amount_checking_records, 2, 5)
+        grid.addWidget(comparing_step_label, 3, 4)
+        grid.addWidget(self.comparing_step, 3, 5)
+        grid.addWidget(depth_report_check_label, 4, 4)
+        grid.addWidget(self.depth_report_check, 4, 5)
+        grid.addWidget(schema_columns_label, 5, 4)
+        grid.addWidget(self.schema_columns, 5, 5)
+        grid.addWidget(retry_attempts_label, 6, 4)
+        grid.addWidget(self.retry_attempts, 6, 5)
+        grid.addWidget(path_to_logs_label, 7, 4)
+        grid.addWidget(self.path_to_logs, 7, 5)
+        grid.addWidget(self.only_entities, 8, 5)
+        grid.addWidget(self.only_reports, 9, 5)
+        grid.addWidget(self.both, 10, 5)
 
         self.setGeometry(0, 0, 900, 600)
         self.setWindowTitle('dbComparator')
         self.setWindowIcon(QIcon('./resources/slowpoke.png'))
         self.show()
+
+    def only_entities_toggled(self):
+        pass
+
+    def only_reports_toggled(self):
+        pass
+
+    def both_toggled(self):
+        pass
 
     def day_summary_toggled(self):
         pass
@@ -229,9 +327,8 @@ class Example(QWidget):
                         db = string[string.find('=') + 1:]
                         self.test_db.setText(db)
 
-    def show_advanced_settings(self):
-        self.advanced_settings = AdvancedSettings()
-        self.advanced_settings.show()
+    def get_advanced_parameters(self):
+        return self.advanced_settings.get_advanced_properties()
 
     def exit(self):
         sys.exit(0)
@@ -310,9 +407,7 @@ class Example(QWidget):
         except pymysql.InternalError as err:
             QMessageBox.warning(self, 'Warning', "Connection to {}/{} failed\n\n{}".format(test_dict.get('host'), test_dict.get('db'), err.args[1]), QMessageBox.Ok, QMessageBox.Ok)
 
-    @pyqtSlot()
-    # TODO: add getting parameters from advanced settings window
-    def on_click(self):
+    def get_sql_params(self):
         empty_fields = []
         if not self.prod_host.text():
             empty_fields.append('prod.host')
@@ -345,23 +440,6 @@ class Example(QWidget):
             test_user = self.test_user.text()
             test_password = self.test_password.text()
             test_db = self.test_db.text()
-            # TODO: add attempt of connection to both db. If fail - stop program and alert
-            if self.cb_enable_schema_checking.checkState() == 2:
-                check_schema = True
-            else:
-                check_schema = False
-            if self.cb_fail_with_first_error.checkState() == 2:
-                fail_with_first_error = True
-            else:
-                fail_with_first_error = False
-
-            if self.day_summary_mode.isChecked():
-                mode = 'day-sum'
-            elif self.section_summary_mode.isChecked():
-                mode = 'section-sum'
-            else:
-                mode = 'detailed'
-
             prod_dict = {
                 'host': prod_host,
                 'user': prod_user,
@@ -374,17 +452,61 @@ class Example(QWidget):
                 'password': test_password,
                 'db': test_db
             }
-            connection_dict = {
+            connection_sql_parameters = {
                 'prod': prod_dict,
                 'test': test_dict
             }
-            properties = {
-                'check_schema': check_schema,
-                'fail_with_first_error': fail_with_first_error,
-                'send_mail_to': self.send_mail_to.text(),
-                'mode': mode
-            }
-            backend.runComparing(connection_dict, properties)
+            return connection_sql_parameters
+
+    def get_properties(self):
+        if self.cb_enable_schema_checking.checkState() == 2:
+            check_schema = True
+        else:
+            check_schema = False
+        if self.cb_fail_with_first_error.checkState() == 2:
+            fail_with_first_error = True
+        else:
+            fail_with_first_error = False
+
+        if self.day_summary_mode.isChecked():
+            mode = 'day-sum'
+        elif self.section_summary_mode.isChecked():
+            mode = 'section-sum'
+        else:
+            mode = 'detailed'
+
+        if self.only_entities.isChecked():
+            check_type = 'only entities'
+        elif self.only_reports.isChecked():
+            check_type = 'only reports'
+        else:
+            check_type = 'both'
+
+        properties_dict = {
+            'check_schema': check_schema,
+            'fail_with_first_error': fail_with_first_error,
+            'send_mail_to': self.send_mail_to.text(),
+            'mode': mode,
+            'skip_tables': self.skip_tables,
+            'skip_columns': self.skip_columns,
+            'check_type': check_type,
+            'logging_level': self.logging_level.currentText(),
+            'amount_checking_records': self.amount_checking_records,
+            'comparing_step': self.comparing_step,
+            'depth_report_check': self.depth_report_check,
+            'schema_columns': self.schema_columns,
+            'retry_attempts': self.retry_attempts,
+            'path_to_logs': self.path_to_logs,
+            'os': OS
+        }
+        return properties_dict
+
+
+    @pyqtSlot()
+    def on_click(self):
+        connection_dict = self.get_sql_params()
+        properties = self.get_properties()
+        backend.runComparing(connection_dict, properties)
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
