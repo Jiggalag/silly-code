@@ -8,7 +8,7 @@ import pymysql
 
 from PyQt5.QtCore import Qt, pyqtSlot
 from PyQt5.QtWidgets import QApplication, QLabel, QGridLayout, QWidget, QLineEdit, QCheckBox, QPushButton, QMessageBox, \
-    QFileDialog, QRadioButton, QComboBox, QFrame, QSplitter
+    QFileDialog, QRadioButton, QComboBox
 from PyQt5.QtGui import QIcon
 import py_scripts.dbComparator.comparatorWithUI as backend
 import py_scripts.helpers.dbHelper as dbHelper
@@ -16,8 +16,9 @@ import py_scripts.helpers.dbHelper as dbHelper
 # TODO: add useful redacting of skip table field
 # TODO: instead of QLineEdit for "skip" params you should use button with modal window
 # TODO: probably, add menu
-# TODO: add QSplitters
+# TODO: add QSplitters?
 # TODO: check that all parameters correctly transferred from UI to back
+# TODO: add different class to work with properties
 
 if "Win" in platform.system():
     OS = "Windows"
@@ -157,15 +158,15 @@ class Example(QWidget):
         self.detailed_mode.setChecked(False)
         self.detailed_mode.toggled.connect(self.detailed_summary_toggled)
 
-        self.only_entities = QRadioButton('Only entities')
-        self.only_entities.setChecked(False)
-        self.only_entities.toggled.connect(self.only_entities_toggled)
-        self.only_reports = QRadioButton('Only reports')
-        self.only_reports.setChecked(False)
-        self.only_reports.toggled.connect(self.only_reports_toggled)
-        self.both = QRadioButton('Detailed mode')
-        self.both.setChecked(True)
-        self.both.toggled.connect(self.both_toggled)
+        # self.only_entities = QRadioButton('Only entities')
+        # self.only_entities.setChecked(False)
+        # self.only_entities.toggled.connect(self.only_entities_toggled)
+        # self.only_reports = QRadioButton('Only reports')
+        # self.only_reports.setChecked(False)
+        # self.only_reports.toggled.connect(self.only_reports_toggled)
+        # self.both = QRadioButton('Detailed mode')
+        # self.both.setChecked(True)
+        # self.both.toggled.connect(self.both_toggled)
 
 
         # Set tooltips
@@ -243,9 +244,9 @@ class Example(QWidget):
         grid.addWidget(self.retry_attempts, 6, 5)
         grid.addWidget(path_to_logs_label, 7, 4)
         grid.addWidget(self.path_to_logs, 7, 5)
-        grid.addWidget(self.only_entities, 8, 5)
-        grid.addWidget(self.only_reports, 9, 5)
-        grid.addWidget(self.both, 10, 5)
+        # grid.addWidget(self.only_entities, 8, 5)
+        # grid.addWidget(self.only_reports, 9, 5)
+        # grid.addWidget(self.both, 10, 5)
 
         self.setGeometry(0, 0, 900, 600)
         self.setWindowTitle('dbComparator')
@@ -428,8 +429,10 @@ class Example(QWidget):
         if empty_fields:
             if len(empty_fields) == 1:
                 QMessageBox.question(self, 'Error', "Please, set this parameter:\n\n" + "\n".join(empty_fields), QMessageBox.Ok,QMessageBox.Ok)
+                return False
             else:
                 QMessageBox.question(self, 'Error', "Please, set this parameters:\n\n" + "\n".join(empty_fields),QMessageBox.Ok, QMessageBox.Ok)
+                return False
         else:
             print('Comparing started!')
             prod_host = self.prod_host.text()
@@ -475,28 +478,28 @@ class Example(QWidget):
         else:
             mode = 'detailed'
 
-        if self.only_entities.isChecked():
-            check_type = 'only entities'
-        elif self.only_reports.isChecked():
-            check_type = 'only reports'
-        else:
-            check_type = 'both'
+        # if self.only_entities.isChecked():
+        #     check_type = 'only entities'
+        # elif self.only_reports.isChecked():
+        #     check_type = 'only reports'
+        # else:
+        #     check_type = 'both'
 
         properties_dict = {
             'check_schema': check_schema,
             'fail_with_first_error': fail_with_first_error,
             'send_mail_to': self.send_mail_to.text(),
             'mode': mode,
-            'skip_tables': self.skip_tables,
-            'skip_columns': self.skip_columns,
-            'check_type': check_type,
+            'skip_tables': self.skip_tables.text(),
+            'skip_columns': self.skip_columns.text(),
+            # 'check_type': check_type,
             'logging_level': self.logging_level.currentText(),
-            'amount_checking_records': self.amount_checking_records,
-            'comparing_step': self.comparing_step,
-            'depth_report_check': self.depth_report_check,
-            'schema_columns': self.schema_columns,
-            'retry_attempts': self.retry_attempts,
-            'path_to_logs': self.path_to_logs,
+            'amount_checking_records': self.amount_checking_records.text(),
+            'comparing_step': self.comparing_step.text(),
+            'depth_report_check': self.depth_report_check.text(),
+            'schema_columns': self.schema_columns.text(),
+            'retry_attempts': self.retry_attempts.text(),
+            'path_to_logs': self.path_to_logs.text(),
             'os': OS
         }
         return properties_dict
@@ -506,7 +509,8 @@ class Example(QWidget):
     def on_click(self):
         connection_dict = self.get_sql_params()
         properties = self.get_properties()
-        backend.runComparing(connection_dict, properties)
+        if connection_dict and properties:
+            backend.runComparing(connection_dict, properties)
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

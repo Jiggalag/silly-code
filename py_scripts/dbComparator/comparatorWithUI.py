@@ -89,21 +89,26 @@ def runComparing(sql_connection_properties, sql_comparing_properties):
         create_test_dir("C:\\dbComparator\\")
     start_time = datetime.datetime.now()
     logger.info("Start processing!")
-    mapping = queryConstructor.prepare_column_mapping(
-        dbHelper.DbConnector(prod_sql_dict))
+    mapping = queryConstructor.prepare_column_mapping(dbHelper.DbConnector(prod_sql_dict))
     if sql_comparing_properties.get('check_schema'):
-        schema_comparing_time = sqlComparing.Object(sql_connection_properties, sql_comparing_properties, comparing_info).compare_metadata(start_time)
-        data_comparing_time = sqlComparing.Object(sql_connection_properties, sql_comparing_properties, comparing_info).compare_data(global_break,
-                                                                                                      start_time,
-                                                                                                      service_dir,
-                                                                                                      mapping)
+        schema_comparing_time = sqlComparing.Object(sql_connection_properties,
+                                                    sql_comparing_properties,
+                                                    comparing_info).compare_metadata(start_time)
+        data_comparing_time = sqlComparing.Object(sql_connection_properties,
+                                                  sql_comparing_properties,
+                                                  comparing_info).compare_data(global_break,
+                                                                               start_time,
+                                                                               service_dir,
+                                                                               mapping)
     else:
         logger.info("Schema checking disabled...")
         schema_comparing_time = None
-        data_comparing_time = sqlComparing.Object(sql_connection_properties, sql_comparing_properties, comparing_info).compare_data(global_break,
-                                                                                                      start_time,
-                                                                                                      service_dir,
-                                                                                                      mapping)
+        data_comparing_time = sqlComparing.Object(sql_connection_properties,
+                                                  sql_comparing_properties,
+                                                  comparing_info).compare_data(global_break,
+                                                                               start_time,
+                                                                               service_dir,
+                                                                               mapping)
     subject = "[Test] Check databases"
     # TODO: schema_comparing_time may be referenced before assignment - fix it
     text = generate_mail_text(comparing_info, sql_comparing_properties, data_comparing_time, schema_comparing_time)

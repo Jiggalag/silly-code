@@ -68,29 +68,38 @@ class Object:
             'syncpersistentjob',
             'forecaststatistics',
             'migrationhistory']
-
-        if 'attempts' in sql_comparing_properties.keys():
-            self.attempts = sql_comparing_properties.get('attempts')
-        elif 'comparingStep' in sql_comparing_properties.keys():
-            self.comparing_step = sql_comparing_properties.get('comparingStep')
-        elif 'hideColumns' in sql_comparing_properties.keys():
-            self.hide_columns = sql_comparing_properties.get('hideColumns')
-        elif 'mode' in sql_comparing_properties.keys():
+        # TODO: transfer all this properties from UI
+        if 'retry_attempts' in sql_comparing_properties.keys():
+            self.attempts = sql_comparing_properties.get('retry_attempts')
+        if 'comparing_step' in sql_comparing_properties.keys():
+            self.comparing_step = sql_comparing_properties.get('comparing_step')
+        if 'skip_columns' in sql_comparing_properties.keys():
+            self.hide_columns = sql_comparing_properties.get('skip_columns').split(',')
+        if 'mode' in sql_comparing_properties.keys():
             self.mode = sql_comparing_properties.get('mode')
-        elif 'clientIgnoredTables' in sql_comparing_properties.keys():
+        # TODO: probably should be deleted
+        if 'clientIgnoredTables' in sql_comparing_properties.keys():
             self.client_ignored_tables = sql_comparing_properties.get('clientIgnoredTables')
-        elif 'check_schema' in sql_comparing_properties.keys():
+        if 'check_schema' in sql_comparing_properties.keys():
             self.check_schema = sql_comparing_properties.get('check_schema')
-        elif 'depthReportCheck' in sql_comparing_properties.keys():
-            self.depth_report_check = sql_comparing_properties.get('depthReportCheck')
-        elif 'fail_with_first_error' in sql_comparing_properties.keys():
+        if 'depth_report_check' in sql_comparing_properties.keys():
+            self.depth_report_check = sql_comparing_properties.get('depth_report_check')
+        if 'fail_with_first_error' in sql_comparing_properties.keys():
             self.fail_with_first_error = sql_comparing_properties.get('fail_with_first_error')
-        elif 'schemaColumns' in sql_comparing_properties.keys():
-            self.schema_columns = sql_comparing_properties.get('schemaColumns')
-        elif 'separateChecking' in sql_comparing_properties.keys():
+        if 'schema_columns' in sql_comparing_properties.keys():
+            self.schema_columns = sql_comparing_properties.get('schema_columns').split(',')
+        if 'separateChecking' in sql_comparing_properties.keys():
             self.separate_checking = sql_comparing_properties.get('separateChecking')
-        elif 'tablesNotToCompare' in sql_comparing_properties.keys():
-            self.excluded_tables = sql_comparing_properties.get('tablesNotToCompare')
+        if 'skip_tables' in sql_comparing_properties.keys():
+            self.excluded_tables = sql_comparing_properties.get('skip_tables').split(',')
+        if 'logging_level' in sql_comparing_properties.keys():
+            self.logging_level = sql_comparing_properties.get('logging_level')
+        if 'path_to_logs' in sql_comparing_properties.keys():
+            self.path_to_logs = sql_comparing_properties.get('path_to_logs')
+        if 'send_mail_to' in sql_comparing_properties.keys():
+            self.send_mail_to = sql_comparing_properties.get('send_mail_to')
+        if 'amount_checking_record' in sql_comparing_properties.keys():
+            self.amount_checking_record = sql_comparing_properties.get('amount_checking_record')
 
     def compare_data(self, global_break, start_time, service_dir, mapping):
         tables = self.comparing_info.get_tables(self.excluded_tables, self.client_ignored_tables)
