@@ -109,6 +109,7 @@ class Object:
             start_table_check_time = datetime.datetime.now()
             local_break = False
             query_object = queryConstructor.InitializeQuery(self.prod_sql)
+            # TODO: refactor this condition
             if (('report' in table) or ('statistic' in table)) and ('dt' in dbHelper.DbConnector(self.prod_sql).get_column_list(table)) and 'onlyEntities' not in self.separate_checking:
                 if not global_break:
                     self.compare_report_table(global_break, mapping, local_break, table, service_dir, start_time)
@@ -121,7 +122,10 @@ class Object:
             else:
                 if 'onlyReports' in self.separate_checking:
                     continue
-                prod_record_amount, test_record_amount = dbHelper.get_amount_records(table, None, self.sql_connection_properties, self.client)
+                prod_record_amount, test_record_amount = dbHelper.get_amount_records(table,
+                                                                                     None,
+                                                                                     self.sql_connection_properties,
+                                                                                     self.client)
                 if prod_record_amount == 0 and test_record_amount == 0:
                     logger.warn("Table {} is empty on both servers!".format(table))
                     continue
@@ -184,7 +188,8 @@ class Object:
             query = "SELECT {} FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'DBNAME' " \
                     "AND TABLE_NAME='TABLENAME' ORDER BY COLUMN_NAME;"\
                 .replace("TABLENAME", table).format(', '.join(self.schema_columns))
-            prod_columns, test_columns = dbHelper.DbConnector.parallel_select(self.sql_connection_properties, self.client, query)
+            prod_columns, test_columns = dbHelper.DbConnector.parallel_select(self.sql_connection_properties,
+                                                                              self.client, query)
             uniq_for_prod = list(set(prod_columns) - set(test_columns))
             uniq_for_test = list(set(test_columns) - set(prod_columns))
             if len(uniq_for_prod) > 0:
@@ -220,7 +225,8 @@ class Object:
 
     def compare_reports_detailed(self, table, query, service_dir):
         header = get_header(query)
-        prod_reports, test_reports = dbHelper.DbConnector.parallel_select(self.sql_connection_properties, self.client, query)
+        prod_reports, test_reports = dbHelper.DbConnector.parallel_select(self.sql_connection_properties,
+                                                                          self.client, query)
         prod_unique_reports = prod_reports - test_reports
         test_unique_reports = test_reports - prod_reports
         if len(prod_unique_reports) > 0:
@@ -235,7 +241,8 @@ class Object:
             return True
 
     def compare_report_sums(self, table, query):
-        prod_reports, test_reports = dbHelper.DbConnector.parallel_select(self.sql_connection_properties, self.client, query, "list")
+        prod_reports, test_reports = dbHelper.DbConnector.parallel_select(self.sql_connection_properties,
+                                                                          self.client, query, "list")
         clicks = True
         imps = True
         prod_imps = prod_reports[0]
@@ -259,7 +266,8 @@ class Object:
 
     def compare_entity_table(self, table, query, service_dir):
         header = get_header(query)
-        prod_entities, test_entities = dbHelper.DbConnector.parallel_select(self.sql_connection_properties, self.client, query)
+        prod_entities, test_entities = dbHelper.DbConnector.parallel_select(self.sql_connection_properties,
+                                                                            self.client, query)
         prod_unique_entities = set(prod_entities) - set(test_entities)
         test_unique_entities = set(test_entities) - set(prod_entities)
         if len(prod_unique_entities) > 0:
@@ -277,7 +285,9 @@ class Object:
         dates = converters.convertToList(self.compare_dates(table))
         dates.sort()
         if dates:
-            prod_record_amount, test_record_amount = dbHelper.get_amount_records(table, dates[0], self.sql_connection_properties, self.client)
+            prod_record_amount, test_record_amount = dbHelper.get_amount_records(table, dates[0],
+                                                                                 self.sql_connection_properties,
+                                                                                 self.client)
             for dt in reversed(dates):
                 if not all([global_break, local_break]):
                     max_amount = max(prod_record_amount, test_record_amount)
@@ -295,7 +305,8 @@ class Object:
 
     def compare_dates(self, table):
         select_query = "SELECT distinct(`dt`) from {};".format(table)
-        prod_dates, test_dates = dbHelper.DbConnector.parallel_select(self.sql_connection_properties, self.client, select_query)
+        prod_dates, test_dates = dbHelper.DbConnector.parallel_select(self.sql_connection_properties,
+                                                                      self.client, select_query)
         if all([prod_dates, test_dates]):
             return self.calculate_comparing_timeframe(prod_dates, test_dates, table)
         else:

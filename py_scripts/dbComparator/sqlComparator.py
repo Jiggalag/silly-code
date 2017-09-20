@@ -25,17 +25,17 @@ quick_fall = config.getProperty("sqlProperties", "quick_fall")
 mode = config.getProperty("sqlProperties", "reportCheckType")
 
 
-def check_service_dir(service_dir):
-    if os.path.exists(service_dir):
-        shutil.rmtree(service_dir)
-    os.mkdir(service_dir)
+def check_service_dir(dir_name):
+    if os.path.exists(dir_name):
+        shutil.rmtree(dir_name)
+    os.mkdir(dir_name)
 
 
-def create_test_dir(path, client):
+def create_test_dir(path, client_name):
     if not os.path.exists(path):
         os.mkdir(path)
-    if not os.path.exists(path + client):
-        os.mkdir(path + client)
+    if not os.path.exists(path + client_name):
+        os.mkdir(path + client_name)
 
 
 def generate_mail_text(comparing_info, mode):
@@ -91,8 +91,10 @@ for client in config.getClients():
     client_config = configHelper.IfmsConfigClient(propertyFile, client)
     sql_property_dict = client_config.get_sql_connection_params('test')
     comparing_info = tableData.Info()
-    comparing_info.update_table_list("prod", dbHelper.DbConnector(client_config.get_sql_connection_params("prod")).get_tables())
-    comparing_info.update_table_list("test", dbHelper.DbConnector(client_config.get_sql_connection_params("test")).get_tables())
+    comparing_info.update_table_list("prod",
+                                     dbHelper.DbConnector(client_config.get_sql_connection_params("prod")).get_tables())
+    comparing_info.update_table_list("test",
+                                     dbHelper.DbConnector(client_config.get_sql_connection_params("test")).get_tables())
     global_break = False
     if "Linux" in OS:
         create_test_dir("/mxf/data/test_results/", client)
