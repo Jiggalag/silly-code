@@ -1,10 +1,6 @@
-from py_scripts.helpers.loggingHelper import Logger
-
-logger = Logger(20)
-
-
 class Info:
-    def __init__(self):
+    def __init__(self, logger):
+        self.logger = logger
         self.tables = set()
         self.excluded_tables = set()
         self.prod_list = set()
@@ -27,7 +23,7 @@ class Info:
         elif stage == "test":
             self.test_list.update(value)
         else:
-            logger.error("There is no such stage {}".format(stage))
+            self.logger.error("There is no such stage {}".format(stage))
 
     def update_empty(self, stage, value):
         if stage == "prod":
@@ -35,7 +31,7 @@ class Info:
         elif stage == "test":
             self.test_empty.update(value)
         else:
-            logger.error("There is no such stage {}".format(stage))
+            self.logger.error("There is no such stage {}".format(stage))
 
     def update_nocrossed_dates(self, value):
             self.no_crossed_tables.append(value)
@@ -75,4 +71,4 @@ class Info:
             self.test_uniq_tables = self.test_list - self.prod_list
             return self.test_uniq_tables
         else:
-            logger.error("There is no such stage {}".format(stage))
+            self.logger.error("There is no such stage {}".format(stage))

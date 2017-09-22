@@ -1,15 +1,18 @@
 import pymysql
-from py_scripts.helpers import loggingHelper
+import time
+
 from multiprocessing.dummy import Pool
 
-logger = loggingHelper.Logger(10)
+TIMEOUT = 10
+# TODO: transfer logger into connector
 
 
 class DbConnector:
-    def __init__(self, connect_parameters, **kwargs):
+    def __init__(self, connect_parameters, logger, **kwargs):
         self.host = connect_parameters.get('host')
         self.user = connect_parameters.get('user')
         self.password = connect_parameters.get('password')
+        self.logger = logger
         self.db = connect_parameters.get('db')
         self.hide_columns = [
             'archived',
@@ -73,15 +76,17 @@ class DbConnector:
                 self.separate_checking = kwargs.get(key)
 
     @staticmethod
-    def parallel_select(sql_params, client, query, result_type="frozenset"):
+    def parallel_select(sql_params, client, query, logger, result_type="frozenset"):
         sql_properties = []
         sql_properties.append(sql_params.get('prod'))
         sql_properties.append(sql_params.get('test'))
         pool = Pool(2)
-        result = pool.map((lambda x: DbConnector(x, client=client).select(query, result_type)),
+        result = pool.map((lambda x: DbConnector(x, client=client, logger=logger).select(query, result_type)),
                           sql_properties)
         pool.close()
         pool.join()
+        if (result[0] is None) or (result[1] is None):
+            return None, None
         if result_type == "list":
             prod_result = []
             test_result = []
@@ -102,91 +107,114 @@ class DbConnector:
             test = test_result
         return prod, test
 
-    def select(self, query, result_type="frozenset"):
-        connection = pymysql.connect(host=self.host,
-                                     user=self.user,
-                                     password=self.password,
-                                     db=self.db,
-                                     charset='utf8',
-                                     cursorclass=pymysql.cursors.DictCursor)
-        error_count = 0
-        while error_count < self.attempts:
+    def get_connection(self):
+        attempt_number = 0
+        while True:
             try:
-                with connection.cursor() as cursor:
-                    sql_query = query.replace('DBNAME', self.db)
-                    logger.debug(sql_query)
-                    cursor.execute(sql_query)
-                    result = cursor.fetchall()
-                    processed_result = []
-                    for item in result:
-                        tmp_record = []
-                        for key in item.keys():
-                            tmp_record.append(item.get(key))
-                        if len(tmp_record) == 1:
-                            processed_result.append(tmp_record[0])
-                        elif result_type == "list":
-                            processed_result.append(tmp_record)
-                        else:
-                            processed_result.append(frozenset(tmp_record))
-                    return processed_result
-            except pymysql.OperationalError:
-                error_count += 1
-                logger.error("There are some SQL query error " + str(pymysql.OperationalError))
-            finally:
+                connection = pymysql.connect(host=self.host,
+                                             user=self.user,
+                                             password=self.password,
+                                             db=self.db,
+                                             charset='utf8',
+                                             cursorclass=pymysql.cursors.DictCursor)
+                return connection
+            except pymysql.err.OperationalError:
+                attempt_number += 1
+                if attempt_number > self.attempts:
+                    return None
+                time.sleep(TIMEOUT)
+
+    def select(self, query, result_type="frozenset"):
+        connection = self.get_connection()
+        if connection is not None:
+            error_count = 0
+            while error_count < self.attempts:
                 try:
-                    connection.close()
-                except pymysql.Error:
-                    logger.info("Connection already closed...")
-                    return []
+                    with connection.cursor() as cursor:
+                        sql_query = query.replace('DBNAME', self.db)
+                        self.logger.debug(sql_query)
+                        try:
+                            cursor.execute(sql_query)
+                        except pymysql.err.InternalError as e:
+                            self.logger.error('Error code: {}, error message: {}'.format(e.args[0], e.args[1]))
+                            return None
+                        result = cursor.fetchall()
+                        processed_result = []
+                        for item in result:
+                            tmp_record = []
+                            for key in item.keys():
+                                tmp_record.append(item.get(key))
+                            if len(tmp_record) == 1:
+                                processed_result.append(tmp_record[0])
+                            elif result_type == "list":
+                                processed_result.append(tmp_record)
+                            else:
+                                processed_result.append(frozenset(tmp_record))
+                        return processed_result
+                except pymysql.OperationalError:
+                    error_count += 1
+                    self.logger.error("There are some SQL query error " + str(pymysql.OperationalError))
+                finally:
+                    try:
+                        connection.close()
+                    except pymysql.Error:
+                        self.logger.info("Connection already closed...")
+                        return []
+        else:
+            return None
 
     def get_tables(self):
-        connection = pymysql.connect(host=self.host,
-                                     user=self.user,
-                                     password=self.password,
-                                     db=self.db,
-                                     charset='utf8',
-                                     cursorclass=pymysql.cursors.DictCursor)
-        try:
-            with connection.cursor() as cursor:
-                show_tables = "SELECT DISTINCT(table_name) FROM information_schema.columns " \
-                              "WHERE table_schema LIKE '{}';".format(self.db)
-                list_table = []
-                cursor.execute(show_tables)
-                result = cursor.fetchall()
-                for item in result:
-                    list_table.append(item.get('table_name'))
-        finally:
-            connection.close()
-        return list_table
+        connection = self.get_connection()
+        if connection is not None:
+            try:
+                with connection.cursor() as cursor:
+                    show_tables = "SELECT DISTINCT(table_name) FROM information_schema.columns " \
+                                  "WHERE table_schema LIKE '{}';".format(self.db)
+                    list_table = []
+                    cursor.execute(show_tables)
+                    result = cursor.fetchall()
+                    for item in result:
+                        list_table.append(item.get('table_name'))
+            finally:
+                connection.close()
+            return list_table
+        else:
+            return None
 
     def get_column_list(self, table):
-        connection = pymysql.connect(host=self.host,
-                                     user=self.user,
-                                     password=self.password,
-                                     db=self.db,
-                                     charset='utf8',
-                                     cursorclass=pymysql.cursors.DictCursor)
-        try:
-            with connection.cursor() as cursor:
-                column_list = []
-                query = "SELECT column_name FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = '%s' " \
-                        "AND table_schema = '%s';" % (table, self.db)
-                logger.debug(query)
-                cursor.execute(query)
-                column_dict = cursor.fetchall()
-                for i in column_dict:
-                    element = str(i.get('column_name')).lower()  # TODO: get rid of this hack
-                    column_list.append(element)
-                for column in self.hide_columns:
-                    if column.replace('_', '') in column_list:
-                        column_list.remove(column)
-                if not column_list:
-                    return ""
-                column_string = ','.join(column_list)
-                return column_string.lower()
-        finally:
-            if connection.open:
-                connection.close()
+        connection = self.get_connection()
+        if connection is not None:
+            try:
+                with connection.cursor() as cursor:
+                    column_list = []
+                    query = "SELECT column_name FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = '%s' " \
+                            "AND table_schema = '%s';" % (table, self.db)
+                    self.logger.debug(query)
+                    cursor.execute(query)
+                    column_dict = cursor.fetchall()
+                    for i in column_dict:
+                        element = str(i.get('column_name')).lower()  # TODO: get rid of this hack
+                        column_list.append(element)
+                    for column in self.hide_columns:
+                        if column.replace('_', '') in column_list:
+                            column_list.remove(column)
+                    if not column_list:
+                        return ""
+                    column_string = ','.join(column_list)
+                    return column_string.lower()
+            finally:
+                if connection.open:
+                    connection.close()
+        else:
+            return None
+
+
+def get_amount_records(table, date, sql_dicts, client, logger):
+    if date is None:
+        query = "SELECT COUNT(*) FROM `{}`;".format(table)
+    else:
+        query = "SELECT COUNT(*) FROM `{}` WHERE dt > '{}';".format(table, date)
+    return DbConnector.parallel_select(sql_dicts, client, query, logger)
 
 
 def get_column_list_for_sum(set_column_list):
@@ -197,11 +225,3 @@ def get_column_list_for_sum(set_column_list):
         else:
             column_list_with_sums.append(item)
     return column_list_with_sums
-
-
-def get_amount_records(table, date, sql_dicts, client):
-    if date is None:
-        query = "SELECT COUNT(*) FROM `{}`;".format(table)
-    else:
-        query = "SELECT COUNT(*) FROM `{}` WHERE dt > '{}';".format(table, date)
-    return DbConnector.parallel_select(sql_dicts, client, query)

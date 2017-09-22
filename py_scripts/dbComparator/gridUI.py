@@ -6,17 +6,18 @@ import os
 import platform
 import pymysql
 
-from PyQt5.QtCore import Qt, pyqtSlot
-from PyQt5.QtWidgets import QApplication, QLabel, QGridLayout, QWidget, QLineEdit, QCheckBox, QPushButton, QMessageBox, \
-    QFileDialog, QRadioButton, QComboBox
-from PyQt5.QtGui import QIcon
-import py_scripts.dbComparator.comparatorWithUI as backend
+from py_scripts.dbComparator.comparatorWithUI import Backend
 import py_scripts.helpers.dbHelper as dbHelper
+from py_scripts.helpers.logging_helper import Logger
+
+from PyQt5.QtCore import Qt, pyqtSlot
+from PyQt5.QtWidgets import QApplication, QLabel, QGridLayout, QWidget, QLineEdit, QCheckBox, QPushButton, QMessageBox
+from PyQt5.QtWidgets import QFileDialog, QRadioButton, QComboBox, QAction, qApp, QMainWindow
+from PyQt5.QtGui import QIcon
 
 # TODO: add useful redacting of skip table field
-# TODO: instead of QLineEdit for "skip" params you should use button with modal window
-# TODO: probably, add menu
-# TODO: add QSplitters?
+# TODO: instead of QLineEdit for "skip" params you should use button with modal window? - minor
+# TODO: add QSplitters - minor
 # TODO: check that all parameters correctly transferred from UI to back
 # TODO: add different class to work with properties
 
@@ -28,6 +29,7 @@ if "Linux" in OS:
     propertyFile = os.getcwd() + "/resources/properties/sqlComparator.properties"
 else:
     propertyFile = os.getcwd() + "\\resources\\properties\\sqlComparator.properties"
+
 
 class Example(QWidget):
     def __init__(self):
@@ -90,7 +92,9 @@ class Example(QWidget):
         self.test_db = QLineEdit(self)
         self.send_mail_to = QLineEdit(self)
         self.skip_tables = QLineEdit(self)
-        self.skip_tables.setText('databasechangelog,download,migrationhistory,mntapplog,reportinfo,synchistory,syncstage,synctrace,synctracelink,syncpersistentjob,forecaststatistics,migrationhistory')
+        self.skip_tables.setText('databasechangelog,download,migrationhistory,mntapplog,reportinfo,synchistory,' +
+                                 'syncstage,synctrace,synctracelink,syncpersistentjob,forecaststatistics,' +
+                                 'migrationhistory')
         self.skip_columns = QLineEdit(self)
         self.skip_columns.setText('archived,addonFields,hourOfDayS,dayOfWeekS,impCost,id')
 
@@ -102,7 +106,10 @@ class Example(QWidget):
         self.depth_report_check.setText('7')
         self.schema_columns = QLineEdit(self)
         # TODO: add possibility for useful redacting of schema columns parameter
-        self.schema_columns.setText('TABLE_CATALOG,TABLE_NAME,COLUMN_NAME,ORDINAL_POSITION,COLUMN_DEFAULT,IS_NULLABLE,DATA_TYPE,CHARACTER_MAXIMUM_LENGTH,CHARACTER_OCTET_LENGTH,NUMERIC_PRECISION,NUMERIC_SCALE,DATETIME_PRECISION,CHARACTER_SET_NAME,COLLATION_NAME,COLUMN_TYPE,COLUMN_KEY,EXTRA,COLUMN_COMMENT,GENERATION_EXPRESSION')
+        self.schema_columns.setText('TABLE_CATALOG,TABLE_NAME,COLUMN_NAME,ORDINAL_POSITION,COLUMN_DEFAULT,' +
+                                    'IS_NULLABLE,DATA_TYPE,CHARACTER_MAXIMUM_LENGTH,CHARACTER_OCTET_LENGTH,' +
+                                    'NUMERIC_PRECISION,NUMERIC_SCALE,DATETIME_PRECISION,CHARACTER_SET_NAME,' +
+                                    'COLLATION_NAME,COLUMN_TYPE,COLUMN_KEY,EXTRA,COLUMN_COMMENT,GENERATION_EXPRESSION')
         self.retry_attempts = QLineEdit(self)
         self.retry_attempts.setText('5')
         self.path_to_logs = QLineEdit(self)
@@ -141,8 +148,8 @@ class Example(QWidget):
         btn_check_test.clicked.connect(self.check_test)
         btn_set_configuration = QPushButton('       Compare!       ', self)
         btn_set_configuration.clicked.connect(self.on_click)
-        btn_load_sql_params = QPushButton('Load sql params', self)
-        btn_load_sql_params.clicked.connect(self.showDialog)
+        # btn_load_sql_params = QPushButton('Load sql params', self)
+        # btn_load_sql_params.clicked.connect(self.showDialog)
         btn_clear_all = QPushButton('Clear all', self)
         btn_clear_all.clicked.connect(self.clear_all)
 
@@ -150,13 +157,13 @@ class Example(QWidget):
 
         self.day_summary_mode = QRadioButton('Day summary')
         self.day_summary_mode.setChecked(True)
-        self.day_summary_mode.toggled.connect(self.day_summary_toggled)
+        # self.day_summary_mode.toggled.connect(self.day_summary_toggled)
         self.section_summary_mode = QRadioButton('Section summary mode')
         self.section_summary_mode.setChecked(False)
-        self.section_summary_mode.toggled.connect(self.section_summary_toggled)
+        # self.section_summary_mode.toggled.connect(self.section_summary_toggled)
         self.detailed_mode = QRadioButton('Detailed mode')
         self.detailed_mode.setChecked(False)
-        self.detailed_mode.toggled.connect(self.detailed_summary_toggled)
+        # self.detailed_mode.toggled.connect(self.detailed_summary_toggled)
 
         # self.only_entities = QRadioButton('Only entities')
         # self.only_entities.setChecked(False)
@@ -194,6 +201,9 @@ class Example(QWidget):
         skip_columns_label.setToolTip(self.skip_columns.text().replace(',', ',\n'))
         self.skip_columns.setToolTip(self.skip_columns.text().replace(',', ',\n'))
         btn_set_configuration.setToolTip('Start comparing of dbs')
+        btn_check_prod.setToolTip('Check connection to prod-server')
+        btn_check_test.setToolTip('Check connection to test-server')
+
         # TODO: add tooltips for all widgets
 
         grid.addWidget(prod_host_label, 0, 0)
@@ -223,7 +233,7 @@ class Example(QWidget):
         grid.addWidget(self.cb_enable_schema_checking, 9, 0)
         grid.addWidget(self.cb_fail_with_first_error, 10, 0)
         grid.addWidget(btn_set_configuration, 11, 5)
-        grid.addWidget(btn_load_sql_params, 5, 0)
+        # grid.addWidget(btn_load_sql_params, 5, 0)
         grid.addWidget(checking_mode_label, 6, 3)
         grid.addWidget(self.day_summary_mode, 7, 3)
         grid.addWidget(self.section_summary_mode, 8, 3)
@@ -253,23 +263,23 @@ class Example(QWidget):
         self.setWindowIcon(QIcon('./resources/slowpoke.png'))
         self.show()
 
-    def only_entities_toggled(self):
-        pass
-
-    def only_reports_toggled(self):
-        pass
-
-    def both_toggled(self):
-        pass
-
-    def day_summary_toggled(self):
-        pass
-
-    def section_summary_toggled(self):
-        pass
-
-    def detailed_summary_toggled(self):
-        pass
+    # def only_entities_toggled(self):
+    #     pass
+    #
+    # def only_reports_toggled(self):
+    #     pass
+    #
+    # def both_toggled(self):
+    #     pass
+    #
+    # def day_summary_toggled(self):
+    #     pass
+    #
+    # def section_summary_toggled(self):
+    #     pass
+    #
+    # def detailed_summary_toggled(self):
+    #     pass
 
     def enableSchemaCheckingConstruct(self, state):
         if state == Qt.Checked:
@@ -294,7 +304,7 @@ class Example(QWidget):
         self.test_db.clear()
         self.send_mail_to.clear()
 
-    def showDialog(self):
+    def show_dialog(self):
         current_dir = os.getcwd()
         fname = QFileDialog.getOpenFileName(self, 'Open file', current_dir)[0]
         with open(fname, 'r') as file:
@@ -328,8 +338,55 @@ class Example(QWidget):
                         db = string[string.find('=') + 1:]
                         self.test_db.setText(db)
 
-    def get_advanced_parameters(self):
-        return self.advanced_settings.get_advanced_properties()
+    def save_configuration(self):
+        text = []
+        if self.prod_host.text() != '':
+            text.append('prod.host = {}'.format(self.prod_host.text()))
+        if self.prod_user.text() != '':
+            text.append('prod.user = {}'.format(self.prod_user.text()))
+        if self.prod_password.text() != '':
+            text.append('prod.password = {}'.format(self.prod_password.text()))
+        if self.prod_db.text() != '':
+            text.append('prod.dbt = {}'.format(self.prod_db.text()))
+        if self.test_host.text() != '':
+            text.append('test.host = {}'.format(self.test_host.text()))
+        if self.test_user.text() != '':
+            text.append('test_user = {}'.format(self.test_user.text()))
+        if self.test_password.text() != '':
+            text.append('test_password = {}'.format(self.test_password.text()))
+        if self.test_db.text() != '':
+            text.append('test_db = {}'.format(self.test_db.text()))
+        if self.send_mail_to.text() != '':
+            text.append('send_mail_to = {}'.format(self.send_mail_to.text()))
+        if self.skip_tables != '':
+            text.append('skip_tables = {}'.format(self.skip_tables.text()))
+        if self.skip_columns != '':
+            text.append('skip_columns = {}'.format(self.skip_columns.text()))
+        if self.amount_checking_records != '' and self.amount_checking_records != '100000':
+            text.append('amount_checking_records = {}'.format(self.amount_checking_records.text()))
+        if self.comparing_step != '' and self.comparing_step != '10000':
+            text.append('comparing_step = {}'.format(self.comparing_step.text()))
+        if self.depth_report_check != '' and self.depth_report_check != '7':
+            text.append('depth_report_check = {}'.format(self.depth_report_check.text()))
+        if self.schema_columns != '' and self.schema_columns != ('TABLE_CATALOG,TABLE_NAME,COLUMN_NAME,' +
+                                                                 'ORDINAL_POSITION,COLUMN_DEFAULT,' +
+                                                                 'IS_NULLABLE,DATA_TYPE,CHARACTER_MAXIMUM_LENGTH,' +
+                                                                 'CHARACTER_OCTET_LENGTH,NUMERIC_PRECISION,' +
+                                                                 'NUMERIC_SCALE,DATETIME_PRECISION,' +
+                                                                 'CHARACTER_SET_NAME,COLLATION_NAME,COLUMN_TYPE,' +
+                                                                 'COLUMN_KEY,EXTRA,COLUMN_COMMENT,' +
+                                                                 'GENERATION_EXPRESSION'):
+            text.append('schema_columns = {}'.format(self.schema_columns.text()))
+        if self.retry_attempts != '' and self.retry_attempts != '5':
+            text.append('retry_attempts = {}'.format(self.retry_attempts.text()))
+        if self.path_to_logs != '':
+            text.append('path_to_logs = {}'.format(self.path_to_logs.text()))
+        fileName, _ = QFileDialog.getSaveFileName(self, "QFileDialog.getSaveFileName()",  "",
+                                                  "All Files (*);;Text Files (*.txt)")
+        if fileName:
+            print(fileName)
+            with open(fileName, 'w') as file:
+                file.write('\n'.join(text))
 
     def exit(self):
         sys.exit(0)
@@ -351,25 +408,34 @@ class Example(QWidget):
             else:
                 QMessageBox.question(self, 'Error', "Please, set this parameters:\n\n" + "\n".join(empty_fields),
                                      QMessageBox.Ok, QMessageBox.Ok)
-        prod_host = self.prod_host.text()
-        prod_user = self.prod_user.text()
-        prod_password = self.prod_password.text()
-        prod_db = self.prod_db.text()
+        prod_host_value = self.prod_host.text()
+        prod_user_value = self.prod_user.text()
+        prod_password_value = self.prod_password.text()
+        prod_db_value = self.prod_db.text()
         prod_dict = {
-            'host': prod_host,
-            'user': prod_user,
-            'password': prod_password,
-            'db': prod_db
+            'host': prod_host_value,
+            'user': prod_user_value,
+            'password': prod_password_value,
+            'db': prod_db_value
         }
         try:
-            dbHelper.DbConnector(prod_dict).get_tables()
+            dbHelper.DbConnector(prod_dict, Logger(self.logging_level.currentText())).get_tables()
             print('Prod OK!')
-            QMessageBox.information(self, 'Information', "Successfully connected to\n {}/{}".format(prod_dict.get('host'), prod_dict.get('db')),
-                                 QMessageBox.Ok, QMessageBox.Ok)
+            QMessageBox.information(self, 'Information',
+                                    "Successfully connected to\n {}/{}".format(prod_dict.get('host'),
+                                                                               prod_dict.get('db')),
+                                    QMessageBox.Ok, QMessageBox.Ok)
         except pymysql.OperationalError as err:
-            QMessageBox.warning(self, 'Warning', "Connection to {}/{} failed\n\n{}".format(prod_dict.get('host'), prod_dict.get('db'), err.args[1]), QMessageBox.Ok, QMessageBox.Ok)
+            QMessageBox.warning(self, 'Warning',
+                                "Connection to {}/{} failed\n\n{}".format(prod_dict.get('host'),
+                                                                          prod_dict.get('db'),
+                                                                          err.args[1]),
+                                QMessageBox.Ok, QMessageBox.Ok)
         except pymysql.InternalError as err:
-            QMessageBox.warning(self, 'Warning', "Connection to {}/{} failed\n\n{}".format(prod_dict.get('host'), prod_dict.get('db'), err.args[1]), QMessageBox.Ok, QMessageBox.Ok)
+            QMessageBox.warning(self, 'Warning', "Connection to {}/{} failed\n\n{}".format(prod_dict.get('host'),
+                                                                                           prod_dict.get('db'),
+                                                                                           err.args[1]),
+                                QMessageBox.Ok, QMessageBox.Ok)
 
     def check_test(self):
         empty_fields = []
@@ -388,25 +454,35 @@ class Example(QWidget):
             else:
                 QMessageBox.question(self, 'Error', "Please, set this parameters:\n\n" + "\n".join(empty_fields),
                                      QMessageBox.Ok, QMessageBox.Ok)
-        test_host = self.test_host.text()
-        test_user = self.test_user.text()
-        test_password = self.test_password.text()
-        test_db = self.test_db.text()
+        test_host_value = self.test_host.text()
+        test_user_value = self.test_user.text()
+        test_password_value = self.test_password.text()
+        test_db_value = self.test_db.text()
         test_dict = {
-            'host': test_host,
-            'user': test_user,
-            'password': test_password,
-            'db': test_db
+            'host': test_host_value,
+            'user': test_user_value,
+            'password': test_password_value,
+            'db': test_db_value
         }
         try:
-            dbHelper.DbConnector(test_dict).get_tables()
+            dbHelper.DbConnector(test_dict, Logger(self.logging_level.currentText())).get_tables()
             print('Test OK!')
-            QMessageBox.information(self, 'Information', "Successfully connected to\n {}/{}".format(test_dict.get('host'), test_dict.get('db')),
-                                 QMessageBox.Ok, QMessageBox.Ok)
+            QMessageBox.information(self, 'Information',
+                                    "Successfully connected to\n {}/{}".format(test_dict.get('host'),
+                                                                               test_dict.get('db')),
+                                    QMessageBox.Ok, QMessageBox.Ok)
         except pymysql.OperationalError as err:
-            QMessageBox.warning(self, 'Warning', "Connection to {}/{} failed\n\n{}".format(test_dict.get('host'), test_dict.get('db'), err.args[1]), QMessageBox.Ok, QMessageBox.Ok)
+            QMessageBox.warning(self, 'Warning',
+                                "Connection to {}/{} failed\n\n{}".format(test_dict.get('host'),
+                                                                          test_dict.get('db'),
+                                                                          err.args[1]),
+                                QMessageBox.Ok, QMessageBox.Ok)
         except pymysql.InternalError as err:
-            QMessageBox.warning(self, 'Warning', "Connection to {}/{} failed\n\n{}".format(test_dict.get('host'), test_dict.get('db'), err.args[1]), QMessageBox.Ok, QMessageBox.Ok)
+            QMessageBox.warning(self, 'Warning',
+                                "Connection to {}/{} failed\n\n{}".format(test_dict.get('host'),
+                                                                          test_dict.get('db'),
+                                                                          err.args[1]),
+                                QMessageBox.Ok, QMessageBox.Ok)
 
     def get_sql_params(self):
         empty_fields = []
@@ -428,10 +504,13 @@ class Example(QWidget):
             empty_fields.append('test.db')
         if empty_fields:
             if len(empty_fields) == 1:
-                QMessageBox.question(self, 'Error', "Please, set this parameter:\n\n" + "\n".join(empty_fields), QMessageBox.Ok,QMessageBox.Ok)
+                QMessageBox.question(self, 'Error', "Please, set this parameter:\n\n" +
+                                     "\n".join(empty_fields), QMessageBox.Ok,QMessageBox.Ok)
                 return False
             else:
-                QMessageBox.question(self, 'Error', "Please, set this parameters:\n\n" + "\n".join(empty_fields),QMessageBox.Ok, QMessageBox.Ok)
+                QMessageBox.question(self, 'Error',
+                                     "Please, set this parameters:\n\n" +
+                                     "\n".join(empty_fields),QMessageBox.Ok, QMessageBox.Ok)
                 return False
         else:
             print('Comparing started!')
@@ -493,7 +572,7 @@ class Example(QWidget):
             'skip_tables': self.skip_tables.text(),
             'skip_columns': self.skip_columns.text(),
             # 'check_type': check_type,
-            'logging_level': self.logging_level.currentText(),
+            'logger': Logger(self.logging_level.currentText()),
             'amount_checking_records': self.amount_checking_records.text(),
             'comparing_step': self.comparing_step.text(),
             'depth_report_check': self.depth_report_check.text(),
@@ -504,15 +583,51 @@ class Example(QWidget):
         }
         return properties_dict
 
-
     @pyqtSlot()
     def on_click(self):
         connection_dict = self.get_sql_params()
         properties = self.get_properties()
         if connection_dict and properties:
-            backend.runComparing(connection_dict, properties)
+            Backend(connection_dict, properties).run_comparing()
+
+
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+
+        self.ex = Example()
+        self.setCentralWidget(self.ex)
+
+        self.setGeometry(0, 0, 900, 600)
+        self.setWindowTitle('dbComparator')
+        self.setWindowIcon(QIcon('./resources/slowpoke.png'))
+        self.show()
+
+        # Menu
+
+        open_action = QAction(QIcon('open.png'), '&Open', self)
+        open_action.setShortcut('Ctrl+O')
+        open_action.setStatusTip('Open custom file with cmp_properties')
+        open_action.triggered.connect(self.ex.show_dialog)
+
+        save_action = QAction(QIcon('save.png'), '&Save', self)
+        save_action.setShortcut('Ctrl+S')
+        save_action.setStatusTip('Save current configuration to file')
+        save_action.triggered.connect(self.ex.save_configuration)
+
+        exit_action = QAction(QIcon('exit.png'), '&Exit', self)
+        exit_action.setShortcut('Ctrl+Q')
+        exit_action.setStatusTip('Exit application')
+        exit_action.triggered.connect(qApp.quit)
+
+        menubar = self.menuBar()
+        file_menu = menubar.addMenu('&File')
+        file_menu.addAction(open_action)
+        file_menu.addAction(save_action)
+        file_menu.addAction(exit_action)
+
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    ex = Example()
+    main_window = MainWindow()
     sys.exit(app.exec_())

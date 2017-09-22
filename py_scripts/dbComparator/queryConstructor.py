@@ -1,13 +1,12 @@
 import sys
 import pymysql
-from py_scripts.helpers import dbHelper, loggingHelper
-
-logger = loggingHelper.Logger(20)
+from py_scripts.helpers import dbHelper
 
 
 class InitializeQuery:
-    def __init__(self, sql):
+    def __init__(self, sql, logger):
         self.sql = sql
+        self.logger = logger
 
     def entity(self, table, threshold, comparing_step, mapping):
         query_list = []
@@ -53,14 +52,14 @@ class InitializeQuery:
                 offset = offset + comparing_step
                 query_list.append(query)
         else:
-            logger.error(
+            self.logger.error(
                 "Property reportCheckType has incorrect value {}. "
                 "Please, set any of this value: day-sum, section-sum, detailed.".format(mode))
             sys.exit(1)
         return query_list
 
     def prepare_query_sections(self, mapping, table):
-        column_string = dbHelper.DbConnector(self.sql).get_column_list(table)
+        column_string = dbHelper.DbConnector(self.sql, self.logger).get_column_list(table)
         set_column_list, set_join_section = self.construct_column_and_join_section(column_string, mapping, table)
         # if set_column_list[-1:] == ",":
         #     set_column_list = set_column_list[:-1]
@@ -77,7 +76,8 @@ class InitializeQuery:
                 if "remoteid" in column:
                     set_column_list.append("{}.`remoteid` AS {}".format(linked_table, column))
                 elif "id" in column:
-                    if "remoteid" in dbHelper.DbConnector(self.sql).get_column_list(linked_table.replace("`", "")):
+                    if "remoteid" in dbHelper.DbConnector(self.sql,
+                                                          self.logger).get_column_list(linked_table.replace("`", "")):
                         set_column_list.append("{}.`remoteid` AS {}".format(linked_table, column))
                     else:
                         set_column_list.append("{}.`id` AS {}".format(linked_table, column))
@@ -92,29 +92,29 @@ class InitializeQuery:
                 set_column_list.append("{}.{}".format(table, column))
         return ", ".join(set_column_list), " ".join(set_join_section)
 
-
-def prepare_column_mapping(sql):
-    connection = pymysql.connect(host=sql.host,
-                                 user=sql.user,
-                                 password=sql.password,
-                                 db=sql.db,
-                                 charset='utf8',
-                                 cursorclass=pymysql.cursors.DictCursor)
-    try:
-        with connection.cursor() as cursor:
-            column_dict = {}
-            query_get_column = "select column_name, referenced_table_name from INFORMATION_SCHEMA.KEY_COLUMN_USAGE " \
-                               "where constraint_name not like 'PRIMARY' and referenced_table_name " \
-                               "is not null and table_schema = '{}';".format(sql.db)
-            logger.debug(query_get_column)
-            cursor.execute(query_get_column)
-            raw_column_list = cursor.fetchall()
-            for item in raw_column_list:
-                column_dict.update({"`{}`".format(item.get('column_name').lower()): "`{}`"
-                                   .format(item.get('referenced_table_name').lower())})
-            return column_dict
-    finally:
-        connection.close()
+    def prepare_column_mapping(self):
+        connection = pymysql.connect(host=self.sql.host,
+                                     user=self.sql.user,
+                                     password=self.sql.password,
+                                     db=self.sql.db,
+                                     charset='utf8',
+                                     cursorclass=pymysql.cursors.DictCursor)
+        try:
+            with connection.cursor() as cursor:
+                column_dict = {}
+                query_get_column = ("SELECT column_name, referenced_table_name FROM " +
+                                    "INFORMATION_SCHEMA.KEY_COLUMN_USAGE WHERE constraint_name NOT LIKE " +
+                                    "'PRIMARY' AND referenced_table_name " +
+                                    "IS NOT NULL AND table_schema = '{}';".format(self.sql.db))
+                self.logger.debug(query_get_column)
+                cursor.execute(query_get_column)
+                raw_column_list = cursor.fetchall()
+                for item in raw_column_list:
+                    column_dict.update({"`{}`".format(item.get('column_name').lower()): "`{}`"
+                                       .format(item.get('referenced_table_name').lower())})
+                return column_dict
+        finally:
+            connection.close()
 
 
 def construct_order_list(set_column_list):

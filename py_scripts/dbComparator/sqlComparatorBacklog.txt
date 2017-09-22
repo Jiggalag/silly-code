@@ -1,19 +1,13 @@
+Epics:
+1. Probably, add functional for cloning databases.
+
 Backlog:
 
 1. Present summary information more flexible.
 
-Epics:
-2. Probably, add functional for cloning databases.
-
-
-For UI version
-1. Transfer mailPassword = AKIAJHBVE2GQUQBRSQVA
-
-
 Enchancement:
 
-2. Transfer pack of parameters from UI to internal methods.
-3. UI hangs and disaples during comparing DBs. Add modal window with progress bar and some information about
+1. UI hangs and disaples during comparing DBs. Add modal window with progress bar and some information about
 progress of comparing.
-4. Add stage for final comparing of differences for each table. Differences should be added to sets to make comparing easier.
+2. Add stage for final comparing of differences for each table. Differences should be added to sets to make comparing easier.
 We need this stage to exclude situations, when same entities fonded in differents compare-packs.
