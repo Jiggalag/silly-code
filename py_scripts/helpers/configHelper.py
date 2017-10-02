@@ -3,60 +3,60 @@ import datetime
 import os.path
 import sys
 sys.path.append(os.getcwd() + '/py_scripts/helpers')
-from py_scripts.helpers import loggingHelper
+from py_scripts.helpers import logging_helper
 
-logger = loggingHelper.Logger(20)
+logger = logging_helper.Logger(20)
 
-class ifmsConfigCommon:
-    def __init__(self, configName):
-        if not os.path.exists(configName):
-            logger.error('Property file {} does not exist!'.format(configName))
+class IfmsConfigCommon:
+    def __init__(self, config_name):
+        if not os.path.exists(config_name):
+            logger.error('Property file {} does not exist!'.format(config_name))
             sys.exit(1)
         self.config = configparser.ConfigParser()
-        self.config.read(configName)
+        self.config.read(config_name)
 
 
     def getClients(self):
         return self.config['main']['clients'].split(',')
 
 
-    def getDate(self, section, propertyName):
-        value = self.config[section][propertyName]
+    def getDate(self, section, property_name):
+        value = self.config[section][property_name]
         return datetime.datetime.strptime(value, "%Y-%m-%d").date()
 
 
-    def getProperty(self, section, propertyName):
+    def getProperty(self, section, property_name):
         try:
-            propertyValue = self.config[section][propertyName]
-            if 'True' in propertyValue:
+            property_value = self.config[section][property_name]
+            if 'True' in property_value:
                 return True
-            if 'False' in propertyValue:
+            if 'False' in property_value:
                 return False
             try:
-                return int(propertyValue)
+                return int(property_value)
             except ValueError:
                 pass
             try:
-                return float(propertyValue)
+                return float(property_value)
             except ValueError:
-                if ',' in propertyValue:
-                    return propertyValue.split(',')
+                if ',' in property_value:
+                    return property_value.split(',')
                 else:
-                    return propertyValue
+                    return property_value
         except KeyError:
             return None
 
 
-    def getPropertyFromMainSection(self, propertyName):
-        return ifmsConfigCommon.getProperty(self, 'main', propertyName)
+    def getPropertyFromMainSection(self, property_name):
+        return IfmsConfigCommon.getProperty(self, 'main', property_name)
 
 
-    def getTimedeltaProperty(self, section, propertyName):
-        timeProperty = self.config[section][propertyName]
+    def getTimedeltaProperty(self, section, property_name):
+        time_property = self.config[section][property_name]
         days = 0
         hours = 0
         minutes = 0
-        for item in timeProperty.split(':'):
+        for item in time_property.split(':'):
             if 'd' in item:
                 days = int(item.replace('d', ''))
             if 'h' in item:
@@ -66,15 +66,14 @@ class ifmsConfigCommon:
         return datetime.timedelta(days=days, hours=hours, minutes=minutes)
 
 
-class ifmsConfigClient(ifmsConfigCommon):
-    def __init__(self, configName, client):
-        super().__init__(configName)
+class IfmsConfigClient(IfmsConfigCommon):
+    def __init__(self, config_name, client):
+        super().__init__(config_name)
         self.client = client
 
-
-    def getMongoConnectParams(self, stage):
-        paramArray = ['mongohost', 'mongodb', 'mongoport']
-        connectionDict = {}
+    def get_mongo_connection_params(self, stage):
+        param_array = ['mongohost', 'mongodb', 'mongoport']
+        connection_dict = {}
         if stage is None:
             stage = ''
         if self.client is None:
@@ -84,18 +83,17 @@ class ifmsConfigClient(ifmsConfigCommon):
         for item in self.config.items('mongoParameters'):
             if (stage in item[0]) and (client in item[0]):
                 key = item[0].replace(stage, '').replace(client, '').replace('.', '')
-                if key in paramArray:
-                    connectionDict.update({key.replace('mongo', ''): item[1]})
+                if key in param_array:
+                    connection_dict.update({key.replace('mongo', ''): item[1]})
             if 'common' in item[0]:
                 key = item[0].replace('common', '').replace('.', '')
-                if key in paramArray:
-                    connectionDict.update({key.replace('mongo', ''): item[1]})
-        return connectionDict
+                if key in param_array:
+                    connection_dict.update({key.replace('mongo', ''): item[1]})
+        return connection_dict
 
-
-    def getSQLConnectParams(self, stage):
-        paramArray = ['sqlhost', 'sqluser', 'sqlpassword', 'sqldb']
-        connectionDict = {}
+    def get_sql_connection_params(self, stage):
+        param_array= ['sqlhost', 'sqluser', 'sqlpassword', 'sqldb']
+        connection_dict = {}
         if stage is None:
             stage = ''
         if self.client is None:
@@ -103,31 +101,18 @@ class ifmsConfigClient(ifmsConfigCommon):
         for item in self.config.items('sqlParameters'):
             if (stage in item[0]) and (self.client in item[0]):
                 key = item[0].replace(stage, '').replace(self.client, '').replace('.', '')
-                if key in paramArray:
-                    connectionDict.update({key.replace('sql', ''): item[1]})
-        return connectionDict
+                if key in param_array:
+                    connection_dict.update({key.replace('sql', ''): item[1]})
+        return connection_dict
 
+    def get_sql_host_for_client_and_stage(self, stage):
+        return self.get_sql_connection_params(stage).get('host')
 
-    def getSQLHostForClientAndStage(self, stage):
-        return self.getSQLConnectParams(stage).get('host')
+    def get_sql_user_for_client_and_stage(self, stage):
+        return self.get_sql_connection_params(stage).get('user')
 
+    def get_sql_password_for_client_and_stage(self, stage):
+        return self.get_sql_connection_params(stage).get('password')
 
-    def getSQLUserForClientAndStage(self, stage):
-        return self.getSQLConnectParams(stage).get('user')
-
-
-    def getSQLPasswordForClientAndStage(self, stage):
-        return self.getSQLConnectParams(stage).get('password')
-
-
-    def getSQLDbForClientAndStage(self, stage):
-        return self.getSQLConnectParams(stage).get('db')
-
-
-
-
-
-
-
-
-
+    def get_sql_db_for_client_and_stage(self, stage):
+        return self.get_sql_connection_params(stage).get('db')
