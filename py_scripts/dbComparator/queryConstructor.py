@@ -33,8 +33,8 @@ class InitializeQuery:
             query_list.append(query)
         elif mode == "section-sum":
             sections = []  # Sections for imp-aggregating
-            column_string, set_column_list, set_join_section, set_order_list = \
-                self.prepare_query_sections(mapping, table)
+            column_string, set_column_list, set_join_section, set_order_list = self.prepare_query_sections(mapping,
+                                                                                                           table)
             for column in column_string.split(","):
                 if "id" == column[-2:]:
                     sections.append(column)
@@ -45,10 +45,13 @@ class InitializeQuery:
         elif mode == "detailed":
             offset = 0
             while offset < threshold:
-                column_string, set_column_list, set_join_section, set_order_list = \
-                    self.prepare_query_sections(mapping, table)
-                query = "SELECT {} FROM `{}` {} WHERE t.dt>='{}' ORDER BY {} LIMIT {},{};"\
-                    .format(set_column_list, table, set_join_section, dt, set_order_list, offset, comparing_step)
+                column_string, set_column_list, set_join_section, set_order_list = self.prepare_query_sections(mapping,
+                                                                                                               table)
+                # TODO: in string below I replace t.dt -> dt, check it!
+                query = ("SELECT {} ".format(set_column_list) +
+                         "FROM `{}` {} ".format(table, set_join_section) +
+                         "WHERE dt>='{}' ".format(dt) +
+                         "ORDER BY {} LIMIT {},{};".format(set_order_list, offset, comparing_step))
                 offset = offset + comparing_step
                 query_list.append(query)
         else:
@@ -61,16 +64,15 @@ class InitializeQuery:
     def prepare_query_sections(self, mapping, table):
         column_string = dbHelper.DbConnector(self.sql, self.logger).get_column_list(table)
         set_column_list, set_join_section = self.construct_column_and_join_section(column_string, mapping, table)
-        # if set_column_list[-1:] == ",":
-        #     set_column_list = set_column_list[:-1]
         set_order_list = construct_order_list(set_column_list)
         columns = ",".join(set_order_list)
         return column_string, set_column_list, set_join_section, columns
 
-    def construct_column_and_join_section(self, column_string, mapping, table):
+    # TODO: divide on two methods
+    def construct_column_and_join_section(self, columns, mapping, table):
         set_column_list = []
         set_join_section = []
-        for column in column_string.split(","):
+        for column in columns:
             if "`{}`".format(column) in list(mapping.keys()):
                 linked_table = mapping.get("`{}`".format(column))
                 if "remoteid" in column:
@@ -87,7 +89,8 @@ class InitializeQuery:
                     else:
                         set_column_list.append("{}.`id` AS {}".format(linked_table, column))
                 if "`{}`".format(table) != linked_table:
-                    set_join_section.append(" JOIN {0} ON {2}.{1}={0}.`id`".format(linked_table, column, table))
+                    if not already_joined(set_join_section, linked_table):
+                        set_join_section.append(" JOIN {0} ON {2}.{1}={0}.`id`".format(linked_table, column, table))
             else:
                 set_column_list.append("{}.{}".format(table, column))
         return ", ".join(set_column_list), " ".join(set_join_section)
@@ -136,3 +139,10 @@ def construct_order_list(set_column_list):
         if item not in set_order_list:
             set_order_list.append(item)
     return set_order_list
+
+
+def already_joined(join_list, table):
+    for item in join_list:
+        if table in item:
+            return True
+    return False

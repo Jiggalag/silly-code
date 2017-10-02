@@ -77,9 +77,7 @@ class DbConnector:
 
     @staticmethod
     def parallel_select(sql_params, client, query, logger, result_type="frozenset"):
-        sql_properties = []
-        sql_properties.append(sql_params.get('prod'))
-        sql_properties.append(sql_params.get('test'))
+        sql_properties = [sql_params.get('prod'), sql_params.get('test')]
         pool = Pool(2)
         result = pool.map((lambda x: DbConnector(x, client=client, logger=logger).select(query, result_type)),
                           sql_properties)
@@ -201,7 +199,7 @@ class DbConnector:
                     if not column_list:
                         return ""
                     column_string = ','.join(column_list)
-                    return column_string.lower()
+                    return column_string.lower().split(',')
             finally:
                 if connection.open:
                     connection.close()
