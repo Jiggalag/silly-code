@@ -513,7 +513,7 @@ class Example(QWidget):
                                      "\n".join(empty_fields),QMessageBox.Ok, QMessageBox.Ok)
                 return False
         else:
-            print('Comparing started!')
+            Logger(self.logging_level.currentText()).info('Comparing started!')
             prod_host = self.prod_host.text()
             prod_user = self.prod_user.text()
             prod_password = self.prod_password.text()
