@@ -572,13 +572,12 @@ class Example(QWidget):
             'skip_tables': self.skip_tables.text(),
             'skip_columns': self.skip_columns.text(),
             # 'check_type': check_type,
-            'logger': Logger(self.logging_level.currentText()),
+            'logger': Logger(self.logging_level.currentText(), self.path_to_logs.text()),
             'amount_checking_records': self.amount_checking_records.text(),
             'comparing_step': self.comparing_step.text(),
             'depth_report_check': self.depth_report_check.text(),
             'schema_columns': self.schema_columns.text(),
             'retry_attempts': self.retry_attempts.text(),
-            'path_to_logs': self.path_to_logs.text(),
             'os': OS
         }
         return properties_dict
