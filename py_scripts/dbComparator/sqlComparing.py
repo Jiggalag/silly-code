@@ -118,7 +118,6 @@ class Object:
     def compare_data(self, global_break, start_time, service_dir, mapping):
         tables = self.comparing_info.get_tables(self.excluded_tables, self.client_ignored_tables)
         for table in tables:
-            table = 'campaignbrowseractionreport'
             self.logger.info("Table {} processing now...".format(table))
             start_table_check_time = datetime.datetime.now()
             local_break = False
