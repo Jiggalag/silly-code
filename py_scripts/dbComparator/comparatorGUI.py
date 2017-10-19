@@ -337,6 +337,7 @@ class Example(QWidget):
                     elif 'db' in string:
                         db = string[string.find('=') + 1:]
                         self.test_db.setText(db)
+            # TODO: add loading other values from file
 
     def save_configuration(self):
         text = []
@@ -564,6 +565,10 @@ class Example(QWidget):
         # else:
         #     check_type = 'both'
 
+        path_to_logs = self.path_to_logs.text()
+        if path_to_logs == '':
+            path_to_logs = None
+
         properties_dict = {
             'check_schema': check_schema,
             'fail_with_first_error': fail_with_first_error,
@@ -572,7 +577,7 @@ class Example(QWidget):
             'skip_tables': self.skip_tables.text(),
             'skip_columns': self.skip_columns.text(),
             # 'check_type': check_type,
-            'logger': Logger(self.logging_level.currentText(), self.path_to_logs.text()),
+            'logger': Logger(self.logging_level.currentText(), path_to_logs),
             'amount_checking_records': self.amount_checking_records.text(),
             'comparing_step': self.comparing_step.text(),
             'depth_report_check': self.depth_report_check.text(),

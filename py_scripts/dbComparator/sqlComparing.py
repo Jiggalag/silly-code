@@ -24,7 +24,8 @@ class Object:
             'hourOfDayS',
             'dayOfWeekS',
             'impCost',
-            'id']
+            'id'
+        ]
         self.mode = 'day-sum'
         self.client_ignored_tables = []
         self.check_schema = True
@@ -199,9 +200,10 @@ class Object:
         tables = self.comparing_info.get_tables(self.excluded_tables, self.client_ignored_tables)
         for table in tables:
             self.logger.info("Check schema for table {}...".format(table))
-            query = "SELECT {} FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'DBNAME' " \
-                    "AND TABLE_NAME='TABLENAME' ORDER BY COLUMN_NAME;"\
-                .replace("TABLENAME", table).format(', '.join(self.schema_columns))
+            query = ("SELECT {} FROM INFORMATION_SCHEMA.COLUMNS ".format(', '.join(self.schema_columns)) +
+                    "WHERE TABLE_SCHEMA = 'DBNAME' AND TABLE_NAME='TABLENAME' ".replace("TABLENAME", table) +
+                    "ORDER BY COLUMN_NAME;")
+
             prod_columns, test_columns = dbHelper.DbConnector.parallel_select(self.sql_connection_properties,
                                                                               self.client, query, self.logger)
             if (prod_columns is None) or (test_columns is None):
@@ -210,35 +212,27 @@ class Object:
             uniq_for_prod = list(set(prod_columns) - set(test_columns))
             uniq_for_test = list(set(test_columns) - set(prod_columns))
             if len(uniq_for_prod) > 0:
-                self.logger.error("Elements, unique for table {} ".format(table) +
-                                  "in {} db:{}".format(self.prod_sql.get('db'), list(uniq_for_prod[0])))
-                if self.fail_with_first_error:
-                    self.logger.critical("First error founded, comparing failed. " +
-                                         "To find all discrepancies set failWithFirstError property in false\n")
-                    schema_comparing_time = datetime.datetime.now() - start_time 
-                    self.logger.info("Schema partially compared in {}".format(datetime.datetime.now() - start_time))
-                    return schema_comparing_time
+                return self.schema_comparing_time(table, uniq_for_prod, start_time)
             if len(uniq_for_test) > 0:
-                self.logger.error("Elements, unique for table {} ".format(table) +
-                                  "in {} db:{}".format(self.test_sql.get('db'), list(uniq_for_test[0])))
-                if self.fail_with_first_error:
-                    self.logger.critical("First error founded, comparing failed. "
-                                         "To find all discrepancies set failWithFirstError property in false\n")
-                    schema_comparing_time = datetime.datetime.now() - start_time
-                    self.logger.info("Schema partially compared in {}".format(schema_comparing_time))
-                    return schema_comparing_time
+                return self.schema_comparing_time(table, uniq_for_test, start_time)
             if not all([len(uniq_for_prod) == 0, len(uniq_for_test) == 0]):
-                self.logger.error(" [ERROR] Tables {} differs!".format(table))
-                self.comparing_info.update_diff_schema(table)
-                if self.fail_with_first_error:
-                    self.logger.critical("First error founded, comparing failed. " +
-                                         "To find all discrepancies set failWithFirstError property in false\n")
-                    schema_comparing_time = datetime.datetime.now() - start_time
-                    self.logger.info("Schema partially compared in {}".format(schema_comparing_time))
-                    return schema_comparing_time
+                return self.schema_comparing_time(table, None, start_time)
         schema_comparing_time = datetime.datetime.now() - start_time
         self.logger.info("Schema compared in {}".format(schema_comparing_time))
         return datetime.datetime.now() - start_time
+
+    def schema_comparing_time(self, table, uniq_list, start_time):
+        if  uniq_list is None:
+            self.logger.error(" [ERROR] Tables {} differs!".format(table))
+        else:
+            self.logger.error("Elements, unique for table {} ".format(table) +
+                              "in {} db:{}".format(self.test_sql.get('db'), list(uniq_list[0])))
+        if self.fail_with_first_error:
+            self.logger.critical("First error founded, comparing failed. "
+                                 "To find all discrepancies set failWithFirstError property in false\n")
+            schema_comparing_time = datetime.datetime.now() - start_time
+            self.logger.info("Schema partially compared in {}".format(schema_comparing_time))
+            return schema_comparing_time
 
     def compare_reports_detailed(self, table, query, service_dir):
         header = get_header(query)
@@ -247,8 +241,8 @@ class Object:
         if (prod_reports is None) or (test_reports is None):
             self.logger.warn('Table {} skipped because something going bad'.format(table))
             return True
-        prod_unique_reports = prod_reports - test_reports
-        test_unique_reports = test_reports - prod_reports
+        prod_unique_reports = set(prod_reports) - set(test_reports)
+        test_unique_reports = set(test_reports) - set(prod_reports)
         if len(prod_unique_reports) > 0:
             self.write_unique_entities_to_file(table, prod_unique_reports, "prod", header, service_dir)
         if len(test_unique_reports) > 0:
