@@ -119,6 +119,8 @@ class Object:
     def compare_data(self, global_break, start_time, service_dir, mapping):
         tables = self.comparing_info.get_tables(self.excluded_tables, self.client_ignored_tables)
         for table in tables:
+            print(tables)
+            # table = 'campaignbrowserreport'
             self.logger.info("Table {} processing now...".format(table))
             start_table_check_time = datetime.datetime.now()
             local_break = False
@@ -189,11 +191,16 @@ class Object:
                 if self.mode == "section-sum":
                     section = calculate_section_name(query)
                     self.logger.info("Check section {} for table {}".format(section, table))
-                if not self.compare_reports_detailed(table, query, service_dir) and self.fail_with_first_error:
-                    self.logger.critical("First error founded, checking failed. Comparing takes {}.".format(
-                        datetime.datetime.now() - start_time))
-                    global_break = True
-                    return global_break, local_break
+                    # TODO: add stopping of iterating by queries
+                else:
+                    cmp_result = self.compare_reports_detailed(table, query, service_dir)
+                    if cmp_result is None:
+                        return global_break, local_break
+                    if not cmp_result and self.fail_with_first_error:
+                        self.logger.critical("First error founded, checking failed. Comparing takes {}.".format(
+                            datetime.datetime.now() - start_time))
+                        global_break = True
+                        return global_break, local_break
         return global_break, local_break
 
     def compare_metadata(self, start_time):
@@ -241,8 +248,16 @@ class Object:
         if (prod_reports is None) or (test_reports is None):
             self.logger.warn('Table {} skipped because something going bad'.format(table))
             return True
+        if len(prod_reports) == 0 or len(test_reports) == 0:
+            self.logger.warn(('Checking table {} finished unexpectedly, '.format(table) +
+                              'because at least one result set empty.' +
+                              'Prod_reports_len = {}, '.format(len(prod_reports)) +
+                              'test_reports_len = {}. '.format(len(test_reports))))
+            return None
         prod_unique_reports = set(prod_reports) - set(test_reports)
         test_unique_reports = set(test_reports) - set(prod_reports)
+        # TODO: write to file only on last stage, previously you should store uniq entities in set in memory
+        # TODO: and periodically compare it
         if len(prod_unique_reports) > 0:
             self.write_unique_entities_to_file(table, prod_unique_reports, "prod", header, service_dir)
         if len(test_unique_reports) > 0:
@@ -289,6 +304,8 @@ class Object:
             return True
         prod_unique_entities = set(prod_entities) - set(test_entities)
         test_unique_entities = set(test_entities) - set(prod_entities)
+        # TODO: write to file only on last stage, previously you should store uniq entities in set in memory
+        # TODO: and periodically compare it
         if len(prod_unique_entities) > 0:
             self.write_unique_entities_to_file(table, prod_unique_entities, "prod", header, service_dir)
         if len(test_unique_entities) > 0:
@@ -302,12 +319,17 @@ class Object:
 
     def compare_report_table(self, global_break, mapping, local_break, table, service_dir, start_time):
         dates = converters.convertToList(self.compare_dates(table))
+        # TODO: here I have problem with dates, strongly test this code and fix it
         dates.sort()
         if dates:
             prod_record_amount, test_record_amount = dbHelper.get_amount_records(table, dates[0],
                                                                                  self.sql_connection_properties,
                                                                                  self.client,
                                                                                  self.logger)
+            if prod_record_amount != test_record_amount:
+                self.logger.warn(('Amount of records significantly differs for table {}'.format(table) +
+                                  'Prod record amount: {}. '.format(prod_record_amount) +
+                                  'Test record amount: {}. '.format(test_record_amount)))
             for dt in reversed(dates):
                 if not all([global_break, local_break]):
                     max_amount = max(prod_record_amount, test_record_amount)

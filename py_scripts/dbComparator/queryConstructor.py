@@ -44,10 +44,11 @@ class InitializeQuery:
                     query_list.append(query)
         elif mode == "detailed":
             offset = 0
+            column_string, set_column_list, set_join_section, set_order_list = self.prepare_query_sections(mapping,
+                                                                                                           table)
             while offset < threshold:
-                column_string, set_column_list, set_join_section, set_order_list = self.prepare_query_sections(mapping,
-                                                                                                               table)
                 # TODO: in string below I replace t.dt -> dt, check it!
+                # TODO: code broken, today (19.10.17) dt sets as 07.06.17
                 query = ("SELECT {} ".format(set_column_list) +
                          "FROM `{}` {} ".format(table, set_join_section) +
                          "WHERE dt>='{}' ".format(dt) +

@@ -5,6 +5,7 @@ import sys
 import os
 import platform
 import pymysql
+import cProfile
 
 from py_scripts.dbComparator.comparatorWithUI import Backend
 import py_scripts.helpers.dbHelper as dbHelper
@@ -128,6 +129,9 @@ class Example(QWidget):
 
         self.logging_level = QComboBox(self)
         self.logging_level.addItems(['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG'])
+        index = self.logging_level.findText('DEBUG', Qt.MatchFixedString)
+        if index >= 0:
+            self.logging_level.setCurrentIndex(index)
 
         # Checkboxes
 
@@ -303,6 +307,7 @@ class Example(QWidget):
         self.test_password.clear()
         self.test_db.clear()
         self.send_mail_to.clear()
+        # TODO: add reseting of state for checkbox, lineedits and other elements
 
     def show_dialog(self):
         current_dir = os.getcwd()
@@ -311,33 +316,85 @@ class Example(QWidget):
             data = file.read()
             for record in data.split('\n'):
                 string = record.replace(' ', '')
-                if 'prod' in string:
-                    if 'host' in string:
-                        host = string[string.find('=') + 1:]
-                        self.prod_host.setText(host)
-                    elif 'user' in string:
-                        user = string[string.find('=') + 1:]
-                        self.prod_user.setText(user)
-                    elif 'password' in string:
-                        password = string[string.find('=') + 1:]
-                        self.prod_password.setText(password)
-                    elif 'db' in string:
-                        db = string[string.find('=') + 1:]
-                        self.prod_db.setText(db)
-                elif 'test' in string:
-                    if 'host' in string:
-                        host = string[string.find('=') + 1:]
-                        self.test_host.setText(host)
-                    elif 'user' in string:
-                        user = string[string.find('=') + 1:]
-                        self.test_user.setText(user)
-                    elif 'password' in string:
-                        password = string[string.find('=') + 1:]
-                        self.test_password.setText(password)
-                    elif 'db' in string:
-                        db = string[string.find('=') + 1:]
-                        self.test_db.setText(db)
-            # TODO: add loading other values from file
+                if 'prod.host' in string:
+                    host = string[string.find('=') + 1:]
+                    self.prod_host.setText(host)
+                elif 'prod.user' in string:
+                    user = string[string.find('=') + 1:]
+                    self.prod_user.setText(user)
+                elif 'prod.password' in string:
+                    password = string[string.find('=') + 1:]
+                    self.prod_password.setText(password)
+                elif 'prod.db' in string:
+                    db = string[string.find('=') + 1:]
+                    self.prod_db.setText(db)
+                elif 'test.host' in string:
+                    host = string[string.find('=') + 1:]
+                    self.test_host.setText(host)
+                elif 'test.user' in string:
+                    user = string[string.find('=') + 1:]
+                    self.test_user.setText(user)
+                elif 'test.password' in string:
+                    password = string[string.find('=') + 1:]
+                    self.test_password.setText(password)
+                elif 'test.db' in string:
+                    db = string[string.find('=') + 1:]
+                    self.test_db.setText(db)
+                elif 'skip_tables' in string:
+                    skip_tables = string[string.find('=') + 1:]
+                    self.skip_tables.setText(skip_tables)
+                elif 'amount_checking_records' in string:
+                    amount_checking_records = string[string.find('=') + 1:]
+                    self.amount_checking_records.setText(amount_checking_records)
+                elif 'comparing_step' in string:
+                    comparing_step = string[string.find('=') + 1:]
+                    self.comparing_step.setText(comparing_step)
+                elif 'depth_report_check' in string:
+                    depth_report_check = string[string.find('=') + 1:]
+                    self.depth_report_check.setText(depth_report_check)
+                elif 'schema_columns' in string:
+                    schema_columns = string[string.find('=') + 1:]
+                    self.schema_columns.setText(schema_columns)
+                elif 'retry_attempts' in string:
+                    retry_attempts = string[string.find('=') + 1:]
+                    self.retry_attempts.setText(retry_attempts)
+                elif 'path_to_logs' in string:
+                    path_to_logs = string[string.find('=') + 1:]
+                    self.path_to_logs.setText(path_to_logs)
+                elif 'send_mail_to' in string:
+                    send_mail_to = string[string.find('=') + 1:]
+                    self.send_mail_to.setText(send_mail_to)
+                elif 'compare_schema' in string:
+                    compare_schema = string[string.find('=') + 1:]
+                    if compare_schema == 'True':
+                        if self.cb_enable_schema_checking.isChecked():
+                            pass
+                        else:
+                            self.cb_enable_schema_checking.checkState()
+                    else:
+                        if self.cb_enable_schema_checking.isChecked():
+                            self.cb_enable_schema_checking.checkState()
+                        else:
+                            pass
+                elif 'fail_with_first_error' in string:
+                    only_first_error = string[string.find('=') + 1:]
+                    if only_first_error == 'True':
+                        if self.cb_fail_with_first_error.isChecked():
+                            pass
+                        else:
+                            self.cb_fail_with_first_error.checkState()
+                    else:
+                        if self.cb_fail_with_first_error.isChecked():
+                            self.cb_fail_with_first_error.checkState()
+                        else:
+                            pass
+                elif 'logging_level' in string:
+                    logging_level = string[string.find('=') + 1:]
+                    index = self.logging_level.findText(logging_level, Qt.MatchFixedString)
+                    if index >= 0:
+                        self.logging_level.setCurrentIndex(index)
+                # TODO: add loading of checking mode
+                # TODO: fix incorrect loading of flags
 
     def save_configuration(self):
         text = []
@@ -352,11 +409,11 @@ class Example(QWidget):
         if self.test_host.text() != '':
             text.append('test.host = {}'.format(self.test_host.text()))
         if self.test_user.text() != '':
-            text.append('test_user = {}'.format(self.test_user.text()))
+            text.append('test.user = {}'.format(self.test_user.text()))
         if self.test_password.text() != '':
-            text.append('test_password = {}'.format(self.test_password.text()))
+            text.append('test.password = {}'.format(self.test_password.text()))
         if self.test_db.text() != '':
-            text.append('test_db = {}'.format(self.test_db.text()))
+            text.append('test.db = {}'.format(self.test_db.text()))
         if self.send_mail_to.text() != '':
             text.append('send_mail_to = {}'.format(self.send_mail_to.text()))
         if self.skip_tables != '':
@@ -380,8 +437,20 @@ class Example(QWidget):
             text.append('schema_columns = {}'.format(self.schema_columns.text()))
         if self.retry_attempts != '' and self.retry_attempts != '5':
             text.append('retry_attempts = {}'.format(self.retry_attempts.text()))
+        if self.send_mail_to != '':
+            text.append('send_mail_to = {}'.format(self.send_mail_to.text()))
         if self.path_to_logs != '':
             text.append('path_to_logs = {}'.format(self.path_to_logs.text()))
+        if self.cb_enable_schema_checking.isChecked() == True:
+            text.append('compare_schema = True')
+        if self.cb_enable_schema_checking.isChecked() == False:
+            text.append('compare_schema = False')
+        if self.cb_fail_with_first_error.isChecked() == True:
+            text.append('fail_with_first_error = True')
+        if self.cb_fail_with_first_error.isChecked() == False:
+            text.append('fail_with_first_error = False')
+        # TODO: add loading of checking mode
+        text.append('logging_level = {}'.format(self.logging_level.currentText()))
         fileName, _ = QFileDialog.getSaveFileName(self, "QFileDialog.getSaveFileName()",  "",
                                                   "All Files (*);;Text Files (*.txt)")
         if fileName:
@@ -592,7 +661,7 @@ class Example(QWidget):
         connection_dict = self.get_sql_params()
         properties = self.get_properties()
         if connection_dict and properties:
-            Backend(connection_dict, properties).run_comparing()
+            cProfile.run(Backend(connection_dict, properties).run_comparing())
 
 
 class MainWindow(QMainWindow):
