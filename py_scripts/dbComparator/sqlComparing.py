@@ -2,21 +2,20 @@ import datetime
 import os
 from py_scripts.helpers import dbHelper, converters
 from py_scripts.dbComparator import queryConstructor
+from py_scripts.dbComparator import cmp_reports
+from py_scripts.dbComparator import cmp_entities
 
 # TODO: Days in past parameter not works for Day-summary shecking mode - fix it.
+
 
 class Object:
     def __init__(self, sql_connection_properties, sql_comparing_properties, comparing_info, client=None):
         self.client = client
-        self.logger = sql_comparing_properties.get('logger')
         self.sql_connection_properties = sql_connection_properties
         self.prod_sql = sql_connection_properties.get('prod')
         self.test_sql = sql_connection_properties.get('test')
-        self.sql_comparing_properties = sql_comparing_properties
         self.comparing_info = comparing_info
-        self.sql_comparing_properties = {}
         # TODO: add checking situation if client is None - we should handle this case separately?
-
         self.attempts = 5
         self.comparing_step = 10000
         self.hide_columns = [
@@ -78,9 +77,6 @@ class Object:
             self.hide_columns = sql_comparing_properties.get('skip_columns').split(',')
         if 'mode' in sql_comparing_properties.keys():
             self.mode = sql_comparing_properties.get('mode')
-        # TODO: probably should be deleted
-        if 'clientIgnoredTables' in sql_comparing_properties.keys():
-            self.client_ignored_tables = sql_comparing_properties.get('clientIgnoredTables')
         if 'check_schema' in sql_comparing_properties.keys():
             self.check_schema = sql_comparing_properties.get('check_schema')
         if 'depth_report_check' in sql_comparing_properties.keys():
@@ -97,12 +93,30 @@ class Object:
             self.path_to_logs = sql_comparing_properties.get('path_to_logs')
         if 'send_mail_to' in sql_comparing_properties.keys():
             self.send_mail_to = sql_comparing_properties.get('send_mail_to')
-        if 'amount_checking_record' in sql_comparing_properties.keys():
-            self.amount_checking_record = sql_comparing_properties.get('amount_checking_record')
+        if 'logger' in sql_comparing_properties.keys():
+            self.logger = sql_comparing_properties.get('logger')
+        if 'amount_checking_records' in sql_comparing_properties.keys():
+            self.amount_checking_records = sql_comparing_properties.get('amount_checking_records')
         if 'table_timeout' in sql_comparing_properties.keys():
             self.table_timeout = sql_comparing_properties.get('table_timeout')
             if self.table_timeout == 0:
                 self.table_timeout = None
+        self.sql_comparing_properties = {
+            'retry_attempts': self.attempts,
+            'comparing_step': self.comparing_step,
+            'skip_columns': self.hide_columns,  # TODO: rename on UI-side
+            'mode': self.mode,
+            'check_schema': self.check_schema,
+            'depth_report_check': self.depth_report_check,
+            'fail_with_first_error': self.fail_with_first_error,
+            'schema_columns': self.schema_columns,
+            'logger': self.logger,
+            'separateChecking': self.separate_checking,  # TODO: rename on UI-side
+            'skip_tables': self.excluded_tables,  # TODO: rename on UI-side
+            'send_mail_to': self.send_mail_to,
+            'amount_checking_records': self.amount_checking_records,
+            'table_timeout': self.table_timeout
+        }
 
     def complex_condition(self, table):
         booler = []
@@ -124,17 +138,20 @@ class Object:
             return False
 
     def compare_data(self, global_break, start_time, service_dir, mapping):
+        prod_connection = dbHelper.DbConnector(self.prod_sql, self.logger)
+        test_connection = dbHelper.DbConnector(self.test_sql, self.logger)
         tables = self.comparing_info.get_tables(self.excluded_tables, self.client_ignored_tables)
         for table in tables:
-            print(tables)
-            # table = 'campaignbrowserreport'
+            # table = 'kvkeypairreport'
             self.logger.info("Table {} processing now...".format(table))
             start_table_check_time = datetime.datetime.now()
             local_break = False
-            query_object = queryConstructor.InitializeQuery(self.prod_sql, self.logger)
+            query_object = queryConstructor.InitializeQuery(prod_connection, self.logger)
             if self.complex_condition(table):
                 if not global_break:
-                    self.compare_report_table(global_break, mapping, local_break, table, service_dir, start_time)
+                    cmp_reports.compare_report_table(prod_connection, test_connection, global_break, mapping,
+                                                     local_break, table, start_time, self.comparing_info,
+                                                     **self.sql_comparing_properties)
                     self.logger.info("Table {} ".format(table) +
                                      "checked in {}".format(datetime.datetime.now() - start_table_check_time))
                 else:
@@ -146,7 +163,7 @@ class Object:
                     continue
                 prod_record_amount, test_record_amount = dbHelper.get_amount_records(table,
                                                                                      None,
-                                                                                     self.sql_connection_properties,
+                                                                                     [prod_connection, test_connection],
                                                                                      self.logger)
                 if prod_record_amount == 0 and test_record_amount == 0:
                     self.logger.warn("Table {} is empty on both servers!".format(table))
@@ -162,7 +179,9 @@ class Object:
                 if not global_break:
                     table_start_time = datetime.datetime.now()
                     for query in query_list:
-                        if (not self.compare_entity_table(table, query, service_dir)) and self.fail_with_first_error:
+                        if (not cmp_entities.compare_entity_table(prod_connection, test_connection, table, query,
+                                                                  self.comparing_info,
+                                                                  self.logger)) and self.fail_with_first_error:
                             self.logger.info("First error founded, checking failed. Comparing takes {}".format(
                                 datetime.datetime.now() - start_time))
                             global_break = True
@@ -184,42 +203,9 @@ class Object:
         self.logger.info("Comparing finished in {}".format(data_comparing_time))
         return data_comparing_time
 
-    def iteration_comparing_by_queries(self, query_list, global_break, table, start_time, service_dir, table_timeout):
-        local_break = False
-        for query in query_list:
-            if self.mode == "day-sum":
-                if ("impressions" and "clicks") in dbHelper.DbConnector(self.prod_sql,
-                                                                        self.logger).get_column_list(table):
-                    if not self.compare_report_sums(table, query) and self.fail_with_first_error:
-                        self.logger.critical("First error founded, checking failed. " +
-                                             "Comparing takes {}.".format(datetime.datetime.now() - start_time))
-                        global_break = True
-                        return global_break, local_break
-                else:
-                    self.logger.warn("There is no impression of click column in table {}".format(table))
-                    local_break = True
-                    return global_break, local_break
-            elif self.mode in ["section-sum", "detailed"]:
-                if self.mode == "section-sum":
-                    section = calculate_section_name(query)
-                    self.logger.info("Check section {} for table {}".format(section, table))
-                    # TODO: add stopping of iterating by queries
-                else:
-                    cmp_result = self.compare_reports_detailed(table, query, service_dir)
-                    if cmp_result is None:
-                        return global_break, local_break
-                    if not cmp_result and self.fail_with_first_error:
-                        self.logger.critical("First error founded, checking failed. Comparing takes {}.".format(
-                            datetime.datetime.now() - start_time))
-                        global_break = True
-                        return global_break, local_break
-            if table_timeout is not None:
-                if datetime.datetime.now() - start_time > datetime.timedelta(minutes=table_timeout):
-                    self.logger.error('Checking table {} exceded timeout {}. Finished'.format(table, table_timeout))
-                    return global_break, local_break
-        return global_break, local_break
-
     def compare_metadata(self, start_time):
+        prod_connection = dbHelper.DbConnector(self.prod_sql, self.logger)
+        test_connection = dbHelper.DbConnector(self.test_sql, self.logger)
         tables = self.comparing_info.get_tables(self.excluded_tables, self.client_ignored_tables)
         for table in tables:
             self.logger.info("Check schema for table {}...".format(table))
@@ -227,8 +213,7 @@ class Object:
                      "WHERE TABLE_SCHEMA = 'DBNAME' AND TABLE_NAME='TABLENAME' ".replace("TABLENAME", table) +
                      "ORDER BY COLUMN_NAME;")
 
-            prod_columns, test_columns = dbHelper.DbConnector.parallel_select(self.sql_connection_properties,
-                                                                              query, self.logger)
+            prod_columns, test_columns = dbHelper.DbConnector.parallel_select([prod_connection, test_connection], query)
             if (prod_columns is None) or (test_columns is None):
                 self.logger.warn('Table {} skipped because something going bad'.format(table))
                 break
@@ -257,160 +242,6 @@ class Object:
             self.logger.info("Schema partially compared in {}".format(schema_comparing_time))
             return schema_comparing_time
 
-    def compare_reports_detailed(self, table, query, service_dir):
-        header = get_header(query)
-        prod_reports, test_reports = dbHelper.DbConnector.parallel_select(self.sql_connection_properties,
-                                                                          self.client, query, self.logger)
-        if (prod_reports is None) or (test_reports is None):
-            self.logger.warn('Table {} skipped because something going bad'.format(table))
-            return True
-        if len(prod_reports) == 0 or len(test_reports) == 0:
-            self.logger.warn(('Checking table {} finished unexpectedly, '.format(table) +
-                              'because at least one result set empty.' +
-                              'Prod_reports_len = {}, '.format(len(prod_reports)) +
-                              'test_reports_len = {}. '.format(len(test_reports))))
-            return None
-        prod_unique_reports = set(prod_reports) - set(test_reports)
-        test_unique_reports = set(test_reports) - set(prod_reports)
-        # TODO: write to file only on last stage, previously you should store uniq entities in set in memory
-        # TODO: and periodically compare it
-        if len(prod_unique_reports) > 0:
-            self.write_unique_entities_to_file(table, prod_unique_reports, "prod", header, service_dir)
-        if len(test_unique_reports) > 0:
-            self.write_unique_entities_to_file(table, test_unique_reports, "test", header, service_dir)
-        if not all([len(prod_unique_reports) == 0, len(test_unique_reports) == 0]):
-            self.logger.error("Tables {} differs!".format(table))
-            self.comparing_info.update_diff_schema(table)
-            return False
-        else:
-            return True
-
-    def compare_report_sums(self, table, query):
-        prod_reports, test_reports = dbHelper.DbConnector.parallel_select(self.sql_connection_properties,
-                                                                          query, self.logger, "list")
-        if (prod_reports is not None) or (test_reports is not None):
-            return True
-        clicks = True
-        imps = True
-        prod_imps = prod_reports[0]
-        test_imps = test_reports[0]
-        prod_clicks = prod_reports[1]
-        test_clicks = test_reports[1]
-        if prod_clicks != test_clicks:
-            clicks = False
-            self.logger.warn("There are different click sums for query {}. ".format(query) +
-                             "Prod clicks={}, test clicks={}".format(prod_clicks, test_clicks))
-        if prod_imps != test_imps:
-            imps = False
-            self.logger.warn("There are different imp sums for query {}. ".format(query) +
-                             "Prod imps={}, test imps={}".format(prod_imps, test_imps))
-        if not all([clicks, imps]):
-            self.logger.error("Tables {} differs!".format(table))
-            self.comparing_info.update_diff_data(table)
-            return False
-        else:
-            return True
-
-    def compare_entity_table(self, table, query, service_dir):
-        header = get_header(query)
-        prod_entities, test_entities = dbHelper.DbConnector.parallel_select(self.sql_connection_properties,
-                                                                            query, self.logger)
-        if (prod_entities is None) or (test_entities is None):
-            self.logger.warn('Table {} skipped because something going bad'.format(table))
-            return True
-        prod_unique_entities = set(prod_entities) - set(test_entities)
-        test_unique_entities = set(test_entities) - set(prod_entities)
-        # TODO: write to file only on last stage, previously you should store uniq entities in set in memory
-        # TODO: and periodically compare it
-        if len(prod_unique_entities) > 0:
-            self.write_unique_entities_to_file(table, prod_unique_entities, "prod", header, service_dir)
-        if len(test_unique_entities) > 0:
-            self.write_unique_entities_to_file(table, test_unique_entities, "test", header, service_dir)
-        if not all([len(prod_unique_entities) == 0, len(test_unique_entities) == 0]):
-            self.logger.error("Tables {} differs!".format(table))
-            self.comparing_info.update_diff_data(table)
-            return False
-        else:
-            return True
-
-    def compare_report_table(self, global_break, mapping, local_break, table, service_dir, start_time):
-        dates = converters.convertToList(self.compare_dates(table))
-        # TODO: here I have problem with dates, strongly test this code and fix it
-        dates.sort()
-        if dates:
-            prod_record_amount, test_record_amount = dbHelper.get_amount_records(table, dates[0],
-                                                                                 self.sql_connection_properties,
-                                                                                 self.logger)
-            if prod_record_amount != test_record_amount:
-                self.logger.warn(('Amount of records significantly differs for table {}'.format(table) +
-                                  'Prod record amount: {}. '.format(prod_record_amount) +
-                                  'Test record amount: {}. '.format(test_record_amount)))
-            for dt in reversed(dates):
-                if not all([global_break, local_break]):
-                    max_amount = max(prod_record_amount, test_record_amount)
-                    cmp_object = queryConstructor.InitializeQuery(self.prod_sql, self.logger)
-                    query_list = cmp_object.report(table, dt, self.mode, max_amount,
-                                                   self.comparing_step, mapping)
-                    global_break, local_break = self.iteration_comparing_by_queries(query_list, global_break, table,
-                                                                                    start_time, service_dir,
-                                                                                    self.table_timeout)
-                else:
-                    break
-        else:
-            self.logger.warn("Tables {} should not be compared correctly, ".format(table) +
-                             "because they have no any crosses dates in reports")
-            self.comparing_info.no_crossed_tables.append(table)
-
-    def compare_dates(self, table):
-        select_query = "SELECT distinct(`dt`) from {};".format(table)
-        prod_dates, test_dates = dbHelper.DbConnector.parallel_select(self.sql_connection_properties,
-                                                                      select_query, self.logger)
-        if (prod_dates is None) or (test_dates is None):
-            self.logger.warn('Table {} skipped because something going bad'.format(table))
-            return []
-        if all([prod_dates, test_dates]):
-            return self.calculate_comparing_timeframe(prod_dates, test_dates, table)
-        else:
-            if not prod_dates and not test_dates:
-                self.logger.warn("Table {} is empty in both dbs...".format(table))
-                self.comparing_info.empty.append(table)
-            elif not prod_dates:
-                self.logger.warn("Table {} on {} is empty!".format(table, self.prod_sql.get('db')))
-                self.comparing_info.update_empty("prod", table)
-            else:
-                self.logger.warn("Table {} on {} is empty!".format(table, self.test_sql.get('db')))
-                self.comparing_info.update_empty("test", table)
-            return []
-
-    def calculate_comparing_timeframe(self, prod_dates, test_dates, table):
-        actual_dates = set()
-        days = self.depth_report_check
-        for day in range(1, days):
-            actual_dates.add(calculate_date(day))
-        if prod_dates[-days:] == test_dates[-days:]:
-            return self.get_comparing_timeframe(prod_dates)
-        else:
-            return self.get_timeframe_intersection(prod_dates, test_dates, table)
-
-    def get_timeframe_intersection(self, prod_dates, test_dates, table):
-        prod_set = set(prod_dates)
-        test_set = set(test_dates)
-        if prod_set - test_set:  # this code (4 strings below) should be moved to different function
-            unique_dates = get_unique_dates(prod_set, test_set)
-            self.logger.warn("This dates absent in {}: ".format(self.test_sql.get('db')) +
-                             "{} in report table {}...".format(",".join(unique_dates), table))
-        if test_set - prod_set:
-            unique_dates = get_unique_dates(test_set, prod_set)
-            self.logger.warn("This dates absent in {}: ".format(self.prod_sql.get('db')) +
-                             "{} in report table {}...".format(",".join(unique_dates), table))
-        return prod_set & test_set
-
-    def get_comparing_timeframe(self, prod_dates):
-        comparing_timeframe = []
-        for item in prod_dates[-self.depth_report_check:]:
-            comparing_timeframe.append(item.date().strftime("%Y-%m-%d"))
-        return comparing_timeframe
-
     def write_unique_entities_to_file(self, table, list_uniqs, stage, header, service_dir):
         self.logger.error("There are {} unique elements in table {} ".format(len(list_uniqs), table) +
                           "on {}-server. Detailed list of records ".format(stage) +
@@ -425,36 +256,6 @@ class Object:
                 file.write(str(item) + "\n")
 
 
-def calculate_section_name(query):
-    tmp_list = query.split(" ")
-    for item in tmp_list:
-        if "GROUP" in item:
-            return tmp_list[tmp_list.index(item) + 2][2:].replace("_", "").replace("id", "")
-
-
-def get_header(query):
-    cut_select = query[7:]
-    columns = cut_select[:cut_select.find("FROM") - 1]
-    header = []
-    for item in columns.split(","):
-        if ' as ' in item:
-            header.append(item[:item.find(' ')])
-        else:
-            header.append(item)
-    return header
-
-
-def calculate_date(days):
-    return (datetime.datetime.today().date() - datetime.timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
-
-
 def write_header(file_name, header):
     with open(file_name, 'w') as file:
         file.write(','.join(header) + '\n')
-
-
-def get_unique_dates(first_date_list, second_date_list):
-    unique_dates = []
-    for item in converters.convertToList(first_date_list - second_date_list):
-        unique_dates.append(item.strftime("%Y-%m-%d %H:%M:%S"))
-    return unique_dates
