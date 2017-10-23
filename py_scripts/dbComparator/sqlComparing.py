@@ -3,6 +3,7 @@ import os
 from py_scripts.helpers import dbHelper, converters
 from py_scripts.dbComparator import queryConstructor
 
+# TODO: Days in past parameter not works for Day-summary shecking mode - fix it.
 
 class Object:
     def __init__(self, sql_connection_properties, sql_comparing_properties, comparing_info, client=None):
@@ -146,7 +147,6 @@ class Object:
                 prod_record_amount, test_record_amount = dbHelper.get_amount_records(table,
                                                                                      None,
                                                                                      self.sql_connection_properties,
-                                                                                     self.client,
                                                                                      self.logger)
                 if prod_record_amount == 0 and test_record_amount == 0:
                     self.logger.warn("Table {} is empty on both servers!".format(table))
@@ -228,7 +228,7 @@ class Object:
                      "ORDER BY COLUMN_NAME;")
 
             prod_columns, test_columns = dbHelper.DbConnector.parallel_select(self.sql_connection_properties,
-                                                                              self.client, query, self.logger)
+                                                                              query, self.logger)
             if (prod_columns is None) or (test_columns is None):
                 self.logger.warn('Table {} skipped because something going bad'.format(table))
                 break
@@ -287,7 +287,7 @@ class Object:
 
     def compare_report_sums(self, table, query):
         prod_reports, test_reports = dbHelper.DbConnector.parallel_select(self.sql_connection_properties,
-                                                                          self.client, query, self.logger, "list")
+                                                                          query, self.logger, "list")
         if (prod_reports is not None) or (test_reports is not None):
             return True
         clicks = True
@@ -314,7 +314,7 @@ class Object:
     def compare_entity_table(self, table, query, service_dir):
         header = get_header(query)
         prod_entities, test_entities = dbHelper.DbConnector.parallel_select(self.sql_connection_properties,
-                                                                            self.client, query, self.logger)
+                                                                            query, self.logger)
         if (prod_entities is None) or (test_entities is None):
             self.logger.warn('Table {} skipped because something going bad'.format(table))
             return True
@@ -340,7 +340,6 @@ class Object:
         if dates:
             prod_record_amount, test_record_amount = dbHelper.get_amount_records(table, dates[0],
                                                                                  self.sql_connection_properties,
-                                                                                 self.client,
                                                                                  self.logger)
             if prod_record_amount != test_record_amount:
                 self.logger.warn(('Amount of records significantly differs for table {}'.format(table) +
@@ -365,7 +364,7 @@ class Object:
     def compare_dates(self, table):
         select_query = "SELECT distinct(`dt`) from {};".format(table)
         prod_dates, test_dates = dbHelper.DbConnector.parallel_select(self.sql_connection_properties,
-                                                                      self.client, select_query, self.logger)
+                                                                      select_query, self.logger)
         if (prod_dates is None) or (test_dates is None):
             self.logger.warn('Table {} skipped because something going bad'.format(table))
             return []
