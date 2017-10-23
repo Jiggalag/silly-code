@@ -110,16 +110,12 @@ for client in config.getClients():
     mapping = InitializeQuery(DbConnector(prod, logger), logger).prepare_column_mapping()
     if check_schema:
         schema_comparing_time = sqlComparing.Object(client_config, comparing_info, client).compare_metadata(start_time)
-        data_comparing_time = sqlComparing.Object(client_config, comparing_info, client).compare_data(global_break,
-                                                                                                      start_time,
-                                                                                                      service_dir,
-                                                                                                      mapping)
     else:
         logger.info("Schema checking disabled...")
-        data_comparing_time = sqlComparing.Object(client_config, comparing_info, client).compare_data(global_break,
-                                                                                                      start_time,
-                                                                                                      service_dir,
-                                                                                                      mapping)
+    data_comparing_time = sqlComparing.Object(client_config, comparing_info, client).compare_data(global_break,
+                                                                                                  start_time,
+                                                                                                  service_dir,
+                                                                                                  mapping)
     subject = "[Test] Check databases for client {}".format(client)
     body = generate_mail_text(comparing_info, mode)
     helper.sendmail(body, sendMailFrom, sendMailTo, mailPassword, subject, None)

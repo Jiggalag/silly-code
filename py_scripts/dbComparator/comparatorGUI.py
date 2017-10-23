@@ -65,6 +65,7 @@ class Example(QWidget):
         schema_columns_label = QLabel('Schema columns', self)
         retry_attempts_label = QLabel('Retry attempts', self)
         path_to_logs_label = QLabel('Path to logs', self)
+        table_timeout_label = QLabel('Timeout for single table, min', self)
 
         # Splitters
 
@@ -124,6 +125,8 @@ class Example(QWidget):
             if not os.path.exists(log_path):
                 os.mkdir(log_path)
             self.path_to_logs.setText(log_path + 'DbComparator.log')
+        self.table_timeout = QLineEdit(self)
+        self.table_timeout.setText('5')
 
         # Combobox
 
@@ -258,6 +261,8 @@ class Example(QWidget):
         grid.addWidget(self.retry_attempts, 6, 5)
         grid.addWidget(path_to_logs_label, 7, 4)
         grid.addWidget(self.path_to_logs, 7, 5)
+        grid.addWidget(table_timeout_label, 8, 4)
+        grid.addWidget(self.table_timeout, 8, 5)
         # grid.addWidget(self.only_entities, 8, 5)
         # grid.addWidget(self.only_reports, 9, 5)
         # grid.addWidget(self.both, 10, 5)
@@ -394,6 +399,7 @@ class Example(QWidget):
                     if index >= 0:
                         self.logging_level.setCurrentIndex(index)
                 # TODO: add loading of checking mode
+                # TODO: add loading of table_timeout
                 # TODO: fix incorrect loading of flags
 
     def save_configuration(self):
@@ -450,6 +456,7 @@ class Example(QWidget):
         if self.cb_fail_with_first_error.isChecked() == False:
             text.append('fail_with_first_error = False')
         # TODO: add loading of checking mode
+        # TODO: add saving of table_timeout
         text.append('logging_level = {}'.format(self.logging_level.currentText()))
         fileName, _ = QFileDialog.getSaveFileName(self, "QFileDialog.getSaveFileName()",  "",
                                                   "All Files (*);;Text Files (*.txt)")
@@ -652,6 +659,8 @@ class Example(QWidget):
             'depth_report_check': self.depth_report_check.text(),
             'schema_columns': self.schema_columns.text(),
             'retry_attempts': self.retry_attempts.text(),
+            # TODO: add try/catch
+            'table_timeout': int(self.table_timeout.text()),
             'os': OS
         }
         return properties_dict

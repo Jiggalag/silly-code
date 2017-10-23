@@ -37,21 +37,15 @@ class Backend:
             schema_comparing_time = sqlComparing.Object(self.sql_connection_properties,
                                                         self.sql_comparing_properties,
                                                         comparing_info).compare_metadata(start_time)
-            data_comparing_time = sqlComparing.Object(self.sql_connection_properties,
-                                                      self.sql_comparing_properties,
-                                                      comparing_info).compare_data(global_break,
-                                                                                   start_time,
-                                                                                   service_dir,
-                                                                                   mapping)
         else:
             self.logger.info("Schema checking disabled...")
             schema_comparing_time = None
-            data_comparing_time = sqlComparing.Object(self.sql_connection_properties,
-                                                      self.sql_comparing_properties,
-                                                      comparing_info).compare_data(global_break,
-                                                                                   start_time,
-                                                                                   service_dir,
-                                                                                   mapping)
+        data_comparing_time = sqlComparing.Object(self.sql_connection_properties,
+                                                  self.sql_comparing_properties,
+                                                  comparing_info).compare_data(global_break,
+                                                                               start_time,
+                                                                               service_dir,
+                                                                               mapping)
         subject = "[Test] Check databases"
         text = generate_mail_text(comparing_info, self.sql_comparing_properties,
                                   data_comparing_time, schema_comparing_time)

@@ -65,7 +65,9 @@ class Object:
             'synctracelink',
             'syncpersistentjob',
             'forecaststatistics',
-            'migrationhistory']
+            'migrationhistory'
+        ]
+        self.table_timeout = None
         # TODO: transfer all this properties from UI
         if 'retry_attempts' in sql_comparing_properties.keys():
             self.attempts = sql_comparing_properties.get('retry_attempts')
@@ -96,6 +98,10 @@ class Object:
             self.send_mail_to = sql_comparing_properties.get('send_mail_to')
         if 'amount_checking_record' in sql_comparing_properties.keys():
             self.amount_checking_record = sql_comparing_properties.get('amount_checking_record')
+        if 'table_timeout' in sql_comparing_properties.keys():
+            self.table_timeout = sql_comparing_properties.get('table_timeout')
+            if self.table_timeout == 0:
+                self.table_timeout = None
 
     def complex_condition(self, table):
         booler = []
@@ -154,6 +160,7 @@ class Object:
                 max_amount = max(prod_record_amount, test_record_amount)
                 query_list = query_object.entity(table, max_amount, self.comparing_step, mapping)
                 if not global_break:
+                    table_start_time = datetime.datetime.now()
                     for query in query_list:
                         if (not self.compare_entity_table(table, query, service_dir)) and self.fail_with_first_error:
                             self.logger.info("First error founded, checking failed. Comparing takes {}".format(
@@ -162,6 +169,11 @@ class Object:
                             self.logger.info("Table {} ".format(table) +
                                              "checked in {}".format(datetime.datetime.now() - start_table_check_time))
                             break
+                        if self.table_timeout is not None:
+                            if datetime.datetime.now() - table_start_time > datetime.timedelta(minutes=self.table_timeout):
+                                self.logger.error(('Checking table {} '.format(table) +
+                                                   'exceded timeout {}. Finished'.format(self.table_timeout)))
+                                break
                     self.logger.info("Table {} ".format(table) +
                                      "checked in {}...".format(datetime.datetime.now() - start_table_check_time))
                 else:
@@ -172,7 +184,7 @@ class Object:
         self.logger.info("Comparing finished in {}".format(data_comparing_time))
         return data_comparing_time
 
-    def iteration_comparing_by_queries(self, query_list, global_break, table, start_time, service_dir):
+    def iteration_comparing_by_queries(self, query_list, global_break, table, start_time, service_dir, table_timeout):
         local_break = False
         for query in query_list:
             if self.mode == "day-sum":
@@ -201,6 +213,10 @@ class Object:
                             datetime.datetime.now() - start_time))
                         global_break = True
                         return global_break, local_break
+            if table_timeout is not None:
+                if datetime.datetime.now() - start_time > datetime.timedelta(minutes=table_timeout):
+                    self.logger.error('Checking table {} exceded timeout {}. Finished'.format(table, table_timeout))
+                    return global_break, local_break
         return global_break, local_break
 
     def compare_metadata(self, start_time):
@@ -208,8 +224,8 @@ class Object:
         for table in tables:
             self.logger.info("Check schema for table {}...".format(table))
             query = ("SELECT {} FROM INFORMATION_SCHEMA.COLUMNS ".format(', '.join(self.schema_columns)) +
-                    "WHERE TABLE_SCHEMA = 'DBNAME' AND TABLE_NAME='TABLENAME' ".replace("TABLENAME", table) +
-                    "ORDER BY COLUMN_NAME;")
+                     "WHERE TABLE_SCHEMA = 'DBNAME' AND TABLE_NAME='TABLENAME' ".replace("TABLENAME", table) +
+                     "ORDER BY COLUMN_NAME;")
 
             prod_columns, test_columns = dbHelper.DbConnector.parallel_select(self.sql_connection_properties,
                                                                               self.client, query, self.logger)
@@ -229,7 +245,7 @@ class Object:
         return datetime.datetime.now() - start_time
 
     def schema_comparing_time(self, table, uniq_list, start_time):
-        if  uniq_list is None:
+        if uniq_list is None:
             self.logger.error(" [ERROR] Tables {} differs!".format(table))
         else:
             self.logger.error("Elements, unique for table {} ".format(table) +
@@ -337,7 +353,8 @@ class Object:
                     query_list = cmp_object.report(table, dt, self.mode, max_amount,
                                                    self.comparing_step, mapping)
                     global_break, local_break = self.iteration_comparing_by_queries(query_list, global_break, table,
-                                                                                    start_time, service_dir)
+                                                                                    start_time, service_dir,
+                                                                                    self.table_timeout)
                 else:
                     break
         else:

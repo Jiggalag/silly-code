@@ -186,7 +186,7 @@ class DbConnector:
                 with connection.cursor() as cursor:
                     column_list = []
                     query = ("SELECT column_name FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = '%s' " % table +
-                            "AND table_schema = '%s';" % self.db)
+                             "AND table_schema = '%s';" % self.db)
                     self.logger.debug(query)
                     cursor.execute(query)
                     column_dict = cursor.fetchall()
