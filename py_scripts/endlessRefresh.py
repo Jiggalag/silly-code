@@ -1,10 +1,8 @@
 # Script refreshes sync in endless cycle and run forecast after refresh
-# TODO: remove bash and refactor this test using helper.py
 
 import subprocess
 import datetime
 import time
-import helper
 
 cliPath = '/home/jiggalag/Downloads/maxifier-cli-1.11/'
 user = 'mock'
@@ -23,7 +21,8 @@ createTimeFile = subprocess.call('touch ./timed', shell=True)
 
 print('howManyRefreshes is ---> ', howManyRefreshes)
 while True:
-    forecastResult = helper.runForecast('mock', 'mock', 'mock', 'mock', 'mock')
+    # TODO: already not works
+    # forecastResult = helper.runForecast('mock', 'mock', 'mock', 'mock', 'mock')
     subprocess.call('curl -c cookies.txt -X POST -d "loginActionForm.login=MOCK&loginActionForm.password=MOCK" https://MOCK/login.action', shell=True)
     while True:
         if tick is 0:

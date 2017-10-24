@@ -4569,17 +4569,3 @@ nid, campaignlastactivedate.dt, campaignlastactivedate.lastactivedate LIMIT 1600
 2017-10-02 11:09:58.742010 [DEBUG] SELECT zip.remoteid, zip.isdeleted, zip.isuserenabled, zip.name, `country`.`remoteid` AS countryid, zip.adsdeleted FROM `zip`   JOIN `country` ON zip.countryid=`country`.`id` ORDER BY zip.remoteid, countryid, zip.isdeleted, zip.isuserenabled, zip.name, zip.adsdeleted;
 2017-10-02 11:09:58.814188 [INFO] Table zip checked in 0:00:00.357021...
 2017-10-02 11:09:58.814232 [INFO] Comparing finished in 2:22:46.138291
-Traceback (most recent call last):
-  File "/home/jiggalag/PycharmProjects/silly-code/py_scripts/dbComparator/comparatorGUI.py", line 591, in on_click
-    Backend(connection_dict, properties).run_comparing()
-  File "/home/jiggalag/PycharmProjects/silly-code/py_scripts/dbComparator/comparatorWithUI.py", line 59, in run_comparing
-    'pavel.kiselev@best4ad.com', subject, None)
-  File "/home/jiggalag/PycharmProjects/silly-code/py_scripts/helpers/helper.py", line 81, in sendmail
-    server.login(fromaddr, mypass)
-  File "/usr/lib/python3.5/smtplib.py", line 729, in login
-    raise last_exception
-  File "/usr/lib/python3.5/smtplib.py", line 720, in login
-    initial_response_ok=initial_response_ok)
-  File "/usr/lib/python3.5/smtplib.py", line 641, in auth
-    raise SMTPAuthenticationError(code, resp)
-smtplib.SMTPAuthenticationError: (535, b'5.7.8 Username and Password not accepted. Learn more at\n5.7.8  https://support.google.com/mail/?p=BadCredentials r20sm578464lfr.26 - gsmtp')

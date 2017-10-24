@@ -78,7 +78,7 @@ class DbConnector:
     @staticmethod
     def parallel_select(connection_list, query, result_type="frozenset"):
         pool = Pool(2)
-        result = pool.map((lambda x: x.select(query, result_type)), connection_list)
+        result = pool.map((lambda x: x.select(query)), connection_list)
         pool.close()
         pool.join()
         if (result[0] is None) or (result[1] is None):
@@ -120,6 +120,7 @@ class DbConnector:
                     return None
                 time.sleep(TIMEOUT)
 
+    # TODO: refactor, make one select function from this two methods
     def select_rf(self, query):
         connection = self.get_connection()
         if connection is not None:
@@ -148,7 +149,7 @@ class DbConnector:
         else:
             return None
 
-    def select(self, query, result_type="frozenset"):
+    def select(self, query):
         connection = self.get_connection()
         if connection is not None:
             error_count = 0
@@ -164,16 +165,22 @@ class DbConnector:
                             return None
                         result = cursor.fetchall()
                         processed_result = []
+                        try:
+                            keys = list(result[0].keys())
+                            keys.sort()
+                        except IndexError:
+                            self.logger.debug('Raised IndexError in dbHelper.select() method')
+                            return result
                         for item in result:
                             tmp_record = []
-                            for key in item.keys():
+                            for key in keys:
                                 tmp_record.append(item.get(key))
                             if len(tmp_record) == 1:
                                 processed_result.append(tmp_record[0])
-                            elif result_type == "list":
-                                processed_result.append(tmp_record)
+                            # elif result_type == "list":
+                            #    processed_result.append(tmp_record)
                             else:
-                                processed_result.append(frozenset(tmp_record))
+                                processed_result.append(tuple(tmp_record))
                         return processed_result
                 except pymysql.OperationalError:
                     error_count += 1

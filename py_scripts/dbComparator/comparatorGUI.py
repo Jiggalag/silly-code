@@ -66,6 +66,7 @@ class Example(QWidget):
         retry_attempts_label = QLabel('Retry attempts', self)
         path_to_logs_label = QLabel('Path to logs', self)
         table_timeout_label = QLabel('Timeout for single table, min', self)
+        string_amount_label = QLabel('Amount of stored uniq strings', self)
 
         # Splitters
 
@@ -127,6 +128,8 @@ class Example(QWidget):
             self.path_to_logs.setText(log_path + 'DbComparator.log')
         self.table_timeout = QLineEdit(self)
         self.table_timeout.setText('5')
+        self.string_amount = QLineEdit(self)
+        self.string_amount.setText('1000')
 
         # Combobox
 
@@ -263,9 +266,11 @@ class Example(QWidget):
         grid.addWidget(self.path_to_logs, 7, 5)
         grid.addWidget(table_timeout_label, 8, 4)
         grid.addWidget(self.table_timeout, 8, 5)
-        # grid.addWidget(self.only_entities, 8, 5)
-        # grid.addWidget(self.only_reports, 9, 5)
-        # grid.addWidget(self.both, 10, 5)
+        grid.addWidget(string_amount_label, 9, 4)
+        grid.addWidget(self.string_amount, 9, 5)
+        # grid.addWidget(self.only_entities, 10, 5)
+        # grid.addWidget(self.only_reports, 11, 5)
+        # grid.addWidget(self.both, 12, 5)
 
         self.setGeometry(0, 0, 900, 600)
         self.setWindowTitle('dbComparator')
@@ -652,6 +657,7 @@ class Example(QWidget):
             'mode': mode,
             'skip_tables': self.skip_tables.text(),
             'skip_columns': self.skip_columns.text(),
+            'string_amount': self.string_amount.text(),
             # 'check_type': check_type,
             'logger': Logger(self.logging_level.currentText(), path_to_logs),
             'amount_checking_records': self.amount_checking_records.text(),

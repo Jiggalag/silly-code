@@ -1,6 +1,5 @@
 import datetime
-import os
-from py_scripts.helpers import dbHelper, converters
+from py_scripts.helpers import dbHelper
 from py_scripts.dbComparator import queryConstructor
 from py_scripts.dbComparator import cmp_reports
 from py_scripts.dbComparator import cmp_entities
@@ -27,6 +26,7 @@ class Object:
             'id'
         ]
         self.mode = 'day-sum'
+        self.string_amount = 1000
         self.client_ignored_tables = []
         self.check_schema = True
         self.depth_report_check = 7
@@ -70,7 +70,7 @@ class Object:
         self.table_timeout = None
         # TODO: transfer all this properties from UI
         if 'retry_attempts' in sql_comparing_properties.keys():
-            self.attempts = sql_comparing_properties.get('retry_attempts')
+            self.attempts = int(sql_comparing_properties.get('retry_attempts'))
         if 'comparing_step' in sql_comparing_properties.keys():
             self.comparing_step = int(sql_comparing_properties.get('comparing_step'))
         if 'skip_columns' in sql_comparing_properties.keys():
@@ -96,11 +96,13 @@ class Object:
         if 'logger' in sql_comparing_properties.keys():
             self.logger = sql_comparing_properties.get('logger')
         if 'amount_checking_records' in sql_comparing_properties.keys():
-            self.amount_checking_records = sql_comparing_properties.get('amount_checking_records')
+            self.amount_checking_records = int(sql_comparing_properties.get('amount_checking_records'))
         if 'table_timeout' in sql_comparing_properties.keys():
-            self.table_timeout = sql_comparing_properties.get('table_timeout')
+            self.table_timeout = int(sql_comparing_properties.get('table_timeout'))
             if self.table_timeout == 0:
                 self.table_timeout = None
+        if 'string_amount' in sql_comparing_properties.keys():
+            self.string_amount = int(sql_comparing_properties.get('string_amount'))
         self.sql_comparing_properties = {
             'retry_attempts': self.attempts,
             'comparing_step': self.comparing_step,
@@ -111,6 +113,7 @@ class Object:
             'fail_with_first_error': self.fail_with_first_error,
             'schema_columns': self.schema_columns,
             'logger': self.logger,
+            'string_amount': self.string_amount,
             'separateChecking': self.separate_checking,  # TODO: rename on UI-side
             'skip_tables': self.excluded_tables,  # TODO: rename on UI-side
             'send_mail_to': self.send_mail_to,
@@ -149,9 +152,9 @@ class Object:
             query_object = queryConstructor.InitializeQuery(prod_connection, self.logger)
             if self.complex_condition(table):
                 if not global_break:
-                    cmp_reports.compare_report_table(prod_connection, test_connection, global_break, mapping,
-                                                     local_break, table, start_time, self.comparing_info,
-                                                     **self.sql_comparing_properties)
+                    cmp_reports.compare_report_table(prod_connection, test_connection, service_dir,
+                                                     global_break, mapping, local_break, table, start_time,
+                                                     self.comparing_info, **self.sql_comparing_properties)
                     self.logger.info("Table {} ".format(table) +
                                      "checked in {}".format(datetime.datetime.now() - start_table_check_time))
                 else:
@@ -189,7 +192,8 @@ class Object:
                                              "checked in {}".format(datetime.datetime.now() - start_table_check_time))
                             break
                         if self.table_timeout is not None:
-                            if datetime.datetime.now() - table_start_time > datetime.timedelta(minutes=self.table_timeout):
+                            duration = datetime.datetime.now() - table_start_time
+                            if duration > datetime.timedelta(minutes=self.table_timeout):
                                 self.logger.error(('Checking table {} '.format(table) +
                                                    'exceded timeout {}. Finished'.format(self.table_timeout)))
                                 break
@@ -241,21 +245,3 @@ class Object:
             schema_comparing_time = datetime.datetime.now() - start_time
             self.logger.info("Schema partially compared in {}".format(schema_comparing_time))
             return schema_comparing_time
-
-    def write_unique_entities_to_file(self, table, list_uniqs, stage, header, service_dir):
-        self.logger.error("There are {} unique elements in table {} ".format(len(list_uniqs), table) +
-                          "on {}-server. Detailed list of records ".format(stage) +
-                          "saved to {}{}_uniqRecords_{}".format(service_dir, table, stage))
-        file_name = "{}{}_uniqRecords_{}".format(service_dir, table, stage)
-        if not os.path.exists(file_name):
-            write_header(file_name, header)
-        with open(file_name, "a") as file:
-            first_list = converters.convertToList(list_uniqs)
-            first_list.sort()
-            for item in first_list:
-                file.write(str(item) + "\n")
-
-
-def write_header(file_name, header):
-    with open(file_name, 'w') as file:
-        file.write(','.join(header) + '\n')

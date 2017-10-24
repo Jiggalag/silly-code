@@ -35,6 +35,14 @@ class cliConnection:
             else:
                 return False
 
+    def getInstanceInformation(self):
+        instanceInformation = {}
+        getInformationCommand = '%s jmx:%s:%d sync -c i' % (self.cliPath, self.host, self.rmiPort)
+        rawInformation = subprocess.check_output(getInformationCommand, shell=True, universal_newlines=True)
+        for data in rawInformation.split('\n'):
+            instanceInformation.update({data[:data.find(':')]: data[data.find(':') + 2:]})
+        return instanceInformation
+
 
     def waitForJobFinished(self):
         while True:

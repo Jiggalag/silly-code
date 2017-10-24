@@ -1,14 +1,18 @@
 import datetime
+
+import os
+
 from py_scripts.helpers import dbHelper, converters
 from py_scripts.dbComparator import queryConstructor
 
 
 def iteration_comparing_by_queries(prod_connection, test_connection, query_list, global_break,
-                                   table, start_time, comparing_info, **kwargs):
+                                   table, start_time, comparing_info, prod_uniq, test_uniq, service_dir, **kwargs):
     mode = kwargs.get('mode')
     logger = kwargs.get('logger')
     fail_with_first_error = kwargs.get('fail_with_first_error')
     table_timeout = kwargs.get('table_timeout')
+    string_amount = kwargs.get('string_amount')
     local_break = False
     for query in query_list:
         if mode == "day-sum":
@@ -18,11 +22,11 @@ def iteration_comparing_by_queries(prod_connection, test_connection, query_list,
                     logger.critical("First error founded, checking failed. " +
                                     "Comparing takes {}.".format(datetime.datetime.now() - start_time))
                     global_break = True
-                    return global_break, local_break
+                    return global_break, local_break, set(), set()
             else:
                 logger.warn("There is no impression of click column in table {}".format(table))
                 local_break = True
-                return global_break, local_break
+                return global_break, local_break, set(), set()
         elif mode in ["section-sum", "detailed"]:
             if mode == "section-sum":
                 section = calculate_section_name(query)
@@ -32,17 +36,32 @@ def iteration_comparing_by_queries(prod_connection, test_connection, query_list,
                 cmp_result = compare_reports_detailed(prod_connection, test_connection, table, query,
                                                       comparing_info, **kwargs)
                 if cmp_result is None:
-                    return global_break, local_break
-                if not cmp_result and fail_with_first_error:
+                    return global_break, local_break, set(), set()
+                if type(cmp_result) is dict and fail_with_first_error:
                     logger.critical("First error founded, checking failed. Comparing takes {}.".format(
                         datetime.datetime.now() - start_time))
                     global_break = True
                     return global_break, local_break
+                if type(cmp_result) is dict:
+                    prod_uniq = merge_diffs(prod_uniq, cmp_result.get('prod'))
+                    test_uniq = merge_diffs(test_uniq, cmp_result.get('test'))
+                    if check_uniqs(prod_uniq, test_uniq, string_amount, table, query, service_dir, logger):
+                        local_break = True
+                        return global_break, local_break, set(), set()
+                    else:
+                        return global_break, local_break, prod_uniq, test_uniq
         if table_timeout is not None:
             if datetime.datetime.now() - start_time > datetime.timedelta(minutes=table_timeout):
                 logger.error('Checking table {} exceded timeout {}. Finished'.format(table, table_timeout))
-                return global_break, local_break
-    return global_break, local_break
+                local_break = True
+                return global_break, local_break, prod_uniq, test_uniq
+    return global_break, local_break, prod_uniq, test_uniq
+
+
+def merge_diffs(uniq_set, additional_set):
+    for item in additional_set:
+        uniq_set.update({item})
+    return uniq_set
 
 
 def compare_reports_detailed(prod_connection, test_connection, table, query, comparing_info, **kwargs):
@@ -59,12 +78,10 @@ def compare_reports_detailed(prod_connection, test_connection, table, query, com
         return None
     prod_unique_reports = set(prod_reports) - set(test_reports)
     test_unique_reports = set(test_reports) - set(prod_reports)
-    # TODO: write to file only on last stage, previously you should store uniq entities in set in memory
-    # TODO: and periodically compare it
     if not all([len(prod_unique_reports) == 0, len(test_unique_reports) == 0]):
         logger.error("Tables {} differs!".format(table))
         comparing_info.update_diff_schema(table)
-        return False
+        return {'prod': prod_unique_reports, 'test': test_unique_reports}
     else:
         return True
 
@@ -95,17 +112,19 @@ def compare_report_sums(prod_connection, test_connection, table, query, comparin
         return True
 
 
-def compare_report_table(prod_connection, test_connection, global_break, mapping, local_break,
+def compare_report_table(prod_connection, test_connection, service_dir, global_break, mapping, local_break,
                          table, start_time, comparing_info, **kwargs):
     logger = kwargs.get('logger')
     comparing_step = kwargs.get('comparing_step')
     mode = kwargs.get('mode')
     depth_report_check = kwargs.get('depth_report_check')
+    strings_amount = kwargs.get('string_amount')
 
     dates = converters.convertToList(compare_dates(prod_connection, test_connection, table, depth_report_check,
                                                    comparing_info, logger))
-    # TODO: here I have problem with dates, strongly test this code and fix it
     dates.sort()
+    prod_uniq = set()
+    test_uniq = set()
     if dates:
         prod_record_amount, test_record_amount = dbHelper.get_amount_records(table, dates[0],
                                                                              [prod_connection, test_connection],
@@ -115,21 +134,61 @@ def compare_report_table(prod_connection, test_connection, global_break, mapping
                          'Prod record amount: {}. '.format(prod_record_amount) +
                          'Test record amount: {}. '.format(test_record_amount)))
         for dt in reversed(dates):
-            if not all([global_break, local_break]):
+            if not any([global_break, local_break]):
                 max_amount = max(prod_record_amount, test_record_amount)
                 cmp_object = queryConstructor.InitializeQuery(prod_connection, logger)
                 query_list = cmp_object.report(table, dt, mode, max_amount,
                                                comparing_step, mapping)
-                global_break, local_break = iteration_comparing_by_queries(prod_connection, test_connection,
-                                                                           query_list, global_break, table,
-                                                                           start_time, comparing_info,
-                                                                           **kwargs)
+                global_break, local_break, prod_uniq, test_uniq = iteration_comparing_by_queries(prod_connection,
+                                                                                                 test_connection,
+                                                                                                 query_list,
+                                                                                                 global_break, table,
+                                                                                                 start_time,
+                                                                                                 comparing_info,
+                                                                                                 prod_uniq,
+                                                                                                 test_uniq,
+                                                                                                 service_dir,
+                                                                                                 **kwargs)
+                if prod_uniq and test_uniq:
+                    prod_uniq = thin_uniq_list(prod_uniq, test_uniq, logger)
+                    test_uniq = thin_uniq_list(test_uniq, prod_uniq, logger)
+                    if check_uniqs(prod_uniq, test_uniq, strings_amount, table, query_list[0], service_dir, logger):
+                        break
             else:
                 break
     else:
         logger.warn("Tables {} should not be compared correctly, ".format(table) +
                     "because they have no any crosses dates in reports")
         comparing_info.no_crossed_tables.append(table)
+
+
+def write_unique_entities_to_file(table, list_uniqs, stage, header, service_dir, logger):
+    logger.error("There are {} unique elements in table {} ".format(len(list_uniqs), table) +
+                      "on {}-server. Detailed list of records ".format(stage) +
+                      "saved to {}{}_uniqRecords_{}".format(service_dir, table, stage))
+    file_name = "{}{}_uniqRecords_{}".format(service_dir, table, stage)
+    if not os.path.exists(file_name):
+        write_header(file_name, header)
+    with open(file_name, "a") as file:
+        first_list = converters.convertToList(list_uniqs)
+        first_list.sort()
+        for item in first_list:
+            file.write(str(item) + "\n")
+
+
+def check_uniqs(prod_set, test_set, strings_amount, table, query, service_dir, logger):
+    header = get_header(query)
+    if len(prod_set) > strings_amount or len(test_set) > strings_amount:
+        write_unique_entities_to_file(table, prod_set, 'prod', header, service_dir, logger)
+        write_unique_entities_to_file(table, test_set, 'test', header, service_dir, logger)
+        return True
+
+
+def thin_uniq_list(target_set, second_set, logger):
+    result = target_set - second_set
+    if not result:
+        logger.warn('Thining finished unsuccessfully')
+    return result
 
 
 def compare_dates(prod_connection, test_connection, table, depth_report_check, comparing_info, logger):
@@ -163,10 +222,12 @@ def calculate_comparing_timeframe(prod_connection, test_connection, prod_dates, 
     if prod_dates[-days:] == test_dates[-days:]:
         return get_comparing_timeframe(prod_dates, depth_report_check)
     else:
-        return get_timeframe_intersection(prod_connection, test_connection, depth_report_check, prod_dates, test_dates, table, logger)
+        return get_timeframe_intersection(prod_connection, test_connection, depth_report_check,
+                                          prod_dates, test_dates, table, logger)
 
 
-def get_timeframe_intersection(prod_connection, test_connection, depth_report_check, prod_dates, test_dates, table, logger):
+def get_timeframe_intersection(prod_connection, test_connection, depth_report_check,
+                               prod_dates, test_dates, table, logger):
     prod_set = set(prod_dates)
     test_set = set(test_dates)
     if prod_set - test_set:  # this code (4 strings below) should be moved to different function

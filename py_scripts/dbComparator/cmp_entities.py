@@ -18,15 +18,3 @@ def compare_entity_table(prod_connection, test_connection, table, query, compari
         return False
     else:
         return True
-
-
-def get_header(query):
-    cut_select = query[7:]
-    columns = cut_select[:cut_select.find("FROM") - 1]
-    header = []
-    for item in columns.split(","):
-        if ' as ' in item:
-            header.append(item[:item.find(' ')])
-        else:
-            header.append(item)
-    return header
