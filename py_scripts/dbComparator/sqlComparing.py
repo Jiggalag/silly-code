@@ -1,20 +1,14 @@
 import datetime
 from py_scripts.helpers import dbHelper
-from py_scripts.dbComparator import queryConstructor
-from py_scripts.dbComparator import cmp_reports
-from py_scripts.dbComparator import cmp_entities
-
-# TODO: Days in past parameter not works for Day-summary shecking mode - fix it.
+from py_scripts.dbComparator import unified_comparing_class
 
 
 class Object:
-    def __init__(self, sql_connection_properties, sql_comparing_properties, comparing_info, client=None):
-        self.client = client
+    def __init__(self, sql_connection_properties, sql_comparing_properties, comparing_info):
         self.sql_connection_properties = sql_connection_properties
         self.prod_sql = sql_connection_properties.get('prod')
         self.test_sql = sql_connection_properties.get('test')
         self.comparing_info = comparing_info
-        # TODO: add checking situation if client is None - we should handle this case separately?
         self.attempts = 5
         self.comparing_step = 10000
         self.hide_columns = [
@@ -26,7 +20,7 @@ class Object:
             'id'
         ]
         self.mode = 'day-sum'
-        self.string_amount = 1000
+        self.strings_amount = 1000
         self.client_ignored_tables = []
         self.check_schema = True
         self.depth_report_check = 7
@@ -101,21 +95,21 @@ class Object:
             self.table_timeout = int(sql_comparing_properties.get('table_timeout'))
             if self.table_timeout == 0:
                 self.table_timeout = None
-        if 'string_amount' in sql_comparing_properties.keys():
-            self.string_amount = int(sql_comparing_properties.get('string_amount'))
+        if 'strings_amount' in sql_comparing_properties.keys():
+            self.strings_amount = int(sql_comparing_properties.get('strings_amount'))
         self.sql_comparing_properties = {
             'retry_attempts': self.attempts,
             'comparing_step': self.comparing_step,
-            'skip_columns': self.hide_columns,  # TODO: rename on UI-side
+            'hide_columns': self.hide_columns,
             'mode': self.mode,
             'check_schema': self.check_schema,
             'depth_report_check': self.depth_report_check,
             'fail_with_first_error': self.fail_with_first_error,
             'schema_columns': self.schema_columns,
             'logger': self.logger,
-            'string_amount': self.string_amount,
-            'separateChecking': self.separate_checking,  # TODO: rename on UI-side
-            'skip_tables': self.excluded_tables,  # TODO: rename on UI-side
+            'strings_amount': self.strings_amount,
+            'separateChecking': self.separate_checking,  # TODO: now disabled
+            'skip_tables': self.excluded_tables,
             'send_mail_to': self.send_mail_to,
             'amount_checking_records': self.amount_checking_records,
             'table_timeout': self.table_timeout
@@ -140,72 +134,48 @@ class Object:
         else:
             return False
 
-    def compare_data(self, global_break, start_time, service_dir, mapping):
+    def is_report(self, table):
+        booler = []
+        if ('report' in table) or ('statistic' in table):
+            booler.append(True)
+        else:
+            booler.append(False)
+        if 'dt' in dbHelper.DbConnector(self.prod_sql, self.logger).get_column_list(table):
+            booler.append(True)
+        else:
+            booler.append(False)
+        if all(booler):
+            return True
+        else:
+            return False
+
+    def compare_data(self, start_time, service_dir, mapping):
         prod_connection = dbHelper.DbConnector(self.prod_sql, self.logger)
         test_connection = dbHelper.DbConnector(self.test_sql, self.logger)
         tables = self.comparing_info.get_tables(self.excluded_tables, self.client_ignored_tables)
         for table in tables:
-            # table = 'kvkeypairreport'
-            self.logger.info("Table {} processing now...".format(table))
+            # table = 'campaignbrowserreport'
             start_table_check_time = datetime.datetime.now()
-            local_break = False
-            query_object = queryConstructor.InitializeQuery(prod_connection, self.logger)
-            if self.complex_condition(table):
-                if not global_break:
-                    cmp_reports.compare_report_table(prod_connection, test_connection, service_dir,
-                                                     global_break, mapping, local_break, table, start_time,
-                                                     self.comparing_info, **self.sql_comparing_properties)
-                    self.logger.info("Table {} ".format(table) +
-                                     "checked in {}".format(datetime.datetime.now() - start_table_check_time))
-                else:
-                    self.logger.info("Table {} ".format(table) +
-                                     "checked in {}".format(datetime.datetime.now() - start_table_check_time))
-                    break
-            else:
-                if 'onlyReports' in self.separate_checking:
-                    continue
-                prod_record_amount, test_record_amount = dbHelper.get_amount_records(table,
-                                                                                     None,
-                                                                                     [prod_connection, test_connection],
-                                                                                     self.logger)
-                if prod_record_amount == 0 and test_record_amount == 0:
-                    self.logger.warn("Table {} is empty on both servers!".format(table))
-                    continue
-                if prod_record_amount == 0:
-                    self.logger.warn("Table {} is empty on prod-server!".format(table))
-                    continue
-                if test_record_amount == 0:
-                    self.logger.warn("Table {} is empty on test-server!".format(table))
-                    continue
-                max_amount = max(prod_record_amount, test_record_amount)
-                query_list = query_object.entity(table, max_amount, self.comparing_step, mapping)
-                if not global_break:
-                    table_start_time = datetime.datetime.now()
-                    for query in query_list:
-                        if (not cmp_entities.compare_entity_table(prod_connection, test_connection, table, query,
-                                                                  self.comparing_info,
-                                                                  self.logger)) and self.fail_with_first_error:
-                            self.logger.info("First error founded, checking failed. Comparing takes {}".format(
-                                datetime.datetime.now() - start_time))
-                            global_break = True
-                            self.logger.info("Table {} ".format(table) +
-                                             "checked in {}".format(datetime.datetime.now() - start_table_check_time))
-                            break
-                        if self.table_timeout is not None:
-                            duration = datetime.datetime.now() - table_start_time
-                            if duration > datetime.timedelta(minutes=self.table_timeout):
-                                self.logger.error(('Checking table {} '.format(table) +
-                                                   'exceded timeout {}. Finished'.format(self.table_timeout)))
-                                break
-                    self.logger.info("Table {} ".format(table) +
-                                     "checked in {}...".format(datetime.datetime.now() - start_table_check_time))
-                else:
-                    self.logger.info("Table {} ".format(table) +
-                                     "checked in {}...".format(datetime.datetime.now() - start_table_check_time))
-                    break
+            self.logger.info("Table {} processing started now...".format(table))
+            is_report = self.is_report(table)
+            if 'onlyReports' in self.separate_checking and not is_report:
+                continue
+            if 'onlyEntities' in self.separate_checking and is_report:
+                continue
+            global_break = unified_comparing_class.compare_table(prod_connection, test_connection, table, is_report,
+                                                                 service_dir, mapping, start_time, self.comparing_info,
+                                                                 **self.sql_comparing_properties)
+            self.logger.info("Table {} ".format(table) +
+                             "checked in {}...".format(datetime.datetime.now() - start_table_check_time))
+            if global_break:
+                data_comparing_time = datetime.datetime.now() - start_time
+                self.logger.warn(('Global breaking is True. Comparing interrupted. ' +
+                                 'Comparing finished in {}'.format(data_comparing_time)))
+                break
         data_comparing_time = datetime.datetime.now() - start_time
         self.logger.info("Comparing finished in {}".format(data_comparing_time))
         return data_comparing_time
+
 
     def compare_metadata(self, start_time):
         prod_connection = dbHelper.DbConnector(self.prod_sql, self.logger)
@@ -232,6 +202,7 @@ class Object:
         schema_comparing_time = datetime.datetime.now() - start_time
         self.logger.info("Schema compared in {}".format(schema_comparing_time))
         return datetime.datetime.now() - start_time
+
 
     def schema_comparing_time(self, table, uniq_list, start_time):
         if uniq_list is None:

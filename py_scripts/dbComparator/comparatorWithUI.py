@@ -10,7 +10,7 @@ from os.path import basename
 from py_scripts.helpers import converters, dbHelper
 from py_scripts.dbComparator import tableData, sqlComparing
 from py_scripts.helpers.dbHelper import DbConnector
-from py_scripts.dbComparator.queryConstructor import InitializeQuery
+from py_scripts.dbComparator import queryConstructor
 
 
 class Backend:
@@ -38,7 +38,8 @@ class Backend:
             create_test_dir("C:\\dbComparator\\")
         start_time = datetime.datetime.now()
         self.logger.info("Start processing!")
-        mapping = InitializeQuery(DbConnector(prod_sql_dict, self.logger), self.logger).prepare_column_mapping()
+        prod_sql_connection = DbConnector(prod_sql_dict, self.logger)
+        mapping = queryConstructor.prepare_column_mapping(prod_sql_connection, self.logger)
         if self.sql_comparing_properties.get('check_schema'):
             schema_comparing_time = sqlComparing.Object(self.sql_connection_properties,
                                                         self.sql_comparing_properties,
@@ -48,8 +49,7 @@ class Backend:
             schema_comparing_time = None
         data_comparing_time = sqlComparing.Object(self.sql_connection_properties,
                                                   self.sql_comparing_properties,
-                                                  comparing_info).compare_data(global_break,
-                                                                               start_time,
+                                                  comparing_info).compare_data(start_time,
                                                                                service_dir,
                                                                                mapping)
         subject = "[Test] Check databases"

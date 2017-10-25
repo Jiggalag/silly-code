@@ -54,8 +54,8 @@ class Example(QWidget):
         test_db_label = QLabel('test.sql-db', self)
         send_mail_to_label = QLabel('Send mail to', self)
         checking_mode_label = QLabel('Checking mode:', self)
-        skip_tables_label = QLabel('Skip tables', self)
-        skip_columns_label = QLabel('Skip columns', self)
+        excluded_tables_label = QLabel('Skip tables', self)
+        hide_columns_label = QLabel('Skip columns', self)
 
         advanced_label = QLabel('Advanced settings', self)
         logging_level_label = QLabel('Logging level', self)
@@ -66,7 +66,7 @@ class Example(QWidget):
         retry_attempts_label = QLabel('Retry attempts', self)
         path_to_logs_label = QLabel('Path to logs', self)
         table_timeout_label = QLabel('Timeout for single table, min', self)
-        string_amount_label = QLabel('Amount of stored uniq strings', self)
+        strings_amount_label = QLabel('Amount of stored uniq strings', self)
 
         # Splitters
 
@@ -94,12 +94,12 @@ class Example(QWidget):
         self.test_password = QLineEdit(self)
         self.test_db = QLineEdit(self)
         self.send_mail_to = QLineEdit(self)
-        self.skip_tables = QLineEdit(self)
-        self.skip_tables.setText('databasechangelog,download,migrationhistory,mntapplog,reportinfo,synchistory,' +
+        self.excluded_tables = QLineEdit(self)
+        self.excluded_tables.setText('databasechangelog,download,migrationhistory,mntapplog,reportinfo,synchistory,' +
                                  'syncstage,synctrace,synctracelink,syncpersistentjob,forecaststatistics,' +
                                  'migrationhistory')
-        self.skip_columns = QLineEdit(self)
-        self.skip_columns.setText('archived,addonFields,hourOfDayS,dayOfWeekS,impCost,id')
+        self.hide_columns = QLineEdit(self)
+        self.hide_columns.setText('archived,addonFields,hourOfDayS,dayOfWeekS,impCost,id')
 
         self.amount_checking_records = QLineEdit(self)
         self.amount_checking_records.setText('100000')
@@ -128,8 +128,8 @@ class Example(QWidget):
             self.path_to_logs.setText(log_path + 'DbComparator.log')
         self.table_timeout = QLineEdit(self)
         self.table_timeout.setText('5')
-        self.string_amount = QLineEdit(self)
-        self.string_amount.setText('1000')
+        self.strings_amount = QLineEdit(self)
+        self.strings_amount.setText('1000')
 
         # Combobox
 
@@ -206,10 +206,10 @@ class Example(QWidget):
         self.test_db.setToolTip('Input test-db name.\nExample: irving')
         send_mail_to_label.setToolTip('Add one or list of e-mails for receiving results of comparing')
         self.send_mail_to.setToolTip('Add one or list of e-mails for receiving results of comparing')
-        skip_tables_label.setToolTip(self.skip_tables.text().replace(',', ',\n'))
-        self.skip_tables.setToolTip(self.skip_tables.text().replace(',', ',\n'))
-        skip_columns_label.setToolTip(self.skip_columns.text().replace(',', ',\n'))
-        self.skip_columns.setToolTip(self.skip_columns.text().replace(',', ',\n'))
+        excluded_tables_label.setToolTip(self.excluded_tables.text().replace(',', ',\n'))
+        self.excluded_tables.setToolTip(self.excluded_tables.text().replace(',', ',\n'))
+        hide_columns_label.setToolTip(self.hide_columns.text().replace(',', ',\n'))
+        self.hide_columns.setToolTip(self.hide_columns.text().replace(',', ',\n'))
         btn_set_configuration.setToolTip('Start comparing of dbs')
         btn_check_prod.setToolTip('Check connection to prod-server')
         btn_check_test.setToolTip('Check connection to test-server')
@@ -236,10 +236,10 @@ class Example(QWidget):
         grid.addWidget(btn_check_test, 4, 3)
         grid.addWidget(send_mail_to_label, 6, 0)
         grid.addWidget(self.send_mail_to, 6, 1)
-        grid.addWidget(skip_tables_label, 7, 0)
-        grid.addWidget(self.skip_tables, 7, 1)
-        grid.addWidget(skip_columns_label, 8, 0)
-        grid.addWidget(self.skip_columns, 8, 1)
+        grid.addWidget(excluded_tables_label, 7, 0)
+        grid.addWidget(self.excluded_tables, 7, 1)
+        grid.addWidget(hide_columns_label, 8, 0)
+        grid.addWidget(self.hide_columns, 8, 1)
         grid.addWidget(self.cb_enable_schema_checking, 9, 0)
         grid.addWidget(self.cb_fail_with_first_error, 10, 0)
         grid.addWidget(btn_set_configuration, 11, 5)
@@ -266,8 +266,8 @@ class Example(QWidget):
         grid.addWidget(self.path_to_logs, 7, 5)
         grid.addWidget(table_timeout_label, 8, 4)
         grid.addWidget(self.table_timeout, 8, 5)
-        grid.addWidget(string_amount_label, 9, 4)
-        grid.addWidget(self.string_amount, 9, 5)
+        grid.addWidget(strings_amount_label, 9, 4)
+        grid.addWidget(self.strings_amount, 9, 5)
         # grid.addWidget(self.only_entities, 10, 5)
         # grid.addWidget(self.only_reports, 11, 5)
         # grid.addWidget(self.both, 12, 5)
@@ -350,9 +350,9 @@ class Example(QWidget):
                 elif 'test.db' in string:
                     db = string[string.find('=') + 1:]
                     self.test_db.setText(db)
-                elif 'skip_tables' in string:
-                    skip_tables = string[string.find('=') + 1:]
-                    self.skip_tables.setText(skip_tables)
+                elif 'excluded_tables' in string:
+                    excluded_tables = string[string.find('=') + 1:]
+                    self.excluded_tables.setText(excluded_tables)
                 elif 'amount_checking_records' in string:
                     amount_checking_records = string[string.find('=') + 1:]
                     self.amount_checking_records.setText(amount_checking_records)
@@ -427,10 +427,10 @@ class Example(QWidget):
             text.append('test.db = {}'.format(self.test_db.text()))
         if self.send_mail_to.text() != '':
             text.append('send_mail_to = {}'.format(self.send_mail_to.text()))
-        if self.skip_tables != '':
-            text.append('skip_tables = {}'.format(self.skip_tables.text()))
-        if self.skip_columns != '':
-            text.append('skip_columns = {}'.format(self.skip_columns.text()))
+        if self.excluded_tables != '':
+            text.append('excluded_tables = {}'.format(self.excluded_tables.text()))
+        if self.hide_columns != '':
+            text.append('hide_columns = {}'.format(self.hide_columns.text()))
         if self.amount_checking_records != '' and self.amount_checking_records != '100000':
             text.append('amount_checking_records = {}'.format(self.amount_checking_records.text()))
         if self.comparing_step != '' and self.comparing_step != '10000':
@@ -655,9 +655,9 @@ class Example(QWidget):
             'fail_with_first_error': fail_with_first_error,
             'send_mail_to': self.send_mail_to.text(),
             'mode': mode,
-            'skip_tables': self.skip_tables.text(),
-            'skip_columns': self.skip_columns.text(),
-            'string_amount': self.string_amount.text(),
+            'excluded_tables': self.excluded_tables.text(),
+            'hide_columns': self.hide_columns.text(),
+            'strings_amount': self.strings_amount.text(),
             # 'check_type': check_type,
             'logger': Logger(self.logging_level.currentText(), path_to_logs),
             'amount_checking_records': self.amount_checking_records.text(),

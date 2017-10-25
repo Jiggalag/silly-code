@@ -11,7 +11,7 @@ from email.mime.text import MIMEText
 from py_scripts.helpers import configHelper, converters, logging_helper, dbHelper
 from py_scripts.helpers.dbHelper import DbConnector
 from py_scripts.dbComparator import tableData, sqlComparing
-from py_scripts.dbComparator.queryConstructor import InitializeQuery
+from py_scripts.dbComparator import queryConstructor
 
 
 if "Win" in platform.system():
@@ -128,7 +128,14 @@ else:
 check_service_dir(service_dir)
 for client in config.getClients():
     client_config = configHelper.IfmsConfigClient(propertyFile, client)
-    sql_property_dict = client_config.get_sql_connection_params('test')
+    sql_connection_properties = {
+        'prod': client_config.get_sql_connection_params('prod'),
+        'test': client_config.get_sql_connection_params('test')
+    }
+    sql_comparing_properties = {
+        'comparing_step': client_config.getProperty('sqlProperties', 'comparingStep')
+        # TODO: support other parameters
+    }
     comparing_info = tableData.Info(logger)
     comparing_info.update_table_list("prod",
                                      dbHelper.DbConnector(client_config.get_sql_connection_params("prod"),
@@ -143,16 +150,17 @@ for client in config.getClients():
         create_test_dir("C:\\dbComparator\\", client)
     start_time = datetime.datetime.now()
     logger.info("Start {} processing!".format(client))
-    prod = dbHelper.DbConnector(client_config.get_sql_connection_params("prod"), logger)
-    mapping = InitializeQuery(DbConnector(prod, logger), logger).prepare_column_mapping()
+    prod_sql_connection = dbHelper.DbConnector(client_config.get_sql_connection_params("prod"), logger)
+    mapping = queryConstructor.prepare_column_mapping(prod_sql_connection, logger)
     if check_schema:
-        schema_comparing_time = sqlComparing.Object(client_config, comparing_info, client).compare_metadata(start_time)
+        # TODO: Object fixed, now this code not works
+        schema_comparing_time = sqlComparing.Object(sql_connection_properties, sql_comparing_properties,
+                                                    comparing_info).compare_metadata(start_time)
     else:
         logger.info("Schema checking disabled...")
-    data_comparing_time = sqlComparing.Object(client_config, comparing_info, client).compare_data(global_break,
-                                                                                                  start_time,
-                                                                                                  service_dir,
-                                                                                                  mapping)
+    # TODO: Object fixed, now this code not works
+    data_comparing_time = sqlComparing.Object(sql_connection_properties, sql_comparing_properties,
+                                              comparing_info).compare_data(start_time, service_dir, mapping)
     subject = "[Test] Check databases for client {}".format(client)
     body = generate_mail_text(comparing_info, mode)
     sendmail(body, sendMailFrom, sendMailTo, mailPassword, subject, None)
