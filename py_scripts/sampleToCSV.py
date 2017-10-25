@@ -1,4 +1,4 @@
-import py_scripts.helpers.cliHelper as cliH
+import py_scripts.helpers.cli_helper as cliH
 import datetime
 import time
 
@@ -14,12 +14,12 @@ host = 'dev01.inventale.com'
 cliPath = 'cli'
 rmiPort = 9047
 
-cliConnection = cliH.cliConnection(cliPath, host, rmiPort)
+cliConnection = cliH.CliConnection(cliPath, host, rmiPort)
 
 for job in jobs:
-    if not cliConnection.isJobRunning():
-        cliConnection.runJob(job)
-    while cliConnection.isJobRunning():
+    if not cliConnection.is_job_running():
+        cliConnection.run_job(job)
+    while cliConnection.is_job_running():
         time.sleep(30)
     if "Sample" in job:
         pass
