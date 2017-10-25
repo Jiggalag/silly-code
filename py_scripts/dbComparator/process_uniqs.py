@@ -54,4 +54,3 @@ def merge_uniqs(uniq_set, additional_set):
     for item in additional_set:
         uniq_set.update({item})
     return uniq_set
-

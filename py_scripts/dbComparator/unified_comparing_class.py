@@ -20,8 +20,8 @@ def compare_table(prod_connection, test_connection, table, is_report, service_di
         else:
             query_list = queryConstructor.InitializeQuery(prod_connection, mapping, table,
                                                           comparing_step, logger).entity(max_amount)
-        global_break, local_break = iterate_by_query_list(prod_connection, test_connection, query_list, table, start_time,
-                                             comparing_info, service_dir, **kwargs)
+        global_break, local_break = iterate_by_query_list(prod_connection, test_connection, query_list, table,
+                                                          start_time, comparing_info, service_dir, **kwargs)
         return global_break
     else:
         logger.warn('Local_break flag detected. Checking of table {} skipped.'.format(table))
@@ -61,7 +61,7 @@ def iterate_by_query_list(prod_connection, test_connection, query_list, table, s
     test_uniq = set()
     for query in query_list:
         local_break, prod_tmp_uniq, test_tmp_uniq = get_differences(prod_connection, test_connection, table, query,
-                                                            comparing_info, strings_amount, service_dir, logger)
+                                                                    comparing_info, strings_amount, service_dir, logger)
         prod_uniq = process_uniqs.merge_uniqs(prod_uniq, prod_tmp_uniq)
         test_uniq = process_uniqs.merge_uniqs(test_uniq, test_tmp_uniq)
 

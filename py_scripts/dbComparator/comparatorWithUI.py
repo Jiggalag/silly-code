@@ -31,7 +31,6 @@ class Backend:
         comparing_info = tableData.Info(self.logger)
         comparing_info.update_table_list("prod", dbHelper.DbConnector(prod_sql_dict, self.logger).get_tables())
         comparing_info.update_table_list("test", dbHelper.DbConnector(test_sql_dict, self.logger).get_tables())
-        global_break = False
         if "Linux" in self.OS:
             create_test_dir("/mxf/data/test_results/")
         else:
@@ -55,8 +54,8 @@ class Backend:
         subject = "[Test] Check databases"
         text = generate_mail_text(comparing_info, self.sql_comparing_properties,
                                   data_comparing_time, schema_comparing_time)
-        sendmail(text, 'do-not-reply@inventale.com', 'AKIAJHBVE2GQUQBRSQVA',
-                        'pavel.kiselev@best4ad.com', subject, None)
+        sendmail(text, 'do-not-reply@inventale.com', 'AKIAJHBVE2GQUQBRSQVA', 'pavel.kiselev@best4ad.com', subject, None,
+                 self.logger)
 
 
 def check_service_dir(service_dir):
@@ -91,7 +90,8 @@ def generate_mail_text(comparing_info, sql_comparing_properties, data_comparing_
     text = text + "Dbs checked in " + str(data_comparing_time) + "\n"
     return text
 
-def sendmail(body, fromaddr, toaddr, mypass, subject, files):
+
+def sendmail(body, fromaddr, toaddr, mypass, subject, files, logger):
     msg = MIMEMultipart()
     msg['From'] = fromaddr
     if type(toaddr) is list:
@@ -102,13 +102,13 @@ def sendmail(body, fromaddr, toaddr, mypass, subject, files):
     msg.attach(MIMEText(body, 'plain'))
     if files is not None:
         for attachFile in files.split(','):
-            if(os.path.exists(attachFile) and os.path.isfile(attachFile)):
+            if os.path.exists(attachFile) and os.path.isfile(attachFile):
                 with open(attachFile, 'rb') as file:
                     part = MIMEApplication(file.read(), Name=basename(attachFile))
                 part['Content-Disposition'] = 'attachment; filename="%s"' % basename(attachFile)
                 msg.attach(part)
             else:
-                if (attachFile.lstrip() != ""):
+                if attachFile.lstrip() != "":
                     logger.error("File not found {}".format(attachFile))
                     print(str(datetime.datetime.now()) + " [ERROR] File not found " + attachFile)
     server = smtplib.SMTP('smtp.gmail.com', 587)
@@ -121,6 +121,7 @@ def sendmail(body, fromaddr, toaddr, mypass, subject, files):
         server.quit()
     except smtplib.SMTPAuthenticationError:
         print('Raised authentication error!')
+
 
 def get_test_result_text(body, comparing_info):
     body = body + "There are some problems found during checking.\n\n"

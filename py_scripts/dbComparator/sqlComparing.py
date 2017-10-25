@@ -176,7 +176,6 @@ class Object:
         self.logger.info("Comparing finished in {}".format(data_comparing_time))
         return data_comparing_time
 
-
     def compare_metadata(self, start_time):
         prod_connection = dbHelper.DbConnector(self.prod_sql, self.logger)
         test_connection = dbHelper.DbConnector(self.test_sql, self.logger)
@@ -202,7 +201,6 @@ class Object:
         schema_comparing_time = datetime.datetime.now() - start_time
         self.logger.info("Schema compared in {}".format(schema_comparing_time))
         return datetime.datetime.now() - start_time
-
 
     def schema_comparing_time(self, table, uniq_list, start_time):
         if uniq_list is None:

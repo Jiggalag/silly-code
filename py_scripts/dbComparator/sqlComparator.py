@@ -9,7 +9,6 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
 from email.mime.text import MIMEText
 from py_scripts.helpers import configHelper, converters, logging_helper, dbHelper
-from py_scripts.helpers.dbHelper import DbConnector
 from py_scripts.dbComparator import tableData, sqlComparing
 from py_scripts.dbComparator import queryConstructor
 
