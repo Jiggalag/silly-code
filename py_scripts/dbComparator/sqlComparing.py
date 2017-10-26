@@ -154,6 +154,7 @@ class Object:
         test_connection = dbHelper.DbConnector(self.test_sql, self.logger)
         tables = self.comparing_info.get_tables(self.excluded_tables, self.client_ignored_tables)
         for table in tables:
+            # table = 'campaignosreport'
             start_table_check_time = datetime.datetime.now()
             self.logger.info("Table {} processing started now...".format(table))
             is_report = self.is_report(table)
