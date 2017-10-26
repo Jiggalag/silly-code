@@ -29,7 +29,6 @@ class InitializeQuery:
 
     def report(self, date_list, mode, threshold):
         query_list = []
-        # TODO: excess sql-query in case of day-sum-mode
         column_string, set_column_list, set_join_section, set_order_list = self.prepare_query_sections()
         for dt in reversed(date_list):
             if mode == "day-sum":

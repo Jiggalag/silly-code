@@ -33,9 +33,6 @@ class Info:
         else:
             self.logger.error("There is no such stage {}".format(stage))
 
-    def update_nocrossed_dates(self, value):
-            self.no_crossed_tables.append(value)
-
     def update_diff_schema(self, value):
             self.diff_schema.append(value)
 
@@ -58,10 +55,6 @@ class Info:
         table_list = list(self.tables)
         table_list.sort()
         return table_list
-
-    def get_both_empty(self):
-        self.empty = self.prod_empty & self.test_empty
-        return self.empty
 
     def get_uniq_tables(self, stage):
         if stage == "prod":

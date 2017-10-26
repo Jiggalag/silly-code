@@ -1,3 +1,7 @@
+1. Enable separateChecking mode.
+
+
+
 Epics:
 1. Probably, add functional for cloning databases.
 

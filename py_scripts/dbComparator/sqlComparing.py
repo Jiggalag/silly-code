@@ -62,7 +62,7 @@ class Object:
             'migrationhistory'
         ]
         self.table_timeout = None
-        # TODO: transfer all this properties from UI
+
         if 'retry_attempts' in sql_comparing_properties.keys():
             self.attempts = int(sql_comparing_properties.get('retry_attempts'))
         if 'comparing_step' in sql_comparing_properties.keys():
@@ -154,7 +154,6 @@ class Object:
         test_connection = dbHelper.DbConnector(self.test_sql, self.logger)
         tables = self.comparing_info.get_tables(self.excluded_tables, self.client_ignored_tables)
         for table in tables:
-            # table = 'campaignbrowserreport'
             start_table_check_time = datetime.datetime.now()
             self.logger.info("Table {} processing started now...".format(table))
             is_report = self.is_report(table)
@@ -171,7 +170,7 @@ class Object:
                 data_comparing_time = datetime.datetime.now() - start_time
                 self.logger.warn(('Global breaking is True. Comparing interrupted. ' +
                                  'Comparing finished in {}'.format(data_comparing_time)))
-                break
+                return data_comparing_time
         data_comparing_time = datetime.datetime.now() - start_time
         self.logger.info("Comparing finished in {}".format(data_comparing_time))
         return data_comparing_time
@@ -189,28 +188,24 @@ class Object:
             prod_columns, test_columns = dbHelper.DbConnector.parallel_select([prod_connection, test_connection], query)
             if (prod_columns is None) or (test_columns is None):
                 self.logger.warn('Table {} skipped because something going bad'.format(table))
-                break
+                continue
             uniq_for_prod = list(set(prod_columns) - set(test_columns))
             uniq_for_test = list(set(test_columns) - set(prod_columns))
             if len(uniq_for_prod) > 0:
                 return self.schema_comparing_time(table, uniq_for_prod, start_time)
-            if len(uniq_for_test) > 0:
+            if len(uniq_for_test) > 0 and self.fail_with_first_error:
                 return self.schema_comparing_time(table, uniq_for_test, start_time)
             if not all([len(uniq_for_prod) == 0, len(uniq_for_test) == 0]):
-                return self.schema_comparing_time(table, None, start_time)
+                self.logger.error(" [ERROR] Tables {} differs!".format(table))
         schema_comparing_time = datetime.datetime.now() - start_time
         self.logger.info("Schema compared in {}".format(schema_comparing_time))
         return datetime.datetime.now() - start_time
 
     def schema_comparing_time(self, table, uniq_list, start_time):
-        if uniq_list is None:
-            self.logger.error(" [ERROR] Tables {} differs!".format(table))
-        else:
-            self.logger.error("Elements, unique for table {} ".format(table) +
-                              "in {} db:{}".format(self.test_sql.get('db'), list(uniq_list[0])))
-        if self.fail_with_first_error:
-            self.logger.critical("First error founded, comparing failed. "
-                                 "To find all discrepancies set failWithFirstError property in false\n")
-            schema_comparing_time = datetime.datetime.now() - start_time
-            self.logger.info("Schema partially compared in {}".format(schema_comparing_time))
-            return schema_comparing_time
+        self.logger.error("Elements, unique for table {} ".format(table) +
+                          "in {} db:{}".format(self.test_sql.get('db'), list(uniq_list[0])))
+        self.logger.critical("There are some discrepancies in schema, comparing interrupted. " +
+                             "Exclude tables with different schema from comparing-list (using skip tables field in UI)")
+        schema_comparing_time = datetime.datetime.now() - start_time
+        self.logger.info("Schema partially compared in {}".format(schema_comparing_time))
+        return schema_comparing_time

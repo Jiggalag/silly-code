@@ -5,7 +5,6 @@ import sys
 import os
 import platform
 import pymysql
-import cProfile
 
 from py_scripts.dbComparator.comparatorWithUI import Backend
 import py_scripts.helpers.dbHelper as dbHelper
@@ -676,7 +675,7 @@ class Example(QWidget):
         connection_dict = self.get_sql_params()
         properties = self.get_properties()
         if connection_dict and properties:
-            cProfile.run(Backend(connection_dict, properties).run_comparing())
+            Backend(connection_dict, properties).run_comparing()
 
 
 class MainWindow(QMainWindow):

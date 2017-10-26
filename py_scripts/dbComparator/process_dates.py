@@ -49,7 +49,7 @@ def get_timeframe_intersection(prod_connection, test_connection, depth_report_ch
                                prod_dates, test_dates, table, logger):
     prod_set = set(prod_dates)
     test_set = set(test_dates)
-    if prod_set - test_set:  # this code (4 strings below) should be moved to different function
+    if prod_set - test_set:
         unique_dates = get_unique_dates(prod_set, test_set)
         logger.warn("This dates absent in {}: ".format(test_connection.db) +
                     "{} in report table {}...".format(",".join(unique_dates), table))

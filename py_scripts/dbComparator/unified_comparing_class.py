@@ -65,7 +65,6 @@ def iterate_by_query_list(prod_connection, test_connection, query_list, table, s
         prod_uniq = process_uniqs.merge_uniqs(prod_uniq, prod_tmp_uniq)
         test_uniq = process_uniqs.merge_uniqs(test_uniq, test_tmp_uniq)
 
-        # TODO: here we try to thin uniq sets
         if prod_uniq and test_uniq:
             prod_uniq = process_uniqs.thin_uniq_list(prod_uniq, test_uniq, logger)
             test_uniq = process_uniqs.thin_uniq_list(test_uniq, prod_uniq, logger)

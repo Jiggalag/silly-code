@@ -7,7 +7,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
 from email.mime.text import MIMEText
 from os.path import basename
-from py_scripts.helpers import converters, dbHelper
+from py_scripts.helpers import converters
 from py_scripts.dbComparator import tableData, sqlComparing
 from py_scripts.helpers.dbHelper import DbConnector
 from py_scripts.dbComparator import queryConstructor
@@ -26,18 +26,17 @@ class Backend:
         else:
             service_dir = "/tmp/comparator/"
         check_service_dir(service_dir)
-        prod_sql_dict = self.sql_connection_properties.get('prod')
-        test_sql_dict = self.sql_connection_properties.get('test')
+        prod_sql_connection = DbConnector(self.sql_connection_properties.get('prod'), self.logger)
+        test_sql_connection = DbConnector(self.sql_connection_properties.get('test'), self.logger)
         comparing_info = tableData.Info(self.logger)
-        comparing_info.update_table_list("prod", dbHelper.DbConnector(prod_sql_dict, self.logger).get_tables())
-        comparing_info.update_table_list("test", dbHelper.DbConnector(test_sql_dict, self.logger).get_tables())
+        comparing_info.update_table_list("prod", prod_sql_connection.get_tables())
+        comparing_info.update_table_list("test", test_sql_connection.get_tables())
         if "Linux" in self.OS:
             create_test_dir("/mxf/data/test_results/")
         else:
             create_test_dir("C:\\dbComparator\\")
         start_time = datetime.datetime.now()
         self.logger.info("Start processing!")
-        prod_sql_connection = DbConnector(prod_sql_dict, self.logger)
         mapping = queryConstructor.prepare_column_mapping(prod_sql_connection, self.logger)
         if self.sql_comparing_properties.get('check_schema'):
             schema_comparing_time = sqlComparing.Object(self.sql_connection_properties,
