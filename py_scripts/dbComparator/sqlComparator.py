@@ -1,11 +1,17 @@
 import datetime
 import os
+import os.path
 import shutil
+import smtplib
 import platform
-from py_scripts.helpers import configHelper, converters, helper, logging_helper, dbHelper
-from py_scripts.helpers.dbHelper import DbConnector
+from os.path import basename
+from email.mime.multipart import MIMEMultipart
+from email.mime.application import MIMEApplication
+from email.mime.text import MIMEText
+from py_scripts.helpers import configHelper, converters, logging_helper, dbHelper
 from py_scripts.dbComparator import tableData, sqlComparing
-from py_scripts.dbComparator.queryConstructor import InitializeQuery
+from py_scripts.dbComparator import queryConstructor
+
 
 if "Win" in platform.system():
     OS = "Windows"
@@ -61,6 +67,36 @@ def generate_mail_text(comparing_results, comparing_mode):
     text = text + "Dbs checked in " + str(data_comparing_time) + "\n"
     return text
 
+def sendmail(body, fromaddr, toaddr, mypass, subject, files):
+    msg = MIMEMultipart()
+    msg['From'] = fromaddr
+    if type(toaddr) is list:
+        msg['To'] = ', '.join(toaddr)
+    else:
+        msg['To'] = toaddr
+    msg['Subject'] = subject
+    msg.attach(MIMEText(body, 'plain'))
+    if files is not None:
+        for attachFile in files.split(','):
+            if(os.path.exists(attachFile) and os.path.isfile(attachFile)):
+                with open(attachFile, 'rb') as file:
+                    part = MIMEApplication(file.read(), Name=basename(attachFile))
+                part['Content-Disposition'] = 'attachment; filename="%s"' % basename(attachFile)
+                msg.attach(part)
+            else:
+                if (attachFile.lstrip() != ""):
+                    logger.error("File not found {}".format(attachFile))
+                    print(str(datetime.datetime.now()) + " [ERROR] File not found " + attachFile)
+    server = smtplib.SMTP('smtp.gmail.com', 587)
+    server.ehlo()
+    server.starttls()
+    try:
+        server.login(fromaddr, mypass)
+        text = msg.as_string()
+        server.sendmail(fromaddr, toaddr, text)
+        server.quit()
+    except smtplib.SMTPAuthenticationError:
+        print('Raised authentication error!')
 
 def get_test_result_text(text, comparing_results):
     text = text + "There are some problems found during checking.\n\n"
@@ -91,7 +127,14 @@ else:
 check_service_dir(service_dir)
 for client in config.getClients():
     client_config = configHelper.IfmsConfigClient(propertyFile, client)
-    sql_property_dict = client_config.get_sql_connection_params('test')
+    sql_connection_properties = {
+        'prod': client_config.get_sql_connection_params('prod'),
+        'test': client_config.get_sql_connection_params('test')
+    }
+    sql_comparing_properties = {
+        'comparing_step': client_config.getProperty('sqlProperties', 'comparingStep')
+        # TODO: support other parameters
+    }
     comparing_info = tableData.Info(logger)
     comparing_info.update_table_list("prod",
                                      dbHelper.DbConnector(client_config.get_sql_connection_params("prod"),
@@ -106,20 +149,17 @@ for client in config.getClients():
         create_test_dir("C:\\dbComparator\\", client)
     start_time = datetime.datetime.now()
     logger.info("Start {} processing!".format(client))
-    prod = dbHelper.DbConnector(client_config.get_sql_connection_params("prod"), logger)
-    mapping = InitializeQuery(DbConnector(prod, logger), logger).prepare_column_mapping()
+    prod_sql_connection = dbHelper.DbConnector(client_config.get_sql_connection_params("prod"), logger)
+    mapping = queryConstructor.prepare_column_mapping(prod_sql_connection, logger)
     if check_schema:
-        schema_comparing_time = sqlComparing.Object(client_config, comparing_info, client).compare_metadata(start_time)
-        data_comparing_time = sqlComparing.Object(client_config, comparing_info, client).compare_data(global_break,
-                                                                                                      start_time,
-                                                                                                      service_dir,
-                                                                                                      mapping)
+        # TODO: Object fixed, now this code not works
+        schema_comparing_time = sqlComparing.Object(sql_connection_properties, sql_comparing_properties,
+                                                    comparing_info).compare_metadata(start_time)
     else:
         logger.info("Schema checking disabled...")
-        data_comparing_time = sqlComparing.Object(client_config, comparing_info, client).compare_data(global_break,
-                                                                                                      start_time,
-                                                                                                      service_dir,
-                                                                                                      mapping)
+    # TODO: Object fixed, now this code not works
+    data_comparing_time = sqlComparing.Object(sql_connection_properties, sql_comparing_properties,
+                                              comparing_info).compare_data(start_time, service_dir, mapping)
     subject = "[Test] Check databases for client {}".format(client)
     body = generate_mail_text(comparing_info, mode)
-    helper.sendmail(body, sendMailFrom, sendMailTo, mailPassword, subject, None)
+    sendmail(body, sendMailFrom, sendMailTo, mailPassword, subject, None)

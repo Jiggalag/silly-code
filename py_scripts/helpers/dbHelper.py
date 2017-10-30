@@ -76,11 +76,9 @@ class DbConnector:
                 self.separate_checking = kwargs.get(key)
 
     @staticmethod
-    def parallel_select(sql_params, client, query, logger, result_type="frozenset"):
-        sql_properties = [sql_params.get('prod'), sql_params.get('test')]
+    def parallel_select(connection_list, query, result_type="frozenset"):
         pool = Pool(2)
-        result = pool.map((lambda x: DbConnector(x, client=client, logger=logger).select(query, result_type)),
-                          sql_properties)
+        result = pool.map((lambda x: x.select(query)), connection_list)
         pool.close()
         pool.join()
         if (result[0] is None) or (result[1] is None):
@@ -122,7 +120,36 @@ class DbConnector:
                     return None
                 time.sleep(TIMEOUT)
 
-    def select(self, query, result_type="frozenset"):
+    # TODO: refactor, make one select function from this two methods
+    def select_rf(self, query):
+        connection = self.get_connection()
+        if connection is not None:
+            error_count = 0
+            while error_count < self.attempts:
+                try:
+                    with connection.cursor() as cursor:
+                        sql_query = query.replace('DBNAME', self.db)
+                        self.logger.debug(sql_query)
+                        try:
+                            cursor.execute(sql_query)
+                        except pymysql.err.InternalError as e:
+                            self.logger.error('Error code: {}, error message: {}'.format(e.args[0], e.args[1]))
+                            return None
+                        result = cursor.fetchall()
+                        return result
+                except pymysql.OperationalError:
+                    error_count += 1
+                    self.logger.error("There are some SQL query error " + str(pymysql.OperationalError))
+                finally:
+                    try:
+                        connection.close()
+                    except pymysql.Error:
+                        self.logger.info("Connection already closed...")
+                        return []
+        else:
+            return None
+
+    def select(self, query):
         connection = self.get_connection()
         if connection is not None:
             error_count = 0
@@ -138,16 +165,22 @@ class DbConnector:
                             return None
                         result = cursor.fetchall()
                         processed_result = []
+                        try:
+                            keys = list(result[0].keys())
+                            keys.sort()
+                        except IndexError:
+                            self.logger.debug('Raised IndexError in dbHelper.select() method')
+                            return result
                         for item in result:
                             tmp_record = []
-                            for key in item.keys():
+                            for key in keys:
                                 tmp_record.append(item.get(key))
                             if len(tmp_record) == 1:
                                 processed_result.append(tmp_record[0])
-                            elif result_type == "list":
-                                processed_result.append(tmp_record)
+                            # elif result_type == "list":
+                            #    processed_result.append(tmp_record)
                             else:
-                                processed_result.append(frozenset(tmp_record))
+                                processed_result.append(tuple(tmp_record))
                         return processed_result
                 except pymysql.OperationalError:
                     error_count += 1
@@ -185,8 +218,8 @@ class DbConnector:
             try:
                 with connection.cursor() as cursor:
                     column_list = []
-                    query = "SELECT column_name FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = '%s' " \
-                            "AND table_schema = '%s';" % (table, self.db)
+                    query = ("SELECT column_name FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = '%s' " % table +
+                             "AND table_schema = '%s';" % self.db)
                     self.logger.debug(query)
                     cursor.execute(query)
                     column_dict = cursor.fetchall()
@@ -207,12 +240,12 @@ class DbConnector:
             return None
 
 
-def get_amount_records(table, date, sql_dicts, client, logger):
+def get_amount_records(table, date, sql_connection_list, logger):
     if date is None:
         query = "SELECT COUNT(*) FROM `{}`;".format(table)
     else:
         query = "SELECT COUNT(*) FROM `{}` WHERE dt > '{}';".format(table, date)
-    return DbConnector.parallel_select(sql_dicts, client, query, logger)
+    return DbConnector.parallel_select(sql_connection_list, query)
 
 
 def get_column_list_for_sum(set_column_list):

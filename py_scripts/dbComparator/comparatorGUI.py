@@ -53,8 +53,8 @@ class Example(QWidget):
         test_db_label = QLabel('test.sql-db', self)
         send_mail_to_label = QLabel('Send mail to', self)
         checking_mode_label = QLabel('Checking mode:', self)
-        skip_tables_label = QLabel('Skip tables', self)
-        skip_columns_label = QLabel('Skip columns', self)
+        excluded_tables_label = QLabel('Skip tables', self)
+        hide_columns_label = QLabel('Skip columns', self)
 
         advanced_label = QLabel('Advanced settings', self)
         logging_level_label = QLabel('Logging level', self)
@@ -64,6 +64,8 @@ class Example(QWidget):
         schema_columns_label = QLabel('Schema columns', self)
         retry_attempts_label = QLabel('Retry attempts', self)
         path_to_logs_label = QLabel('Path to logs', self)
+        table_timeout_label = QLabel('Timeout for single table, min', self)
+        strings_amount_label = QLabel('Amount of stored uniq strings', self)
 
         # Splitters
 
@@ -91,12 +93,12 @@ class Example(QWidget):
         self.test_password = QLineEdit(self)
         self.test_db = QLineEdit(self)
         self.send_mail_to = QLineEdit(self)
-        self.skip_tables = QLineEdit(self)
-        self.skip_tables.setText('databasechangelog,download,migrationhistory,mntapplog,reportinfo,synchistory,' +
+        self.excluded_tables = QLineEdit(self)
+        self.excluded_tables.setText('databasechangelog,download,migrationhistory,mntapplog,reportinfo,synchistory,' +
                                  'syncstage,synctrace,synctracelink,syncpersistentjob,forecaststatistics,' +
                                  'migrationhistory')
-        self.skip_columns = QLineEdit(self)
-        self.skip_columns.setText('archived,addonFields,hourOfDayS,dayOfWeekS,impCost,id')
+        self.hide_columns = QLineEdit(self)
+        self.hide_columns.setText('archived,addonFields,hourOfDayS,dayOfWeekS,impCost,id')
 
         self.amount_checking_records = QLineEdit(self)
         self.amount_checking_records.setText('100000')
@@ -123,11 +125,18 @@ class Example(QWidget):
             if not os.path.exists(log_path):
                 os.mkdir(log_path)
             self.path_to_logs.setText(log_path + 'DbComparator.log')
+        self.table_timeout = QLineEdit(self)
+        self.table_timeout.setText('5')
+        self.strings_amount = QLineEdit(self)
+        self.strings_amount.setText('1000')
 
         # Combobox
 
         self.logging_level = QComboBox(self)
         self.logging_level.addItems(['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG'])
+        index = self.logging_level.findText('DEBUG', Qt.MatchFixedString)
+        if index >= 0:
+            self.logging_level.setCurrentIndex(index)
 
         # Checkboxes
 
@@ -196,10 +205,10 @@ class Example(QWidget):
         self.test_db.setToolTip('Input test-db name.\nExample: irving')
         send_mail_to_label.setToolTip('Add one or list of e-mails for receiving results of comparing')
         self.send_mail_to.setToolTip('Add one or list of e-mails for receiving results of comparing')
-        skip_tables_label.setToolTip(self.skip_tables.text().replace(',', ',\n'))
-        self.skip_tables.setToolTip(self.skip_tables.text().replace(',', ',\n'))
-        skip_columns_label.setToolTip(self.skip_columns.text().replace(',', ',\n'))
-        self.skip_columns.setToolTip(self.skip_columns.text().replace(',', ',\n'))
+        excluded_tables_label.setToolTip(self.excluded_tables.text().replace(',', ',\n'))
+        self.excluded_tables.setToolTip(self.excluded_tables.text().replace(',', ',\n'))
+        hide_columns_label.setToolTip(self.hide_columns.text().replace(',', ',\n'))
+        self.hide_columns.setToolTip(self.hide_columns.text().replace(',', ',\n'))
         btn_set_configuration.setToolTip('Start comparing of dbs')
         btn_check_prod.setToolTip('Check connection to prod-server')
         btn_check_test.setToolTip('Check connection to test-server')
@@ -226,10 +235,10 @@ class Example(QWidget):
         grid.addWidget(btn_check_test, 4, 3)
         grid.addWidget(send_mail_to_label, 6, 0)
         grid.addWidget(self.send_mail_to, 6, 1)
-        grid.addWidget(skip_tables_label, 7, 0)
-        grid.addWidget(self.skip_tables, 7, 1)
-        grid.addWidget(skip_columns_label, 8, 0)
-        grid.addWidget(self.skip_columns, 8, 1)
+        grid.addWidget(excluded_tables_label, 7, 0)
+        grid.addWidget(self.excluded_tables, 7, 1)
+        grid.addWidget(hide_columns_label, 8, 0)
+        grid.addWidget(self.hide_columns, 8, 1)
         grid.addWidget(self.cb_enable_schema_checking, 9, 0)
         grid.addWidget(self.cb_fail_with_first_error, 10, 0)
         grid.addWidget(btn_set_configuration, 11, 5)
@@ -254,9 +263,13 @@ class Example(QWidget):
         grid.addWidget(self.retry_attempts, 6, 5)
         grid.addWidget(path_to_logs_label, 7, 4)
         grid.addWidget(self.path_to_logs, 7, 5)
-        # grid.addWidget(self.only_entities, 8, 5)
-        # grid.addWidget(self.only_reports, 9, 5)
-        # grid.addWidget(self.both, 10, 5)
+        grid.addWidget(table_timeout_label, 8, 4)
+        grid.addWidget(self.table_timeout, 8, 5)
+        grid.addWidget(strings_amount_label, 9, 4)
+        grid.addWidget(self.strings_amount, 9, 5)
+        # grid.addWidget(self.only_entities, 10, 5)
+        # grid.addWidget(self.only_reports, 11, 5)
+        # grid.addWidget(self.both, 12, 5)
 
         self.setGeometry(0, 0, 900, 600)
         self.setWindowTitle('dbComparator')
@@ -303,6 +316,7 @@ class Example(QWidget):
         self.test_password.clear()
         self.test_db.clear()
         self.send_mail_to.clear()
+        # TODO: add reseting of state for checkbox, lineedits and other elements
 
     def show_dialog(self):
         current_dir = os.getcwd()
@@ -311,32 +325,86 @@ class Example(QWidget):
             data = file.read()
             for record in data.split('\n'):
                 string = record.replace(' ', '')
-                if 'prod' in string:
-                    if 'host' in string:
-                        host = string[string.find('=') + 1:]
-                        self.prod_host.setText(host)
-                    elif 'user' in string:
-                        user = string[string.find('=') + 1:]
-                        self.prod_user.setText(user)
-                    elif 'password' in string:
-                        password = string[string.find('=') + 1:]
-                        self.prod_password.setText(password)
-                    elif 'db' in string:
-                        db = string[string.find('=') + 1:]
-                        self.prod_db.setText(db)
-                elif 'test' in string:
-                    if 'host' in string:
-                        host = string[string.find('=') + 1:]
-                        self.test_host.setText(host)
-                    elif 'user' in string:
-                        user = string[string.find('=') + 1:]
-                        self.test_user.setText(user)
-                    elif 'password' in string:
-                        password = string[string.find('=') + 1:]
-                        self.test_password.setText(password)
-                    elif 'db' in string:
-                        db = string[string.find('=') + 1:]
-                        self.test_db.setText(db)
+                if 'prod.host' in string:
+                    host = string[string.find('=') + 1:]
+                    self.prod_host.setText(host)
+                elif 'prod.user' in string:
+                    user = string[string.find('=') + 1:]
+                    self.prod_user.setText(user)
+                elif 'prod.password' in string:
+                    password = string[string.find('=') + 1:]
+                    self.prod_password.setText(password)
+                elif 'prod.db' in string:
+                    db = string[string.find('=') + 1:]
+                    self.prod_db.setText(db)
+                elif 'test.host' in string:
+                    host = string[string.find('=') + 1:]
+                    self.test_host.setText(host)
+                elif 'test.user' in string:
+                    user = string[string.find('=') + 1:]
+                    self.test_user.setText(user)
+                elif 'test.password' in string:
+                    password = string[string.find('=') + 1:]
+                    self.test_password.setText(password)
+                elif 'test.db' in string:
+                    db = string[string.find('=') + 1:]
+                    self.test_db.setText(db)
+                elif 'excluded_tables' in string:
+                    excluded_tables = string[string.find('=') + 1:]
+                    self.excluded_tables.setText(excluded_tables)
+                elif 'amount_checking_records' in string:
+                    amount_checking_records = string[string.find('=') + 1:]
+                    self.amount_checking_records.setText(amount_checking_records)
+                elif 'comparing_step' in string:
+                    comparing_step = string[string.find('=') + 1:]
+                    self.comparing_step.setText(comparing_step)
+                elif 'depth_report_check' in string:
+                    depth_report_check = string[string.find('=') + 1:]
+                    self.depth_report_check.setText(depth_report_check)
+                elif 'schema_columns' in string:
+                    schema_columns = string[string.find('=') + 1:]
+                    self.schema_columns.setText(schema_columns)
+                elif 'retry_attempts' in string:
+                    retry_attempts = string[string.find('=') + 1:]
+                    self.retry_attempts.setText(retry_attempts)
+                elif 'path_to_logs' in string:
+                    path_to_logs = string[string.find('=') + 1:]
+                    self.path_to_logs.setText(path_to_logs)
+                elif 'send_mail_to' in string:
+                    send_mail_to = string[string.find('=') + 1:]
+                    self.send_mail_to.setText(send_mail_to)
+                elif 'compare_schema' in string:
+                    compare_schema = string[string.find('=') + 1:]
+                    if compare_schema == 'True':
+                        if self.cb_enable_schema_checking.isChecked():
+                            pass
+                        else:
+                            self.cb_enable_schema_checking.checkState()
+                    else:
+                        if self.cb_enable_schema_checking.isChecked():
+                            self.cb_enable_schema_checking.checkState()
+                        else:
+                            pass
+                elif 'fail_with_first_error' in string:
+                    only_first_error = string[string.find('=') + 1:]
+                    if only_first_error == 'True':
+                        if self.cb_fail_with_first_error.isChecked():
+                            pass
+                        else:
+                            self.cb_fail_with_first_error.checkState()
+                    else:
+                        if self.cb_fail_with_first_error.isChecked():
+                            self.cb_fail_with_first_error.checkState()
+                        else:
+                            pass
+                elif 'logging_level' in string:
+                    logging_level = string[string.find('=') + 1:]
+                    index = self.logging_level.findText(logging_level, Qt.MatchFixedString)
+                    if index >= 0:
+                        self.logging_level.setCurrentIndex(index)
+                # TODO: add loading of checking mode
+                # TODO: add loading of table_timeout
+                # TODO: fix incorrect loading of flags
 
     def save_configuration(self):
         text = []
@@ -351,17 +419,17 @@ class Example(QWidget):
         if self.test_host.text() != '':
             text.append('test.host = {}'.format(self.test_host.text()))
         if self.test_user.text() != '':
-            text.append('test_user = {}'.format(self.test_user.text()))
+            text.append('test.user = {}'.format(self.test_user.text()))
         if self.test_password.text() != '':
-            text.append('test_password = {}'.format(self.test_password.text()))
+            text.append('test.password = {}'.format(self.test_password.text()))
         if self.test_db.text() != '':
-            text.append('test_db = {}'.format(self.test_db.text()))
+            text.append('test.db = {}'.format(self.test_db.text()))
         if self.send_mail_to.text() != '':
             text.append('send_mail_to = {}'.format(self.send_mail_to.text()))
-        if self.skip_tables != '':
-            text.append('skip_tables = {}'.format(self.skip_tables.text()))
-        if self.skip_columns != '':
-            text.append('skip_columns = {}'.format(self.skip_columns.text()))
+        if self.excluded_tables != '':
+            text.append('excluded_tables = {}'.format(self.excluded_tables.text()))
+        if self.hide_columns != '':
+            text.append('hide_columns = {}'.format(self.hide_columns.text()))
         if self.amount_checking_records != '' and self.amount_checking_records != '100000':
             text.append('amount_checking_records = {}'.format(self.amount_checking_records.text()))
         if self.comparing_step != '' and self.comparing_step != '10000':
@@ -379,8 +447,21 @@ class Example(QWidget):
             text.append('schema_columns = {}'.format(self.schema_columns.text()))
         if self.retry_attempts != '' and self.retry_attempts != '5':
             text.append('retry_attempts = {}'.format(self.retry_attempts.text()))
+        if self.send_mail_to != '':
+            text.append('send_mail_to = {}'.format(self.send_mail_to.text()))
         if self.path_to_logs != '':
             text.append('path_to_logs = {}'.format(self.path_to_logs.text()))
+        if self.cb_enable_schema_checking.isChecked() == True:
+            text.append('compare_schema = True')
+        if self.cb_enable_schema_checking.isChecked() == False:
+            text.append('compare_schema = False')
+        if self.cb_fail_with_first_error.isChecked() == True:
+            text.append('fail_with_first_error = True')
+        if self.cb_fail_with_first_error.isChecked() == False:
+            text.append('fail_with_first_error = False')
+        # TODO: add loading of checking mode
+        # TODO: add saving of table_timeout
+        text.append('logging_level = {}'.format(self.logging_level.currentText()))
         fileName, _ = QFileDialog.getSaveFileName(self, "QFileDialog.getSaveFileName()",  "",
                                                   "All Files (*);;Text Files (*.txt)")
         if fileName:
@@ -564,21 +645,27 @@ class Example(QWidget):
         # else:
         #     check_type = 'both'
 
+        path_to_logs = self.path_to_logs.text()
+        if path_to_logs == '':
+            path_to_logs = None
+
         properties_dict = {
             'check_schema': check_schema,
             'fail_with_first_error': fail_with_first_error,
             'send_mail_to': self.send_mail_to.text(),
             'mode': mode,
-            'skip_tables': self.skip_tables.text(),
-            'skip_columns': self.skip_columns.text(),
+            'excluded_tables': self.excluded_tables.text(),
+            'hide_columns': self.hide_columns.text(),
+            'strings_amount': self.strings_amount.text(),
             # 'check_type': check_type,
-            'logger': Logger(self.logging_level.currentText()),
+            'logger': Logger(self.logging_level.currentText(), path_to_logs),
             'amount_checking_records': self.amount_checking_records.text(),
             'comparing_step': self.comparing_step.text(),
             'depth_report_check': self.depth_report_check.text(),
             'schema_columns': self.schema_columns.text(),
             'retry_attempts': self.retry_attempts.text(),
-            'path_to_logs': self.path_to_logs.text(),
+            # TODO: add try/catch
+            'table_timeout': int(self.table_timeout.text()),
             'os': OS
         }
         return properties_dict

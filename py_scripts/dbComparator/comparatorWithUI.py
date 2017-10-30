@@ -1,10 +1,16 @@
 import datetime
 import os
+import os.path
 import shutil
-from py_scripts.helpers import converters, helper, dbHelper
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.application import MIMEApplication
+from email.mime.text import MIMEText
+from os.path import basename
+from py_scripts.helpers import converters
 from py_scripts.dbComparator import tableData, sqlComparing
 from py_scripts.helpers.dbHelper import DbConnector
-from py_scripts.dbComparator.queryConstructor import InitializeQuery
+from py_scripts.dbComparator import queryConstructor
 
 
 class Backend:
@@ -20,43 +26,35 @@ class Backend:
         else:
             service_dir = "/tmp/comparator/"
         check_service_dir(service_dir)
-        prod_sql_dict = self.sql_connection_properties.get('prod')
-        test_sql_dict = self.sql_connection_properties.get('test')
+        prod_sql_connection = DbConnector(self.sql_connection_properties.get('prod'), self.logger)
+        test_sql_connection = DbConnector(self.sql_connection_properties.get('test'), self.logger)
         comparing_info = tableData.Info(self.logger)
-        comparing_info.update_table_list("prod", dbHelper.DbConnector(prod_sql_dict, self.logger).get_tables())
-        comparing_info.update_table_list("test", dbHelper.DbConnector(test_sql_dict, self.logger).get_tables())
-        global_break = False
+        comparing_info.update_table_list("prod", prod_sql_connection.get_tables())
+        comparing_info.update_table_list("test", test_sql_connection.get_tables())
         if "Linux" in self.OS:
             create_test_dir("/mxf/data/test_results/")
         else:
             create_test_dir("C:\\dbComparator\\")
         start_time = datetime.datetime.now()
         self.logger.info("Start processing!")
-        mapping = InitializeQuery(DbConnector(prod_sql_dict, self.logger), self.logger).prepare_column_mapping()
+        mapping = queryConstructor.prepare_column_mapping(prod_sql_connection, self.logger)
         if self.sql_comparing_properties.get('check_schema'):
             schema_comparing_time = sqlComparing.Object(self.sql_connection_properties,
                                                         self.sql_comparing_properties,
                                                         comparing_info).compare_metadata(start_time)
-            data_comparing_time = sqlComparing.Object(self.sql_connection_properties,
-                                                      self.sql_comparing_properties,
-                                                      comparing_info).compare_data(global_break,
-                                                                                   start_time,
-                                                                                   service_dir,
-                                                                                   mapping)
         else:
             self.logger.info("Schema checking disabled...")
             schema_comparing_time = None
-            data_comparing_time = sqlComparing.Object(self.sql_connection_properties,
-                                                      self.sql_comparing_properties,
-                                                      comparing_info).compare_data(global_break,
-                                                                                   start_time,
-                                                                                   service_dir,
-                                                                                   mapping)
+        data_comparing_time = sqlComparing.Object(self.sql_connection_properties,
+                                                  self.sql_comparing_properties,
+                                                  comparing_info).compare_data(start_time,
+                                                                               service_dir,
+                                                                               mapping)
         subject = "[Test] Check databases"
         text = generate_mail_text(comparing_info, self.sql_comparing_properties,
                                   data_comparing_time, schema_comparing_time)
-        helper.sendmail(text, 'do-not-reply@inventale.com', 'AKIAJHBVE2GQUQBRSQVA',
-                        'pavel.kiselev@best4ad.com', subject, None)
+        sendmail(text, 'do-not-reply@inventale.com', 'AKIAJHBVE2GQUQBRSQVA', 'pavel.kiselev@best4ad.com', subject, None,
+                 self.logger)
 
 
 def check_service_dir(service_dir):
@@ -90,6 +88,38 @@ def generate_mail_text(comparing_info, sql_comparing_properties, data_comparing_
         text = text + "Schema checked in " + str(schema_comparing_time) + "\n"
     text = text + "Dbs checked in " + str(data_comparing_time) + "\n"
     return text
+
+
+def sendmail(body, fromaddr, toaddr, mypass, subject, files, logger):
+    msg = MIMEMultipart()
+    msg['From'] = fromaddr
+    if type(toaddr) is list:
+        msg['To'] = ', '.join(toaddr)
+    else:
+        msg['To'] = toaddr
+    msg['Subject'] = subject
+    msg.attach(MIMEText(body, 'plain'))
+    if files is not None:
+        for attachFile in files.split(','):
+            if os.path.exists(attachFile) and os.path.isfile(attachFile):
+                with open(attachFile, 'rb') as file:
+                    part = MIMEApplication(file.read(), Name=basename(attachFile))
+                part['Content-Disposition'] = 'attachment; filename="%s"' % basename(attachFile)
+                msg.attach(part)
+            else:
+                if attachFile.lstrip() != "":
+                    logger.error("File not found {}".format(attachFile))
+                    print(str(datetime.datetime.now()) + " [ERROR] File not found " + attachFile)
+    server = smtplib.SMTP('smtp.gmail.com', 587)
+    server.ehlo()
+    server.starttls()
+    try:
+        server.login(fromaddr, mypass)
+        text = msg.as_string()
+        server.sendmail(fromaddr, toaddr, text)
+        server.quit()
+    except smtplib.SMTPAuthenticationError:
+        print('Raised authentication error!')
 
 
 def get_test_result_text(body, comparing_info):

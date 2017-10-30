@@ -24,32 +24,32 @@ class Logger:
             print(str(datetime.datetime.now()) + ' [CRITICAL] ' + message)
             if self.log_file is not None:
                 with open(self.log_file, 'a') as file:
-                    file.write(str(datetime.datetime.now()) + ' [CRITICAL] ' + message)
+                    file.write(str(datetime.datetime.now()) + ' [CRITICAL] ' + message + '\n')
 
     def error(self, message):
         if self.types.get(self.type) <= self.types.get('ERROR'):
             print(str(datetime.datetime.now()) + ' [ERROR] ' + message)
             if self.log_file is not None:
                 with open(self.log_file, 'a') as file:
-                    file.write(str(datetime.datetime.now()) + ' [ERROR] ' + message)
+                    file.write(str(datetime.datetime.now()) + ' [ERROR] ' + message + '\n')
 
     def warn(self, message):
         if self.types.get(self.type) <= self.types.get('WARNING'):
-            print(str(datetime.datetime.now()) + ' [WARN] ' + message)
+            print(str(datetime.datetime.now()) + ' [WARN ] ' + message)
             if self.log_file is not None:
                 with open(self.log_file, 'a') as file:
-                    file.write(str(datetime.datetime.now()) + ' [WARN] ' + message)
+                    file.write(str(datetime.datetime.now()) + ' [WARN ] ' + message + '\n')
 
     def info(self, message):
         if self.types.get(self.type) <= self.types.get('INFO'):
-            print(str(datetime.datetime.now()) + ' [INFO] ' + message)
+            print(str(datetime.datetime.now()) + ' [INFO ] ' + message)
             if self.log_file is not None:
                 with open(self.log_file, 'a') as file:
-                    file.write(str(datetime.datetime.now()) + ' [INFO] ' + message)
+                    file.write(str(datetime.datetime.now()) + ' [INFO ] ' + message + '\n')
 
     def debug(self, message):
         if self.types.get(self.type) <= self.types.get('DEBUG'):
             print(str(datetime.datetime.now()) + ' [DEBUG] ' + message)
             if self.log_file is not None:
                 with open(self.log_file, 'a') as file:
-                    file.write(str(datetime.datetime.now()) + ' [DEBUG] ' + message)
+                    file.write(str(datetime.datetime.now()) + ' [DEBUG] ' + message + '\n')
