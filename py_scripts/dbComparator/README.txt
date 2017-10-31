@@ -1,15 +1,10 @@
-1. Install python 3.6. Ubuntu:
-
+1. Install PyCharm (it makes work easier)
+2. Install python 3.6. Ubuntu:
 sudo apt-get install python3
-
-2. Install PyQt5. Ubuntu:
-
+3. Install PyQt5. Ubuntu:
 sudo apt-get install pyqt5
-
-3. Install files from requirements.txt. Ubuntu:
-
-sudo pip install -r requirements.txt --no-index
-
-4. Run script comparatorGUI.
-
-5. Have fun.
+4. Install files from requirements.txt. Ubuntu:
+sudo pip install -r requirements.txt
+5. Import py_scripts project to PyCharm.
+6. Run script comparatorGUI.
+7. Have fun.
