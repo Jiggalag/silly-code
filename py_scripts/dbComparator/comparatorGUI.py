@@ -472,7 +472,8 @@ class Example(QWidget):
     def exit(self):
         sys.exit(0)
 
-    def check_prod(self):
+    def check_prod(self, mode='loud'):
+        logger = Logger(self.logging_level.currentText())
         empty_fields = []
         if not self.prod_host.text():
             empty_fields.append('prod.host')
@@ -500,25 +501,33 @@ class Example(QWidget):
             'db': prod_db_value
         }
         try:
-            dbHelper.DbConnector(prod_dict, Logger(self.logging_level.currentText())).get_tables()
-            print('Prod OK!')
-            QMessageBox.information(self, 'Information',
-                                    "Successfully connected to\n {}/{}".format(prod_dict.get('host'),
-                                                                               prod_dict.get('db')),
-                                    QMessageBox.Ok, QMessageBox.Ok)
+            dbHelper.DbConnector(prod_dict, logger).get_tables()
+            logger.info('Connection to db {} established successfully!'.format(self.prod_db.text()))
+            if mode == 'loud':
+                QMessageBox.information(self, 'Information',
+                                        "Successfully connected to\n {}/{}".format(prod_dict.get('host'),
+                                                                                   prod_dict.get('db')),
+                                        QMessageBox.Ok, QMessageBox.Ok)
+            return True
         except pymysql.OperationalError as err:
+            logger.warn("Connection to {}/{} failed\n\n{}".format(prod_dict.get('host'), prod_dict.get('db'),
+                                                                  err.args[1]))
             QMessageBox.warning(self, 'Warning',
-                                "Connection to {}/{} failed\n\n{}".format(prod_dict.get('host'),
-                                                                          prod_dict.get('db'),
+                                "Connection to {}/{} failed\n\n{}".format(prod_dict.get('host'), prod_dict.get('db'),
                                                                           err.args[1]),
                                 QMessageBox.Ok, QMessageBox.Ok)
+            return False
         except pymysql.InternalError as err:
+            logger.warn("Connection to {}/{} failed\n\n{}".format(prod_dict.get('host'), prod_dict.get('db'),
+                                                                  err.args[1]))
             QMessageBox.warning(self, 'Warning', "Connection to {}/{} failed\n\n{}".format(prod_dict.get('host'),
                                                                                            prod_dict.get('db'),
                                                                                            err.args[1]),
                                 QMessageBox.Ok, QMessageBox.Ok)
+            return False
 
-    def check_test(self):
+    def check_test(self, mode='loud'):
+        logger = Logger(self.logging_level.currentText())
         empty_fields = []
         if not self.test_host.text():
             empty_fields.append('test.host')
@@ -546,24 +555,34 @@ class Example(QWidget):
             'db': test_db_value
         }
         try:
-            dbHelper.DbConnector(test_dict, Logger(self.logging_level.currentText())).get_tables()
-            print('Test OK!')
-            QMessageBox.information(self, 'Information',
-                                    "Successfully connected to\n {}/{}".format(test_dict.get('host'),
-                                                                               test_dict.get('db')),
-                                    QMessageBox.Ok, QMessageBox.Ok)
+            dbHelper.DbConnector(test_dict, logger).get_tables()
+            logger.info('Connection to db {} established successfully!'.format(self.test_db.text()))
+            if mode == 'loud':
+                QMessageBox.information(self, 'Information',
+                                        "Successfully connected to\n {}/{}".format(test_dict.get('host'),
+                                                                                   test_dict.get('db')),
+                                        QMessageBox.Ok, QMessageBox.Ok)
+            return True
         except pymysql.OperationalError as err:
+            logger.warn("Connection to {}/{} failed\n\n{}".format(test_dict.get('host'),
+                                                                          test_dict.get('db'),
+                                                                          err.args[1]))
             QMessageBox.warning(self, 'Warning',
                                 "Connection to {}/{} failed\n\n{}".format(test_dict.get('host'),
                                                                           test_dict.get('db'),
                                                                           err.args[1]),
                                 QMessageBox.Ok, QMessageBox.Ok)
+            return False
         except pymysql.InternalError as err:
+            logger.warn("Connection to {}/{} failed\n\n{}".format(test_dict.get('host'),
+                                                                          test_dict.get('db'),
+                                                                          err.args[1]))
             QMessageBox.warning(self, 'Warning',
                                 "Connection to {}/{} failed\n\n{}".format(test_dict.get('host'),
                                                                           test_dict.get('db'),
                                                                           err.args[1]),
                                 QMessageBox.Ok, QMessageBox.Ok)
+            return False
 
     def get_sql_params(self):
         empty_fields = []
@@ -594,7 +613,6 @@ class Example(QWidget):
                                      "\n".join(empty_fields),QMessageBox.Ok, QMessageBox.Ok)
                 return False
         else:
-            Logger(self.logging_level.currentText()).info('Comparing started!')
             prod_host = self.prod_host.text()
             prod_user = self.prod_user.text()
             prod_password = self.prod_password.text()
@@ -675,7 +693,9 @@ class Example(QWidget):
         connection_dict = self.get_sql_params()
         properties = self.get_properties()
         if connection_dict and properties:
-            Backend(connection_dict, properties).run_comparing()
+            if self.check_prod('quiet') and self.check_test('quiet'):
+                Logger(self.logging_level.currentText()).info('Comparing started!')
+                Backend(connection_dict, properties).run_comparing()
 
 
 class MainWindow(QMainWindow):

@@ -1,14 +1,7 @@
 1. Enable separateChecking mode.
 
-
-
-Epics:
-1. Probably, add functional for cloning databases.
-
 Bugfixes:
 
-1. Repair saving diff-files to disc? Check.
-2. Clarify, why logs not writed?
 3. Fix error
 Username and Password not accepted.
 
@@ -19,9 +12,12 @@ Backlog:
 
 Enchancement:
 
-0. Add ability of sending bugreports to my e-mail. (If sending failed - save bugreport on disc)
 1. UI hangs and disables during comparing DBs. Add modal window with progress bar and some information about
 progress of comparing.
 2. Add include tables QLineEdit to exclude all table besides included.
 3. Add stage for final comparing of differences for each table. Differences should be added to sets to make comparing easier.
 We need this stage to exclude situations, when same entities fonded in differents compare-packs.
+
+Epics:
+1. Probably, add functional for cloning databases.
+2. Add ability of sending bugreports to my e-mail. (If sending failed - save bugreport on disc) ??
