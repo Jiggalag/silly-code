@@ -10,7 +10,6 @@ Backlog:
 
 Enchancement:
 
-0. Clear all should reset all fields to default value.
 1. UI hangs and disables during comparing DBs. Add modal window with progress bar and some information about
 progress of comparing.
 2. Enable separateChecking mode.

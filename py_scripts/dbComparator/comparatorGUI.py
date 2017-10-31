@@ -95,42 +95,18 @@ class Example(QWidget):
         self.test_db = QLineEdit(self)
         self.send_mail_to = QLineEdit(self)
         self.excluded_tables = QLineEdit(self)
-        self.excluded_tables.setText('databasechangelog,download,migrationhistory,mntapplog,reportinfo,synchistory,' +
-                                 'syncstage,synctrace,synctracelink,syncpersistentjob,forecaststatistics,' +
-                                 'migrationhistory')
         self.only_tables = QLineEdit(self)
         self.hide_columns = QLineEdit(self)
-        self.hide_columns.setText('archived,addonFields,hourOfDayS,dayOfWeekS,impCost,id')
-
         self.amount_checking_records = QLineEdit(self)
-        self.amount_checking_records.setText('100000')
         self.comparing_step = QLineEdit(self)
-        self.comparing_step.setText('10000')
         self.depth_report_check = QLineEdit(self)
-        self.depth_report_check.setText('7')
         self.schema_columns = QLineEdit(self)
         # TODO: add possibility for useful redacting of schema columns parameter
-        self.schema_columns.setText('TABLE_CATALOG,TABLE_NAME,COLUMN_NAME,ORDINAL_POSITION,COLUMN_DEFAULT,' +
-                                    'IS_NULLABLE,DATA_TYPE,CHARACTER_MAXIMUM_LENGTH,CHARACTER_OCTET_LENGTH,' +
-                                    'NUMERIC_PRECISION,NUMERIC_SCALE,DATETIME_PRECISION,CHARACTER_SET_NAME,' +
-                                    'COLLATION_NAME,COLUMN_TYPE,COLUMN_KEY,EXTRA,COLUMN_COMMENT,GENERATION_EXPRESSION')
         self.retry_attempts = QLineEdit(self)
-        self.retry_attempts.setText('5')
         self.path_to_logs = QLineEdit(self)
-        if OS == 'Windows':
-            # TODO: add defining disc
-            if not os.path.exists('C:\\DbComparator\\'):
-                os.mkdir('C:\\DbComparator\\')
-            self.path_to_logs.setText('C:\\DbComparator\\DbComparator.log')
-        elif OS == 'Linux':
-            log_path = os.path.expanduser('~') + '/DbComparator/'
-            if not os.path.exists(log_path):
-                os.mkdir(log_path)
-            self.path_to_logs.setText(log_path + 'DbComparator.log')
         self.table_timeout = QLineEdit(self)
-        self.table_timeout.setText('5')
         self.strings_amount = QLineEdit(self)
-        self.strings_amount.setText('1000')
+        self.set_default_values()
 
         # Combobox
 
@@ -320,7 +296,38 @@ class Example(QWidget):
         self.test_password.clear()
         self.test_db.clear()
         self.send_mail_to.clear()
+        self.only_tables.clear()
+        self.set_default_values()
         # TODO: add reseting of state for checkbox, lineedits and other elements
+
+    def set_default_values(self):
+        self.excluded_tables.setText('databasechangelog,download,migrationhistory,mntapplog,reportinfo,synchistory,' +
+                                     'syncstage,synctrace,synctracelink,syncpersistentjob,forecaststatistics,' +
+                                     'migrationhistory')
+        self.hide_columns.setText('archived,addonFields,hourOfDayS,dayOfWeekS,impCost,id')
+        self.amount_checking_records.setText('100000')
+        self.comparing_step.setText('10000')
+        self.depth_report_check.setText('7')
+        self.schema_columns.setText('TABLE_CATALOG,TABLE_NAME,COLUMN_NAME,ORDINAL_POSITION,COLUMN_DEFAULT,' +
+                                    'IS_NULLABLE,DATA_TYPE,CHARACTER_MAXIMUM_LENGTH,CHARACTER_OCTET_LENGTH,' +
+                                    'NUMERIC_PRECISION,NUMERIC_SCALE,DATETIME_PRECISION,CHARACTER_SET_NAME,' +
+                                    'COLLATION_NAME,COLUMN_TYPE,COLUMN_KEY,EXTRA,COLUMN_COMMENT,GENERATION_EXPRESSION')
+        self.retry_attempts.setText('5')
+        self.set_path_to_logs(OS)
+        self.table_timeout.setText('5')
+        self.strings_amount.setText('1000')
+
+    def set_path_to_logs(self, OS):
+        if OS == 'Windows':
+            # TODO: add defining disc
+            if not os.path.exists('C:\\DbComparator\\'):
+                os.mkdir('C:\\DbComparator\\')
+            self.path_to_logs.setText('C:\\DbComparator\\DbComparator.log')
+        elif OS == 'Linux':
+            log_path = os.path.expanduser('~') + '/DbComparator/'
+            if not os.path.exists(log_path):
+                os.mkdir(log_path)
+            self.path_to_logs.setText(log_path + 'DbComparator.log')
 
     def show_dialog(self):
         current_dir = os.getcwd()
