@@ -53,6 +53,7 @@ class Example(QWidget):
         test_db_label = QLabel('test.sql-db', self)
         send_mail_to_label = QLabel('Send mail to', self)
         checking_mode_label = QLabel('Checking mode:', self)
+        only_tables_label = QLabel('Only tables', self)
         excluded_tables_label = QLabel('Skip tables', self)
         hide_columns_label = QLabel('Skip columns', self)
 
@@ -97,6 +98,7 @@ class Example(QWidget):
         self.excluded_tables.setText('databasechangelog,download,migrationhistory,mntapplog,reportinfo,synchistory,' +
                                  'syncstage,synctrace,synctracelink,syncpersistentjob,forecaststatistics,' +
                                  'migrationhistory')
+        self.only_tables = QLineEdit(self)
         self.hide_columns = QLineEdit(self)
         self.hide_columns.setText('archived,addonFields,hourOfDayS,dayOfWeekS,impCost,id')
 
@@ -235,12 +237,14 @@ class Example(QWidget):
         grid.addWidget(btn_check_test, 4, 3)
         grid.addWidget(send_mail_to_label, 6, 0)
         grid.addWidget(self.send_mail_to, 6, 1)
-        grid.addWidget(excluded_tables_label, 7, 0)
-        grid.addWidget(self.excluded_tables, 7, 1)
-        grid.addWidget(hide_columns_label, 8, 0)
-        grid.addWidget(self.hide_columns, 8, 1)
-        grid.addWidget(self.cb_enable_schema_checking, 9, 0)
-        grid.addWidget(self.cb_fail_with_first_error, 10, 0)
+        grid.addWidget(only_tables_label, 7, 0)
+        grid.addWidget(self.only_tables, 7, 1)
+        grid.addWidget(excluded_tables_label, 8, 0)
+        grid.addWidget(self.excluded_tables, 8, 1)
+        grid.addWidget(hide_columns_label, 9, 0)
+        grid.addWidget(self.hide_columns, 9, 1)
+        grid.addWidget(self.cb_enable_schema_checking, 10, 0)
+        grid.addWidget(self.cb_fail_with_first_error, 11, 0)
         grid.addWidget(btn_set_configuration, 11, 5)
         # grid.addWidget(btn_load_sql_params, 5, 0)
         grid.addWidget(checking_mode_label, 6, 3)
@@ -682,6 +686,7 @@ class Example(QWidget):
             'depth_report_check': self.depth_report_check.text(),
             'schema_columns': self.schema_columns.text(),
             'retry_attempts': self.retry_attempts.text(),
+            'only_tables': self.only_tables.text(),
             # TODO: add try/catch
             'table_timeout': int(self.table_timeout.text()),
             'os': OS
