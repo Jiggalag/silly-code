@@ -21,7 +21,7 @@ def compare_table(prod_connection, test_connection, table, is_report, service_di
             query_list = queryConstructor.InitializeQuery(prod_connection, mapping, table,
                                                           comparing_step, logger).entity(max_amount)
         global_break, local_break = iterate_by_query_list(prod_connection, test_connection, query_list, table,
-                                                          start_time, comparing_info, service_dir, **kwargs)
+                                                          start_time, comparing_info, service_dir, max_amount, **kwargs)
         return global_break
     else:
         logger.warn('Local_break flag detected. Checking of table {} skipped.'.format(table))
@@ -68,15 +68,19 @@ def substract(prod_amount, test_amount):
 
 
 def iterate_by_query_list(prod_connection, test_connection, query_list, table, start_time, comparing_info,
-                          service_dir, **kwargs):
+                          service_dir, max_amount, **kwargs):
     table_start_time = datetime.datetime.now()
     logger = kwargs.get('logger')
     strings_amount = kwargs.get('strings_amount')
+    comparing_step = kwargs.get('comparing_step')
     fail_with_first_error = kwargs.get('fail_with_first_error')
     table_timeout = kwargs.get('table_timeout')
     prod_uniq = set()
     test_uniq = set()
+    counter = 0
     for query in query_list:
+        logger.info('Progress for table {0} {1:.2f}%'.format(table, (counter / max_amount) * 100))
+        counter += comparing_step
         local_break, prod_tmp_uniq, test_tmp_uniq = get_differences(prod_connection, test_connection, table, query,
                                                                     comparing_info, strings_amount, service_dir, logger)
         prod_uniq = process_uniqs.merge_uniqs(prod_uniq, prod_tmp_uniq)
