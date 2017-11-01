@@ -106,7 +106,6 @@ class Example(QWidget):
         self.path_to_logs = QLineEdit(self)
         self.table_timeout = QLineEdit(self)
         self.strings_amount = QLineEdit(self)
-        self.set_default_values()
 
         # Combobox
 
@@ -162,6 +161,7 @@ class Example(QWidget):
         # self.both.setChecked(True)
         # self.both.toggled.connect(self.both_toggled)
 
+        self.set_default_values()
 
         # Set tooltips
 
@@ -290,7 +290,7 @@ class Example(QWidget):
         self.prod_host.clear()
         self.prod_user.clear()
         self.prod_password.clear()
-        self.prod_password.clear()
+        self.prod_db.clear()
         self.test_host.clear()
         self.test_user.clear()
         self.test_password.clear()
@@ -298,7 +298,7 @@ class Example(QWidget):
         self.send_mail_to.clear()
         self.only_tables.clear()
         self.set_default_values()
-        # TODO: add reseting of state for checkbox, lineedits and other elements
+
 
     def set_default_values(self):
         self.excluded_tables.setText('databasechangelog,download,migrationhistory,mntapplog,reportinfo,synchistory,' +
@@ -316,6 +316,11 @@ class Example(QWidget):
         self.set_path_to_logs(OS)
         self.table_timeout.setText('5')
         self.strings_amount.setText('1000')
+        self.cb_enable_schema_checking.setChecked(True)
+        self.cb_fail_with_first_error.setChecked(True)
+        self.day_summary_mode.setChecked(True)
+        self.section_summary_mode.setChecked(False)
+        self.detailed_mode.setChecked(False)
 
     def set_path_to_logs(self, OS):
         if OS == 'Windows':
@@ -390,10 +395,10 @@ class Example(QWidget):
                         if self.cb_enable_schema_checking.isChecked():
                             pass
                         else:
-                            self.cb_enable_schema_checking.checkState()
+                            self.cb_enable_schema_checking.setChecked(True)
                     else:
                         if self.cb_enable_schema_checking.isChecked():
-                            self.cb_enable_schema_checking.checkState()
+                            self.cb_enable_schema_checking.setChecked(False)
                         else:
                             pass
                 elif 'fail_with_first_error' in string:
@@ -402,10 +407,10 @@ class Example(QWidget):
                         if self.cb_fail_with_first_error.isChecked():
                             pass
                         else:
-                            self.cb_fail_with_first_error.checkState()
+                            self.cb_fail_with_first_error.setChecked(True)
                     else:
                         if self.cb_fail_with_first_error.isChecked():
-                            self.cb_fail_with_first_error.checkState()
+                            self.cb_fail_with_first_error.setChecked(False)
                         else:
                             pass
                 elif 'logging_level' in string:
@@ -413,9 +418,18 @@ class Example(QWidget):
                     index = self.logging_level.findText(logging_level, Qt.MatchFixedString)
                     if index >= 0:
                         self.logging_level.setCurrentIndex(index)
-                # TODO: add loading of checking mode
-                # TODO: add loading of table_timeout
-                # TODO: fix incorrect loading of flags
+                elif 'table_timeout' in string:
+                    table_timeout = string[string.find('=') + 1:]
+                    self.table_timeout.setText(table_timeout)
+                elif 'mode' in string:
+                    mode = string[string.find('=') + 1:]
+                    if mode == 'day-sum':
+                        self.day_summary_mode.setChecked(True)
+                    elif mode == 'section-sum':
+                        self.section_summary_mode.setChecked(True)
+                    else:
+                        self.detailed_mode.setChecked(True)
+
 
     def save_configuration(self):
         text = []
@@ -437,6 +451,8 @@ class Example(QWidget):
             text.append('test.db = {}'.format(self.test_db.text()))
         if self.send_mail_to.text() != '':
             text.append('send_mail_to = {}'.format(self.send_mail_to.text()))
+        if self.only_tables != '':
+            text.append('only_tables = {}'.format(self.only_tables.text()))
         if self.excluded_tables != '':
             text.append('excluded_tables = {}'.format(self.excluded_tables.text()))
         if self.hide_columns != '':
@@ -462,6 +478,8 @@ class Example(QWidget):
             text.append('send_mail_to = {}'.format(self.send_mail_to.text()))
         if self.path_to_logs != '':
             text.append('path_to_logs = {}'.format(self.path_to_logs.text()))
+        if self.table_timeout != '':
+            text.append('table_timeout = {}'.format(self.table_timeout.text()))
         if self.cb_enable_schema_checking.isChecked() == True:
             text.append('compare_schema = True')
         if self.cb_enable_schema_checking.isChecked() == False:
@@ -470,8 +488,12 @@ class Example(QWidget):
             text.append('fail_with_first_error = True')
         if self.cb_fail_with_first_error.isChecked() == False:
             text.append('fail_with_first_error = False')
-        # TODO: add loading of checking mode
-        # TODO: add saving of table_timeout
+        if self.day_summary_mode.isChecked():
+            text.append('mode = day-sum')
+        elif self.section_summary_mode.isChecked():
+            text.append('mode = section-sum')
+        elif self.detailed_mode.isChecked():
+            text.append('mode = detailed')
         text.append('logging_level = {}'.format(self.logging_level.currentText()))
         fileName, _ = QFileDialog.getSaveFileName(self, "QFileDialog.getSaveFileName()",  "",
                                                   "All Files (*);;Text Files (*.txt)")

@@ -4,7 +4,7 @@ Bugfixes:
 
 Enchancement:
 
-1. Add progress-percentage for big tables.
+1. Add hints to all UI elements.
 2. UI hangs and disables during comparing DBs. Add modal window with progress bar and some information about
 progress of comparing.
 3. Enable separateChecking mode.
