@@ -53,6 +53,7 @@ class Example(QWidget):
         test_db_label = QLabel('test.sql-db', self)
         send_mail_to_label = QLabel('Send mail to', self)
         checking_mode_label = QLabel('Checking mode:', self)
+        only_tables_label = QLabel('Only tables', self)
         excluded_tables_label = QLabel('Skip tables', self)
         hide_columns_label = QLabel('Skip columns', self)
 
@@ -94,41 +95,17 @@ class Example(QWidget):
         self.test_db = QLineEdit(self)
         self.send_mail_to = QLineEdit(self)
         self.excluded_tables = QLineEdit(self)
-        self.excluded_tables.setText('databasechangelog,download,migrationhistory,mntapplog,reportinfo,synchistory,' +
-                                 'syncstage,synctrace,synctracelink,syncpersistentjob,forecaststatistics,' +
-                                 'migrationhistory')
+        self.only_tables = QLineEdit(self)
         self.hide_columns = QLineEdit(self)
-        self.hide_columns.setText('archived,addonFields,hourOfDayS,dayOfWeekS,impCost,id')
-
         self.amount_checking_records = QLineEdit(self)
-        self.amount_checking_records.setText('100000')
         self.comparing_step = QLineEdit(self)
-        self.comparing_step.setText('10000')
         self.depth_report_check = QLineEdit(self)
-        self.depth_report_check.setText('7')
         self.schema_columns = QLineEdit(self)
         # TODO: add possibility for useful redacting of schema columns parameter
-        self.schema_columns.setText('TABLE_CATALOG,TABLE_NAME,COLUMN_NAME,ORDINAL_POSITION,COLUMN_DEFAULT,' +
-                                    'IS_NULLABLE,DATA_TYPE,CHARACTER_MAXIMUM_LENGTH,CHARACTER_OCTET_LENGTH,' +
-                                    'NUMERIC_PRECISION,NUMERIC_SCALE,DATETIME_PRECISION,CHARACTER_SET_NAME,' +
-                                    'COLLATION_NAME,COLUMN_TYPE,COLUMN_KEY,EXTRA,COLUMN_COMMENT,GENERATION_EXPRESSION')
         self.retry_attempts = QLineEdit(self)
-        self.retry_attempts.setText('5')
         self.path_to_logs = QLineEdit(self)
-        if OS == 'Windows':
-            # TODO: add defining disc
-            if not os.path.exists('C:\\DbComparator\\'):
-                os.mkdir('C:\\DbComparator\\')
-            self.path_to_logs.setText('C:\\DbComparator\\DbComparator.log')
-        elif OS == 'Linux':
-            log_path = os.path.expanduser('~') + '/DbComparator/'
-            if not os.path.exists(log_path):
-                os.mkdir(log_path)
-            self.path_to_logs.setText(log_path + 'DbComparator.log')
         self.table_timeout = QLineEdit(self)
-        self.table_timeout.setText('5')
         self.strings_amount = QLineEdit(self)
-        self.strings_amount.setText('1000')
 
         # Combobox
 
@@ -184,6 +161,7 @@ class Example(QWidget):
         # self.both.setChecked(True)
         # self.both.toggled.connect(self.both_toggled)
 
+        self.set_default_values()
 
         # Set tooltips
 
@@ -235,12 +213,14 @@ class Example(QWidget):
         grid.addWidget(btn_check_test, 4, 3)
         grid.addWidget(send_mail_to_label, 6, 0)
         grid.addWidget(self.send_mail_to, 6, 1)
-        grid.addWidget(excluded_tables_label, 7, 0)
-        grid.addWidget(self.excluded_tables, 7, 1)
-        grid.addWidget(hide_columns_label, 8, 0)
-        grid.addWidget(self.hide_columns, 8, 1)
-        grid.addWidget(self.cb_enable_schema_checking, 9, 0)
-        grid.addWidget(self.cb_fail_with_first_error, 10, 0)
+        grid.addWidget(only_tables_label, 7, 0)
+        grid.addWidget(self.only_tables, 7, 1)
+        grid.addWidget(excluded_tables_label, 8, 0)
+        grid.addWidget(self.excluded_tables, 8, 1)
+        grid.addWidget(hide_columns_label, 9, 0)
+        grid.addWidget(self.hide_columns, 9, 1)
+        grid.addWidget(self.cb_enable_schema_checking, 10, 0)
+        grid.addWidget(self.cb_fail_with_first_error, 11, 0)
         grid.addWidget(btn_set_configuration, 11, 5)
         # grid.addWidget(btn_load_sql_params, 5, 0)
         grid.addWidget(checking_mode_label, 6, 3)
@@ -310,13 +290,49 @@ class Example(QWidget):
         self.prod_host.clear()
         self.prod_user.clear()
         self.prod_password.clear()
-        self.prod_password.clear()
+        self.prod_db.clear()
         self.test_host.clear()
         self.test_user.clear()
         self.test_password.clear()
         self.test_db.clear()
         self.send_mail_to.clear()
-        # TODO: add reseting of state for checkbox, lineedits and other elements
+        self.only_tables.clear()
+        self.set_default_values()
+
+
+    def set_default_values(self):
+        self.excluded_tables.setText('databasechangelog,download,migrationhistory,mntapplog,reportinfo,synchistory,' +
+                                     'syncstage,synctrace,synctracelink,syncpersistentjob,forecaststatistics,' +
+                                     'migrationhistory')
+        self.hide_columns.setText('archived,addonFields,hourOfDayS,dayOfWeekS,impCost,id')
+        self.amount_checking_records.setText('100000')
+        self.comparing_step.setText('10000')
+        self.depth_report_check.setText('7')
+        self.schema_columns.setText('TABLE_CATALOG,TABLE_NAME,COLUMN_NAME,ORDINAL_POSITION,COLUMN_DEFAULT,' +
+                                    'IS_NULLABLE,DATA_TYPE,CHARACTER_MAXIMUM_LENGTH,CHARACTER_OCTET_LENGTH,' +
+                                    'NUMERIC_PRECISION,NUMERIC_SCALE,DATETIME_PRECISION,CHARACTER_SET_NAME,' +
+                                    'COLLATION_NAME,COLUMN_TYPE,COLUMN_KEY,EXTRA,COLUMN_COMMENT,GENERATION_EXPRESSION')
+        self.retry_attempts.setText('5')
+        self.set_path_to_logs(OS)
+        self.table_timeout.setText('5')
+        self.strings_amount.setText('1000')
+        self.cb_enable_schema_checking.setChecked(True)
+        self.cb_fail_with_first_error.setChecked(True)
+        self.day_summary_mode.setChecked(True)
+        self.section_summary_mode.setChecked(False)
+        self.detailed_mode.setChecked(False)
+
+    def set_path_to_logs(self, OS):
+        if OS == 'Windows':
+            # TODO: add defining disc
+            if not os.path.exists('C:\\DbComparator\\'):
+                os.mkdir('C:\\DbComparator\\')
+            self.path_to_logs.setText('C:\\DbComparator\\DbComparator.log')
+        elif OS == 'Linux':
+            log_path = os.path.expanduser('~') + '/DbComparator/'
+            if not os.path.exists(log_path):
+                os.mkdir(log_path)
+            self.path_to_logs.setText(log_path + 'DbComparator.log')
 
     def show_dialog(self):
         current_dir = os.getcwd()
@@ -379,10 +395,10 @@ class Example(QWidget):
                         if self.cb_enable_schema_checking.isChecked():
                             pass
                         else:
-                            self.cb_enable_schema_checking.checkState()
+                            self.cb_enable_schema_checking.setChecked(True)
                     else:
                         if self.cb_enable_schema_checking.isChecked():
-                            self.cb_enable_schema_checking.checkState()
+                            self.cb_enable_schema_checking.setChecked(False)
                         else:
                             pass
                 elif 'fail_with_first_error' in string:
@@ -391,10 +407,10 @@ class Example(QWidget):
                         if self.cb_fail_with_first_error.isChecked():
                             pass
                         else:
-                            self.cb_fail_with_first_error.checkState()
+                            self.cb_fail_with_first_error.setChecked(True)
                     else:
                         if self.cb_fail_with_first_error.isChecked():
-                            self.cb_fail_with_first_error.checkState()
+                            self.cb_fail_with_first_error.setChecked(False)
                         else:
                             pass
                 elif 'logging_level' in string:
@@ -402,9 +418,18 @@ class Example(QWidget):
                     index = self.logging_level.findText(logging_level, Qt.MatchFixedString)
                     if index >= 0:
                         self.logging_level.setCurrentIndex(index)
-                # TODO: add loading of checking mode
-                # TODO: add loading of table_timeout
-                # TODO: fix incorrect loading of flags
+                elif 'table_timeout' in string:
+                    table_timeout = string[string.find('=') + 1:]
+                    self.table_timeout.setText(table_timeout)
+                elif 'mode' in string:
+                    mode = string[string.find('=') + 1:]
+                    if mode == 'day-sum':
+                        self.day_summary_mode.setChecked(True)
+                    elif mode == 'section-sum':
+                        self.section_summary_mode.setChecked(True)
+                    else:
+                        self.detailed_mode.setChecked(True)
+
 
     def save_configuration(self):
         text = []
@@ -426,6 +451,8 @@ class Example(QWidget):
             text.append('test.db = {}'.format(self.test_db.text()))
         if self.send_mail_to.text() != '':
             text.append('send_mail_to = {}'.format(self.send_mail_to.text()))
+        if self.only_tables != '':
+            text.append('only_tables = {}'.format(self.only_tables.text()))
         if self.excluded_tables != '':
             text.append('excluded_tables = {}'.format(self.excluded_tables.text()))
         if self.hide_columns != '':
@@ -451,6 +478,8 @@ class Example(QWidget):
             text.append('send_mail_to = {}'.format(self.send_mail_to.text()))
         if self.path_to_logs != '':
             text.append('path_to_logs = {}'.format(self.path_to_logs.text()))
+        if self.table_timeout != '':
+            text.append('table_timeout = {}'.format(self.table_timeout.text()))
         if self.cb_enable_schema_checking.isChecked() == True:
             text.append('compare_schema = True')
         if self.cb_enable_schema_checking.isChecked() == False:
@@ -459,8 +488,12 @@ class Example(QWidget):
             text.append('fail_with_first_error = True')
         if self.cb_fail_with_first_error.isChecked() == False:
             text.append('fail_with_first_error = False')
-        # TODO: add loading of checking mode
-        # TODO: add saving of table_timeout
+        if self.day_summary_mode.isChecked():
+            text.append('mode = day-sum')
+        elif self.section_summary_mode.isChecked():
+            text.append('mode = section-sum')
+        elif self.detailed_mode.isChecked():
+            text.append('mode = detailed')
         text.append('logging_level = {}'.format(self.logging_level.currentText()))
         fileName, _ = QFileDialog.getSaveFileName(self, "QFileDialog.getSaveFileName()",  "",
                                                   "All Files (*);;Text Files (*.txt)")
@@ -472,7 +505,8 @@ class Example(QWidget):
     def exit(self):
         sys.exit(0)
 
-    def check_prod(self):
+    def check_prod(self, mode='loud'):
+        logger = Logger(self.logging_level.currentText())
         empty_fields = []
         if not self.prod_host.text():
             empty_fields.append('prod.host')
@@ -500,25 +534,33 @@ class Example(QWidget):
             'db': prod_db_value
         }
         try:
-            dbHelper.DbConnector(prod_dict, Logger(self.logging_level.currentText())).get_tables()
-            print('Prod OK!')
-            QMessageBox.information(self, 'Information',
-                                    "Successfully connected to\n {}/{}".format(prod_dict.get('host'),
-                                                                               prod_dict.get('db')),
-                                    QMessageBox.Ok, QMessageBox.Ok)
+            dbHelper.DbConnector(prod_dict, logger).get_tables()
+            logger.info('Connection to db {} established successfully!'.format(self.prod_db.text()))
+            if mode == 'loud':
+                QMessageBox.information(self, 'Information',
+                                        "Successfully connected to\n {}/{}".format(prod_dict.get('host'),
+                                                                                   prod_dict.get('db')),
+                                        QMessageBox.Ok, QMessageBox.Ok)
+            return True
         except pymysql.OperationalError as err:
+            logger.warn("Connection to {}/{} failed\n\n{}".format(prod_dict.get('host'), prod_dict.get('db'),
+                                                                  err.args[1]))
             QMessageBox.warning(self, 'Warning',
-                                "Connection to {}/{} failed\n\n{}".format(prod_dict.get('host'),
-                                                                          prod_dict.get('db'),
+                                "Connection to {}/{} failed\n\n{}".format(prod_dict.get('host'), prod_dict.get('db'),
                                                                           err.args[1]),
                                 QMessageBox.Ok, QMessageBox.Ok)
+            return False
         except pymysql.InternalError as err:
+            logger.warn("Connection to {}/{} failed\n\n{}".format(prod_dict.get('host'), prod_dict.get('db'),
+                                                                  err.args[1]))
             QMessageBox.warning(self, 'Warning', "Connection to {}/{} failed\n\n{}".format(prod_dict.get('host'),
                                                                                            prod_dict.get('db'),
                                                                                            err.args[1]),
                                 QMessageBox.Ok, QMessageBox.Ok)
+            return False
 
-    def check_test(self):
+    def check_test(self, mode='loud'):
+        logger = Logger(self.logging_level.currentText())
         empty_fields = []
         if not self.test_host.text():
             empty_fields.append('test.host')
@@ -546,24 +588,34 @@ class Example(QWidget):
             'db': test_db_value
         }
         try:
-            dbHelper.DbConnector(test_dict, Logger(self.logging_level.currentText())).get_tables()
-            print('Test OK!')
-            QMessageBox.information(self, 'Information',
-                                    "Successfully connected to\n {}/{}".format(test_dict.get('host'),
-                                                                               test_dict.get('db')),
-                                    QMessageBox.Ok, QMessageBox.Ok)
+            dbHelper.DbConnector(test_dict, logger).get_tables()
+            logger.info('Connection to db {} established successfully!'.format(self.test_db.text()))
+            if mode == 'loud':
+                QMessageBox.information(self, 'Information',
+                                        "Successfully connected to\n {}/{}".format(test_dict.get('host'),
+                                                                                   test_dict.get('db')),
+                                        QMessageBox.Ok, QMessageBox.Ok)
+            return True
         except pymysql.OperationalError as err:
+            logger.warn("Connection to {}/{} failed\n\n{}".format(test_dict.get('host'),
+                                                                          test_dict.get('db'),
+                                                                          err.args[1]))
             QMessageBox.warning(self, 'Warning',
                                 "Connection to {}/{} failed\n\n{}".format(test_dict.get('host'),
                                                                           test_dict.get('db'),
                                                                           err.args[1]),
                                 QMessageBox.Ok, QMessageBox.Ok)
+            return False
         except pymysql.InternalError as err:
+            logger.warn("Connection to {}/{} failed\n\n{}".format(test_dict.get('host'),
+                                                                          test_dict.get('db'),
+                                                                          err.args[1]))
             QMessageBox.warning(self, 'Warning',
                                 "Connection to {}/{} failed\n\n{}".format(test_dict.get('host'),
                                                                           test_dict.get('db'),
                                                                           err.args[1]),
                                 QMessageBox.Ok, QMessageBox.Ok)
+            return False
 
     def get_sql_params(self):
         empty_fields = []
@@ -594,7 +646,6 @@ class Example(QWidget):
                                      "\n".join(empty_fields),QMessageBox.Ok, QMessageBox.Ok)
                 return False
         else:
-            Logger(self.logging_level.currentText()).info('Comparing started!')
             prod_host = self.prod_host.text()
             prod_user = self.prod_user.text()
             prod_password = self.prod_password.text()
@@ -664,6 +715,7 @@ class Example(QWidget):
             'depth_report_check': self.depth_report_check.text(),
             'schema_columns': self.schema_columns.text(),
             'retry_attempts': self.retry_attempts.text(),
+            'only_tables': self.only_tables.text(),
             # TODO: add try/catch
             'table_timeout': int(self.table_timeout.text()),
             'os': OS
@@ -675,7 +727,9 @@ class Example(QWidget):
         connection_dict = self.get_sql_params()
         properties = self.get_properties()
         if connection_dict and properties:
-            Backend(connection_dict, properties).run_comparing()
+            if self.check_prod('quiet') and self.check_test('quiet'):
+                Logger(self.logging_level.currentText()).info('Comparing started!')
+                Backend(connection_dict, properties).run_comparing()
 
 
 class MainWindow(QMainWindow):
