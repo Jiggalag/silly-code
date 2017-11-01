@@ -15,14 +15,21 @@ def compare_table(prod_connection, test_connection, table, is_report, service_di
             dates = converters.convertToList(process_dates.compare_dates(prod_connection, test_connection, table,
                                                                          depth_report_check, comparing_info, logger))
             dates.sort()
-            query_list = queryConstructor.InitializeQuery(prod_connection, mapping, table,
-                                                          comparing_step, logger).report(dates, mode, max_amount)
+            if dates:
+                query_list = queryConstructor.InitializeQuery(prod_connection, mapping, table,
+                                                              comparing_step, logger).report(dates, mode, max_amount)
+            else:
+                logger.warn('There is not any common dates for comparing')
+                query_list = []
         else:
             query_list = queryConstructor.InitializeQuery(prod_connection, mapping, table,
                                                           comparing_step, logger).entity(max_amount)
-        global_break, local_break = iterate_by_query_list(prod_connection, test_connection, query_list, table,
-                                                          start_time, comparing_info, service_dir, max_amount, **kwargs)
-        return global_break
+        if query_list:
+            global_break, local_break = iterate_by_query_list(prod_connection, test_connection, query_list, table,
+                                                              start_time, comparing_info, service_dir, **kwargs)
+            return global_break
+        else:
+            return False
     else:
         logger.warn('Local_break flag detected. Checking of table {} skipped.'.format(table))
         return False
@@ -68,19 +75,17 @@ def substract(prod_amount, test_amount):
 
 
 def iterate_by_query_list(prod_connection, test_connection, query_list, table, start_time, comparing_info,
-                          service_dir, max_amount, **kwargs):
+                          service_dir, **kwargs):
     table_start_time = datetime.datetime.now()
     logger = kwargs.get('logger')
     strings_amount = kwargs.get('strings_amount')
-    comparing_step = kwargs.get('comparing_step')
     fail_with_first_error = kwargs.get('fail_with_first_error')
     table_timeout = kwargs.get('table_timeout')
     prod_uniq = set()
     test_uniq = set()
-    counter = 0
     for query in query_list:
-        logger.info('Progress for table {0} {1:.2f}%'.format(table, (counter / max_amount) * 100))
-        counter += comparing_step
+        percent = (query_list.index(query) / len(query_list)) * 100
+        logger.info('Progress for table {0} {1:.2f}%'.format(table, percent))
         local_break, prod_tmp_uniq, test_tmp_uniq = get_differences(prod_connection, test_connection, table, query,
                                                                     comparing_info, strings_amount, service_dir, logger)
         prod_uniq = process_uniqs.merge_uniqs(prod_uniq, prod_tmp_uniq)
@@ -89,17 +94,21 @@ def iterate_by_query_list(prod_connection, test_connection, query_list, table, s
         if prod_uniq and test_uniq:
             prod_uniq = process_uniqs.thin_uniq_list(prod_uniq, test_uniq, logger)
             test_uniq = process_uniqs.thin_uniq_list(test_uniq, prod_uniq, logger)
-
+        if local_break:
+            process_uniqs.check_uniqs(prod_uniq, test_uniq, strings_amount, table, query, service_dir, logger)
+            return False, True
         if table_timeout is not None:
             duration = datetime.datetime.now() - table_start_time
             if duration > datetime.timedelta(minutes=table_timeout):
                 logger.error(('Checking table {} '.format(table) +
                               'exceded timeout {}. Finished'.format(table_timeout)))
+                process_uniqs.check_uniqs(prod_uniq, test_uniq, strings_amount, table, query, service_dir, logger)
                 return False, True
 
         if not local_break and fail_with_first_error:
             logger.info(("First error founded, checking failed. " +
                          "Comparing takes {}").format(datetime.datetime.now() - start_time))
+            process_uniqs.check_uniqs(prod_uniq, test_uniq, strings_amount, table, query, service_dir, logger)
             return True, False
 
         if process_uniqs.check_uniqs(prod_uniq, test_uniq, strings_amount, table, query, service_dir, logger):
@@ -120,9 +129,15 @@ def get_differences(prod_connection, test_connection, table, query, comparing_in
     if not any([len(prod_uniq) == 0, len(test_uniq) == 0]):
         logger.error("Tables {} differs!".format(table))
         comparing_info.update_diff_data(table)
-        if process_uniqs.check_uniqs(prod_uniq, test_uniq, strings_amount, table, query, service_dir, logger):
-            return False, set(), set()
+        if max(len(prod_uniq), len(test_uniq)) >= strings_amount:
+            if process_uniqs.check_uniqs(prod_uniq, test_uniq, strings_amount, table, query, service_dir, logger):
+                return True, set(), set()
+            else:
+                return True, prod_uniq, test_uniq
         else:
-            return False, prod_uniq, test_uniq
+            if process_uniqs.check_uniqs(prod_uniq, test_uniq, strings_amount, table, query, service_dir, logger):
+                return False, set(), set()
+            else:
+                return False, prod_uniq, test_uniq
     else:
         return True, set(), set()

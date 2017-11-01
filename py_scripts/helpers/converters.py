@@ -10,7 +10,11 @@ def convertToList(structureToConvert):
             resultList.append(item.get(key))
         else:
             resultList.append(item)
-    resultList.sort()
+    # TODO: critical change, test it
+    try:
+        resultList.sort()
+    except TypeError:
+        print('Raised TypeError during list sorting')
     return resultList
 
 

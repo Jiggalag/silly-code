@@ -181,7 +181,7 @@ class Object:
         return data_comparing_time
 
     def calculate_table_list(self):
-        if self.only_tables == '':
+        if len(self.only_tables) == 1 and self.only_tables[0] == '':
             return self.comparing_info.get_tables(self.excluded_tables, self.client_ignored_tables)
         else:
             return self.only_tables
