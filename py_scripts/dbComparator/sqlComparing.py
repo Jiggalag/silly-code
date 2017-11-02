@@ -92,8 +92,6 @@ class Object:
             self.send_mail_to = sql_comparing_properties.get('send_mail_to')
         if 'logger' in sql_comparing_properties.keys():
             self.logger = sql_comparing_properties.get('logger')
-        if 'amount_checking_records' in sql_comparing_properties.keys():
-            self.amount_checking_records = int(sql_comparing_properties.get('amount_checking_records'))
         if 'table_timeout' in sql_comparing_properties.keys():
             self.table_timeout = int(sql_comparing_properties.get('table_timeout'))
             if self.table_timeout == 0:
@@ -115,7 +113,6 @@ class Object:
             'only_tables': self.only_tables,
             'skip_tables': self.excluded_tables,
             'send_mail_to': self.send_mail_to,
-            'amount_checking_records': self.amount_checking_records,
             'table_timeout': self.table_timeout
         }
 
