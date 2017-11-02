@@ -240,11 +240,11 @@ class DbConnector:
             return None
 
 
-def get_amount_records(table, date, sql_connection_list, logger):
-    if date is None:
+def get_amount_records(table, dates, sql_connection_list):
+    if dates is None:
         query = "SELECT COUNT(*) FROM `{}`;".format(table)
     else:
-        query = "SELECT COUNT(*) FROM `{}` WHERE dt > '{}';".format(table, date)
+        query = "SELECT COUNT(*) FROM `{}` WHERE dt >= '{}';".format(table, dates[0])
     return DbConnector.parallel_select(sql_connection_list, query)
 
 

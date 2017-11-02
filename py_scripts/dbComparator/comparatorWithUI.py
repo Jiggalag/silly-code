@@ -104,12 +104,11 @@ def sendmail(body, fromaddr, toaddr, mypass, subject, files, logger):
             if os.path.exists(attachFile) and os.path.isfile(attachFile):
                 with open(attachFile, 'rb') as file:
                     part = MIMEApplication(file.read(), Name=basename(attachFile))
-                part['Content-Disposition'] = 'attachment; filename="%s"' % basename(attachFile)
+                part['Content-Disposition'] = ('attachment; filename="{}"').format(basename(attachFile))
                 msg.attach(part)
             else:
                 if attachFile.lstrip() != "":
                     logger.error("File not found {}".format(attachFile))
-                    print(str(datetime.datetime.now()) + " [ERROR] File not found " + attachFile)
     server = smtplib.SMTP('smtp.gmail.com', 587)
     server.ehlo()
     server.starttls()
@@ -119,7 +118,7 @@ def sendmail(body, fromaddr, toaddr, mypass, subject, files, logger):
         server.sendmail(fromaddr, toaddr, text)
         server.quit()
     except smtplib.SMTPAuthenticationError:
-        print('Raised authentication error!')
+        logger.error('Raised authentication error!')
 
 
 def get_test_result_text(body, comparing_info):

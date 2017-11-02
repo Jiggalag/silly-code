@@ -9,37 +9,33 @@ def compare_table(prod_connection, test_connection, table, is_report, service_di
     comparing_step = kwargs.get('comparing_step')
     depth_report_check = kwargs.get('depth_report_check')
     mode = kwargs.get('mode')
-    local_break, max_amount = check_amount(prod_connection, test_connection, table, logger)
-    if not local_break:
-        if is_report:
-            dates = converters.convertToList(process_dates.compare_dates(prod_connection, test_connection, table,
-                                                                         depth_report_check, comparing_info, logger))
-            dates.sort()
-            if dates:
-                query_list = queryConstructor.InitializeQuery(prod_connection, mapping, table,
-                                                              comparing_step, logger).report(dates, mode, max_amount)
-            else:
-                logger.warn('There is not any common dates for comparing')
-                query_list = []
-        else:
+    if is_report:
+        dates = converters.convertToList(process_dates.compare_dates(prod_connection, test_connection, table,
+                                                                     depth_report_check, comparing_info, logger))
+        dates.sort()
+        if dates:
+            local_break, max_amount = check_amount(prod_connection, test_connection, table, dates, logger)
+            logger.info('Will be checked dates {}'.format(dates))
             query_list = queryConstructor.InitializeQuery(prod_connection, mapping, table,
-                                                          comparing_step, logger).entity(max_amount)
-        if query_list:
-            global_break, local_break = iterate_by_query_list(prod_connection, test_connection, query_list, table,
-                                                              start_time, comparing_info, service_dir, **kwargs)
-            return global_break
+                                                          comparing_step, logger).report(dates, mode, max_amount)
         else:
-            return False
+            logger.warn('There is not any common dates for comparing')
+            query_list = []
     else:
-        logger.warn('Local_break flag detected. Checking of table {} skipped.'.format(table))
+        local_break, max_amount = check_amount(prod_connection, test_connection, table, None, logger)
+        query_list = queryConstructor.InitializeQuery(prod_connection, mapping, table,
+                                                      comparing_step, logger).entity(max_amount)
+    if query_list:
+        global_break, local_break = iterate_by_query_list(prod_connection, test_connection, query_list, table,
+                                                          start_time, comparing_info, service_dir, **kwargs)
+        return global_break
+    else:
         return False
 
 
-def check_amount(prod_connection, test_connection, table, logger):
-    prod_record_amount, test_record_amount = dbHelper.get_amount_records(table,
-                                                                         None,
-                                                                         [prod_connection, test_connection],
-                                                                         logger)
+def check_amount(prod_connection, test_connection, table, dates, logger):
+    prod_record_amount, test_record_amount = dbHelper.get_amount_records(table, dates,
+                                                                         [prod_connection, test_connection])
     if prod_record_amount == 0 and test_record_amount == 0:
         logger.warn("Table {} is empty on both servers!".format(table))
         return True, 0
