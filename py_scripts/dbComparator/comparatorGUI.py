@@ -55,7 +55,6 @@ class Example(QWidget):
 
         advanced_label = QLabel('Advanced settings', self)
         logging_level_label = QLabel('Logging level', self)
-        amount_checking_records_label = QLabel('Amount of record chunk', self)
         comparing_step_label = QLabel('Comparing step', self)
         depth_report_check_label = QLabel('Days in past', self)
         schema_columns_label = QLabel('Schema columns', self)
@@ -93,7 +92,6 @@ class Example(QWidget):
         self.excluded_tables = QLineEdit(self)
         self.only_tables = QLineEdit(self)
         self.hide_columns = QLineEdit(self)
-        self.amount_checking_records = QLineEdit(self)
         self.comparing_step = QLineEdit(self)
         self.depth_report_check = QLineEdit(self)
         self.schema_columns = QLineEdit(self)
@@ -179,9 +177,30 @@ class Example(QWidget):
         advanced_label.setToolTip('Advanced settings to customize your checking')
         logging_level_label.setToolTip('Messages with this label and higher will be writed to logs')
         self.logging_level.setToolTip('Messages with this label and higher will be writed to logs')
-        amount_checking_records_label
-
-        # TODO: add tooltips for all widgets
+        comparing_step_label.setToolTip(('Max amount of records which should be requested in single sql-query\n' +
+                                         'Do not touch this value if you not shure!'))
+        self.comparing_step.setToolTip(('Max amount of records which should be requested in single sql-query\n' +
+                                         'Do not touch this value if you not shure!'))
+        depth_report_check_label.setToolTip('Amount of days in past, which should be compared in case of report tables')
+        self.depth_report_check.setToolTip('Amount of days in past, which should be compared in case of report tables')
+        schema_columns_label.setToolTip(('List of columns, which should be compared during schema comparing\n' +
+                                         'Do not touch this value if you not shure!'))
+        self.schema_columns.setToolTip(('List of columns, which should be compared during schema comparing\n' +
+                                        'Do not touch this value if you not shure!'))
+        retry_attempts_label.setToolTip('Amount of attempts for reconnecting to dbs in case of connection lost error')
+        self.retry_attempts.setToolTip('Amount of attempts for reconnecting to dbs in case of connection lost error')
+        path_to_logs_label.setToolTip('Path, where log file should be created')
+        self.path_to_logs.setToolTip('Path, where log file should be created')
+        table_timeout_label.setToolTip('Timeout in minutes for checking any single table')
+        self.table_timeout.setToolTip('Timeout in minutes for checking any single table')
+        strings_amount_label.setToolTip(('Maximum amount of uniqs for single table.\n' +
+                                         'When amount of uniqs exceeds this threshould, checking of this table\n' +
+                                         'will be interrupted, and uniqs will be stored in file in /tmp/comparator\n' +
+                                         'directory'))
+        self.strings_amount.setToolTip(('Maximum amount of uniqs for single table.\n' +
+                                         'When amount of uniqs exceeds this threshould, checking of this table\n' +
+                                         'will be interrupted, and uniqs will be stored in file in /tmp/comparator\n' +
+                                         'directory'))
 
         grid.addWidget(prod_host_label, 0, 0)
         grid.addWidget(self.prod_host, 0, 1)
@@ -220,22 +239,20 @@ class Example(QWidget):
         grid.addWidget(advanced_label, 0, 4)
         grid.addWidget(logging_level_label, 1, 4)
         grid.addWidget(self.logging_level, 1, 5)
-        grid.addWidget(amount_checking_records_label, 2, 4)
-        grid.addWidget(self.amount_checking_records, 2, 5)
-        grid.addWidget(comparing_step_label, 3, 4)
-        grid.addWidget(self.comparing_step, 3, 5)
-        grid.addWidget(depth_report_check_label, 4, 4)
-        grid.addWidget(self.depth_report_check, 4, 5)
-        grid.addWidget(schema_columns_label, 5, 4)
-        grid.addWidget(self.schema_columns, 5, 5)
-        grid.addWidget(retry_attempts_label, 6, 4)
-        grid.addWidget(self.retry_attempts, 6, 5)
-        grid.addWidget(path_to_logs_label, 7, 4)
-        grid.addWidget(self.path_to_logs, 7, 5)
-        grid.addWidget(table_timeout_label, 8, 4)
-        grid.addWidget(self.table_timeout, 8, 5)
-        grid.addWidget(strings_amount_label, 9, 4)
-        grid.addWidget(self.strings_amount, 9, 5)
+        grid.addWidget(comparing_step_label, 2, 4)
+        grid.addWidget(self.comparing_step, 2, 5)
+        grid.addWidget(depth_report_check_label, 3, 4)
+        grid.addWidget(self.depth_report_check, 3, 5)
+        grid.addWidget(schema_columns_label, 4, 4)
+        grid.addWidget(self.schema_columns, 4, 5)
+        grid.addWidget(retry_attempts_label, 5, 4)
+        grid.addWidget(self.retry_attempts, 5, 5)
+        grid.addWidget(path_to_logs_label, 6, 4)
+        grid.addWidget(self.path_to_logs, 6, 5)
+        grid.addWidget(table_timeout_label, 7, 4)
+        grid.addWidget(self.table_timeout, 7, 5)
+        grid.addWidget(strings_amount_label, 8, 4)
+        grid.addWidget(self.strings_amount, 8, 5)
 
         self.setWindowTitle('dbComparator')
         self.setWindowIcon(QIcon('./resources/slowpoke.png'))
@@ -259,7 +276,6 @@ class Example(QWidget):
                                      'syncstage,synctrace,synctracelink,syncpersistentjob,forecaststatistics,' +
                                      'migrationhistory')
         self.hide_columns.setText('archived,addonFields,hourOfDayS,dayOfWeekS,impCost,id')
-        self.amount_checking_records.setText('100000')
         self.comparing_step.setText('10000')
         self.depth_report_check.setText('7')
         self.schema_columns.setText('TABLE_CATALOG,TABLE_NAME,COLUMN_NAME,ORDINAL_POSITION,COLUMN_DEFAULT,' +
@@ -325,9 +341,6 @@ class Example(QWidget):
                 elif 'excluded_tables' in string:
                     excluded_tables = string[string.find('=') + 1:]
                     self.excluded_tables.setText(excluded_tables)
-                elif 'amount_checking_records' in string:
-                    amount_checking_records = string[string.find('=') + 1:]
-                    self.amount_checking_records.setText(amount_checking_records)
                 elif 'comparing_step' in string:
                     comparing_step = string[string.find('=') + 1:]
                     self.comparing_step.setText(comparing_step)
@@ -413,8 +426,6 @@ class Example(QWidget):
             text.append('excluded_tables = {}'.format(self.excluded_tables.text()))
         if self.hide_columns != '':
             text.append('hide_columns = {}'.format(self.hide_columns.text()))
-        if self.amount_checking_records != '' and self.amount_checking_records != '100000':
-            text.append('amount_checking_records = {}'.format(self.amount_checking_records.text()))
         if self.comparing_step != '' and self.comparing_step != '10000':
             text.append('comparing_step = {}'.format(self.comparing_step.text()))
         if self.depth_report_check != '' and self.depth_report_check != '7':
@@ -664,7 +675,6 @@ class Example(QWidget):
             'strings_amount': self.strings_amount.text(),
             # 'check_type': check_type,
             'logger': Logger(self.logging_level.currentText(), path_to_logs),
-            'amount_checking_records': self.amount_checking_records.text(),
             'comparing_step': self.comparing_step.text(),
             'depth_report_check': self.depth_report_check.text(),
             'schema_columns': self.schema_columns.text(),
