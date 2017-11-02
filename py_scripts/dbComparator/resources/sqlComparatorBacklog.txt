@@ -7,8 +7,7 @@ Enchancement:
 1. Add hints to all UI elements.
 2. UI hangs and disables during comparing DBs. Add modal window with progress bar and some information about
 progress of comparing.
-3. Enable separateChecking mode.
-4. Fix headless version of dbComparator.
+3. Fix headless version of dbComparator.
 
 Epics:
 1. Present summary information more flexible.
