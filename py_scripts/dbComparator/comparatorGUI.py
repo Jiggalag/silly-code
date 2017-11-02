@@ -365,6 +365,9 @@ class Example(QWidget):
                 elif 'test.db' in string:
                     db = string[string.find('=') + 1:]
                     self.test_db.setText(db)
+                elif 'only_tables' in string:
+                    only_tables = string[string.find('=') + 1:]
+                    self.only_tables.setText(only_tables)
                 elif 'excluded_tables' in string:
                     excluded_tables = string[string.find('=') + 1:]
                     self.excluded_tables.setText(excluded_tables)
