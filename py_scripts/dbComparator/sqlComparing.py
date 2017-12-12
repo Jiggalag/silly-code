@@ -79,7 +79,10 @@ class Object:
         if 'fail_with_first_error' in sql_comparing_properties.keys():
             self.fail_with_first_error = sql_comparing_properties.get('fail_with_first_error')
         if 'schema_columns' in sql_comparing_properties.keys():
-            self.schema_columns = sql_comparing_properties.get('schema_columns').split(',')
+            # TODO: deleted split
+            self.schema_columns = sql_comparing_properties.get('schema_columns')
+            if type(self.schema_columns) is str:
+                self.schema_columns = self.schema_columns.split(',')
         if 'separateChecking' in sql_comparing_properties.keys():
             self.separate_checking = sql_comparing_properties.get('separateChecking')
         if 'only_tables' in sql_comparing_properties.keys():
