@@ -5,7 +5,7 @@ import sys
 sys.path.append(os.getcwd() + '/py_scripts/helpers')
 from py_scripts.helpers import logging_helper
 
-logger = logging_helper.Logger(20)
+logger = logging_helper.Logger('INFO')
 
 class IfmsConfigCommon:
     def __init__(self, config_name):
