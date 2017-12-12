@@ -53,7 +53,7 @@ class Backend:
         subject = "[Test] Check databases"
         text = generate_mail_text(comparing_info, self.sql_comparing_properties,
                                   data_comparing_time, schema_comparing_time)
-        sendmail(text, 'do-not-reply@inventale.com', 'AKIAJHBVE2GQUQBRSQVA', 'pavel.kiselev@best4ad.com', subject, None,
+        sendmail(text, 'do-not-reply@inventale.com', 'pavel.kiselev@best4ad.com', 'AKIAJHBVE2GQUQBRSQVA', subject, None,
                  self.logger)
 
 
@@ -104,7 +104,7 @@ def sendmail(body, fromaddr, toaddr, mypass, subject, files, logger):
             if os.path.exists(attachFile) and os.path.isfile(attachFile):
                 with open(attachFile, 'rb') as file:
                     part = MIMEApplication(file.read(), Name=basename(attachFile))
-                part['Content-Disposition'] = ('attachment; filename="{}"').format(basename(attachFile))
+                part['Content-Disposition'] = 'attachment; filename="{}"'.format(basename(attachFile))
                 msg.attach(part)
             else:
                 if attachFile.lstrip() != "":
@@ -136,8 +136,8 @@ def get_test_result_text(body, comparing_info):
             list(set(comparing_info.empty).difference(set(comparing_info.no_crossed_tables)))) + "\n\n"
     if comparing_info.get_uniq_tables("prod"):
         body = body + "Tables, which unique for production db:\n" + ",".join(
-            converters.convertToList(comparing_info.prod_uniq_tables)) + "\n\n"
+            converters.convert_to_list(comparing_info.prod_uniq_tables)) + "\n\n"
     if comparing_info.get_uniq_tables("test"):
         body = body + "Tables, which unique for test db:\n" + ",".join(
-            converters.convertToList(comparing_info.test_uniq_tables)) + "\n\n"
+            converters.convert_to_list(comparing_info.test_uniq_tables)) + "\n\n"
     return body
