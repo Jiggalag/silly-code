@@ -148,10 +148,10 @@ def get_test_result_text(text, comparing_results):
             list(set(comparing_results.empty).difference(set(comparing_results.no_crossed_tables)))) + "\n\n"
     if comparing_results.get_uniq_tables("prod"):
         text = text + "Tables, which unique for production db:\n" + ",".join(
-            converters.convertToList(comparing_results.prod_uniq_tables)) + "\n\n"
+            converters.convert_to_list(comparing_results.prod_uniq_tables)) + "\n\n"
     if comparing_results.get_uniq_tables("test"):
         text = text + "Tables, which unique for test db:\n" + ",".join(
-            converters.convertToList(comparing_results.test_uniq_tables)) + "\n\n"
+            converters.convert_to_list(comparing_results.test_uniq_tables)) + "\n\n"
     return text
 
 
@@ -162,27 +162,27 @@ if os == "Windows":
 else:
     service_dir = "/tmp/comparator/"
 check_service_dir(service_dir)
-for client in config.getClients():
+for client in config.get_clients():
     client_config = get_client_config(os_type, client)
     sql_connection_properties = {
         'prod': client_config.get_sql_connection_params('prod'),
         'test': client_config.get_sql_connection_params('test')
     }
     sql_comparing_properties = {
-        'comparing_step': client_config.getProperty('sqlProperties', 'comparing_step'),
+        'comparing_step': client_config.get_property('sqlProperties', 'comparing_step'),
         'check_schema': check_schema,
         'fail_with_first_error': quick_fall,
         'send_mail_to': args.send_mail_to,
         'mode': mode,
-        'excluded_tables': client_config.getProperty('sqlProperties', 'tables_not_to_compare'),
-        'hide_columns': client_config.getProperty('sqlProperties', 'hide_columns'),
-        'strings_amount': client_config.getProperty('sqlProperties', 'strings_amount'),
+        'excluded_tables': client_config.get_property('sqlProperties', 'tables_not_to_compare'),
+        'hide_columns': client_config.get_property('sqlProperties', 'hide_columns'),
+        'strings_amount': client_config.get_property('sqlProperties', 'strings_amount'),
         'logger': logger,
-        'depth_report_check': config.getProperty('sqlProperties', 'depth_report_check'),
-        'schema_columns': config.getProperty('sqlProperties', 'schema_columns'),
-        'retry_attempts': config.getProperty('sqlProperties', 'retry_attempts'),
-        'only_tables': config.getProperty('sqlProperties', 'separate_checking'),
-        'table_timeout': config.getProperty('sqlProperties', 'table_timeout'),
+        'depth_report_check': config.get_property('sqlProperties', 'depth_report_check'),
+        'schema_columns': config.get_property('sqlProperties', 'schema_columns'),
+        'retry_attempts': config.get_property('sqlProperties', 'retry_attempts'),
+        'only_tables': config.get_property('sqlProperties', 'separate_checking'),
+        'table_timeout': config.get_property('sqlProperties', 'table_timeout'),
         'os': os_type
 
 
