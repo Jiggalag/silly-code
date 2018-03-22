@@ -1,3 +1,4 @@
+import argparse
 import datetime
 import os
 import os.path
@@ -13,24 +14,56 @@ from py_scripts.dbComparator import tableData, sqlComparing
 from py_scripts.dbComparator import queryConstructor
 
 
-if "Win" in platform.system():
-    OS = "Windows"
-else:
-    OS = "Linux"
-if "Linux" in OS:
-    propertyFile = os.getcwd() + "/resources/properties/sqlComparator.properties"
-else:
-    propertyFile = os.getcwd() + "\\resources\\properties\\sqlComparator.properties"
-config = configHelper.IfmsConfigCommon(propertyFile)
+parser = argparse.ArgumentParser(description='Utility intended to comparing databases')
+parser.add_argument('--server', type=str, default='dev01.inventale.com',
+                    help='Host, where script sends requests (default: dev01.inventale.com)')
+parser.add_argument('--send_mail_to', type=str, default='pavel.kiselev@best4ad.com,nataly.lisitsyna@best4ad.com',
+                    help=('Send mail to, comma-separated ' +
+                          '(default: pavel.kiselev@best4ad.com,nataly.lisitsyna@best4ad.com)'))
+parser.add_argument('--send_mail_from', type=str, default='do-not-reply@inventale.com',
+                    help='Mail address send_from (default: do-not-reply@inventale.com)')
+parser.add_argument('--mail_password', type=str, default='AKIAJHBVE2GQUQBRSQVA',
+                    help='Password for mail_from address (default: AKIAJHBVE2GQUQBRSQVA)')
+parser.add_argument('--check_schema', type=bool, default=True,
+                    help='Enable comparing schema (default: True)')
+parser.add_argument('--quick_fall', type=bool, default=False,
+                    help='Fail after first error (default: False)')
+parser.add_argument('--mode', type=str, default='day-sum',
+                    help='Type of checking (default: day-sum)')
+parser.add_argument('--schema_columns', type=str, default='day-sum',
+                    help='Type of checking (default: day-sum)')
+parser.add_argument('--logging_level', type=str, default='INFO',
+                    help='''set level of displaying messages.\n
+                    CRITICAL, ERROR, WARNING, INFO, DEBUG\nDefault value: INFO))''')
 
-logger = logging_helper.Logger(config.getPropertyFromMainSection("loggingLevel"))
+args = parser.parse_args()
+logger = logging_helper.Logger(args.logging_level)
+check_schema = args.check_schema
+quick_fall = args.quick_fall
+mode = args.mode
 
-sendMailFrom = config.getPropertyFromMainSection("sendMailFrom")
-sendMailTo = config.getPropertyFromMainSection("sendMailTo")
-mailPassword = config.getPropertyFromMainSection("mailPassword")
-check_schema = config.getProperty("sqlProperties", "enableSchemaChecking")
-quick_fall = config.getProperty("sqlProperties", "quick_fall")
-mode = config.getProperty("sqlProperties", "reportCheckType")
+
+def get_os():
+    if "Win" in platform.system():
+        return "Windows"
+    else:
+        return "Linux"
+
+
+def get_config(os_name):
+    if "Linux" in os_name:
+        property_file = os.getcwd() + "/resources/properties/sqlComparator.properties"
+    else:
+        property_file = os.getcwd() + "\\resources\\properties\\sqlComparator.properties"
+    return configHelper.IfmsConfigCommon(property_file)
+
+
+def get_client_config(os_name, client_name):
+    if "Linux" in os_name:
+        property_file = os.getcwd() + "/resources/properties/sqlComparator.properties"
+    else:
+        property_file = os.getcwd() + "\\resources\\properties\\sqlComparator.properties"
+    return configHelper.IfmsConfigClient(property_file, client_name)
 
 
 def check_service_dir(dir_name):
@@ -67,24 +100,25 @@ def generate_mail_text(comparing_results, comparing_mode):
     text = text + "Dbs checked in " + str(data_comparing_time) + "\n"
     return text
 
-def sendmail(body, fromaddr, toaddr, mypass, subject, files):
+
+def sendmail(mail_body, fromaddr, toaddr, mypass, mail_subject, files):
     msg = MIMEMultipart()
     msg['From'] = fromaddr
     if type(toaddr) is list:
         msg['To'] = ', '.join(toaddr)
     else:
         msg['To'] = toaddr
-    msg['Subject'] = subject
-    msg.attach(MIMEText(body, 'plain'))
+    msg['Subject'] = mail_subject
+    msg.attach(MIMEText(mail_body, 'plain'))
     if files is not None:
         for attachFile in files.split(','):
-            if(os.path.exists(attachFile) and os.path.isfile(attachFile)):
+            if os.path.exists(attachFile) and os.path.isfile(attachFile):
                 with open(attachFile, 'rb') as file:
                     part = MIMEApplication(file.read(), Name=basename(attachFile))
                 part['Content-Disposition'] = 'attachment; filename="%s"' % basename(attachFile)
                 msg.attach(part)
             else:
-                if (attachFile.lstrip() != ""):
+                if attachFile.lstrip() != "":
                     logger.error("File not found {}".format(attachFile))
                     print(str(datetime.datetime.now()) + " [ERROR] File not found " + attachFile)
     server = smtplib.SMTP('smtp.gmail.com', 587)
@@ -97,6 +131,7 @@ def sendmail(body, fromaddr, toaddr, mypass, subject, files):
         server.quit()
     except smtplib.SMTPAuthenticationError:
         print('Raised authentication error!')
+
 
 def get_test_result_text(text, comparing_results):
     text = text + "There are some problems found during checking.\n\n"
@@ -113,26 +148,44 @@ def get_test_result_text(text, comparing_results):
             list(set(comparing_results.empty).difference(set(comparing_results.no_crossed_tables)))) + "\n\n"
     if comparing_results.get_uniq_tables("prod"):
         text = text + "Tables, which unique for production db:\n" + ",".join(
-            converters.convertToList(comparing_results.prod_uniq_tables)) + "\n\n"
+            converters.convert_to_list(comparing_results.prod_uniq_tables)) + "\n\n"
     if comparing_results.get_uniq_tables("test"):
         text = text + "Tables, which unique for test db:\n" + ",".join(
-            converters.convertToList(comparing_results.test_uniq_tables)) + "\n\n"
+            converters.convert_to_list(comparing_results.test_uniq_tables)) + "\n\n"
     return text
 
 
-if OS == "Windows":
+os_type = get_os()
+config = get_config(os_type)
+if os == "Windows":
     service_dir = "C:\\comparator"
 else:
     service_dir = "/tmp/comparator/"
 check_service_dir(service_dir)
-for client in config.getClients():
-    client_config = configHelper.IfmsConfigClient(propertyFile, client)
+for client in config.get_clients():
+    client_config = get_client_config(os_type, client)
     sql_connection_properties = {
         'prod': client_config.get_sql_connection_params('prod'),
         'test': client_config.get_sql_connection_params('test')
     }
     sql_comparing_properties = {
-        'comparing_step': client_config.getProperty('sqlProperties', 'comparingStep')
+        'comparing_step': client_config.get_property('sqlProperties', 'comparing_step'),
+        'check_schema': check_schema,
+        'fail_with_first_error': quick_fall,
+        'send_mail_to': args.send_mail_to,
+        'mode': mode,
+        'excluded_tables': client_config.get_property('sqlProperties', 'tables_not_to_compare'),
+        'hide_columns': client_config.get_property('sqlProperties', 'hide_columns'),
+        'strings_amount': client_config.get_property('sqlProperties', 'strings_amount'),
+        'logger': logger,
+        'depth_report_check': config.get_property('sqlProperties', 'depth_report_check'),
+        'schema_columns': config.get_property('sqlProperties', 'schema_columns'),
+        'retry_attempts': config.get_property('sqlProperties', 'retry_attempts'),
+        'only_tables': config.get_property('sqlProperties', 'separate_checking'),
+        'table_timeout': config.get_property('sqlProperties', 'table_timeout'),
+        'os': os_type
+
+
         # TODO: support other parameters
     }
     comparing_info = tableData.Info(logger)
@@ -143,7 +196,7 @@ for client in config.getClients():
                                      dbHelper.DbConnector(client_config.get_sql_connection_params("test"),
                                                           logger).get_tables())
     global_break = False
-    if "Linux" in OS:
+    if "Linux" in os_type:
         create_test_dir("/mxf/data/test_results/", client)
     else:
         create_test_dir("C:\\dbComparator\\", client)
@@ -162,4 +215,4 @@ for client in config.getClients():
                                               comparing_info).compare_data(start_time, service_dir, mapping)
     subject = "[Test] Check databases for client {}".format(client)
     body = generate_mail_text(comparing_info, mode)
-    sendmail(body, sendMailFrom, sendMailTo, mailPassword, subject, None)
+    sendmail(body, args.send_mail_from, args.send_mail_to, args.mail_password, subject, None)

@@ -68,6 +68,6 @@ def calculate_date(days):
 
 def get_unique_dates(first_date_list, second_date_list):
     unique_dates = []
-    for item in converters.convertToList(first_date_list - second_date_list):
+    for item in converters.convert_to_list(first_date_list - second_date_list):
         unique_dates.append(item.strftime("%Y-%m-%d %H:%M:%S"))
     return unique_dates

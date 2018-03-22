@@ -10,8 +10,8 @@ def compare_table(prod_connection, test_connection, table, is_report, service_di
     depth_report_check = kwargs.get('depth_report_check')
     mode = kwargs.get('mode')
     if is_report:
-        dates = converters.convertToList(process_dates.compare_dates(prod_connection, test_connection, table,
-                                                                     depth_report_check, comparing_info, logger))
+        dates = converters.convert_to_list(process_dates.compare_dates(prod_connection, test_connection, table,
+                                                                       depth_report_check, comparing_info, logger))
         dates.sort()
         if dates:
             local_break, max_amount = check_amount(prod_connection, test_connection, table, dates, logger)
@@ -46,28 +46,30 @@ def check_amount(prod_connection, test_connection, table, dates, logger):
         logger.warn("Table {} is empty on test-server!".format(table))
         return True, 0
     if prod_record_amount != test_record_amount:
-        sub_result, type, percents = substract(prod_record_amount, test_record_amount)
-        if type == 'Prod':
+        sub_result, instance_type, percents = substract(prod_record_amount, test_record_amount)
+        if instance_type == 'Prod':
             base = prod_connection.db
         else:
             base = test_connection.db
         logger.warn(('Amount of records differs for table {}'.format(table) +
                      'Prod record amount: {}. '.format(prod_record_amount) +
                      'Test record amount: {}. '.format(test_record_amount) +
-                     'Db {0} have more records. Difference equals {1}, {2:.5f} percents'.format(base, sub_result, percents)))
+                     'Db {0} have more records. Difference equals {1}, {2:.5f} percents'.format(base, sub_result,
+                                                                                                percents)))
     max_amount = max(prod_record_amount, test_record_amount)
     return False, max_amount
+
 
 def substract(prod_amount, test_amount):
     if prod_amount > test_amount:
         substraction = prod_amount - test_amount
-        type = 'Prod'
+        instance_type = 'Prod'
         percents = substraction / prod_amount
     else:
         substraction = test_amount - prod_amount
-        type = 'Test'
+        instance_type = 'Test'
         percents = substraction / test_amount
-    return substraction, type, percents
+    return substraction, instance_type, percents
 
 
 def iterate_by_query_list(prod_connection, test_connection, query_list, table, start_time, comparing_info,

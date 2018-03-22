@@ -13,7 +13,6 @@ class Logger:
 
         if logging_type not in self.types:
             print('Unregistered type of message: {}'.format(logging_type))
-            # sys.exit(1)
             self.type = None
         else:
             self.type = logging_type

@@ -2,10 +2,10 @@ import configparser
 import datetime
 import os.path
 import sys
-sys.path.append(os.getcwd() + '/py_scripts/helpers')
 from py_scripts.helpers import logging_helper
 
-logger = logging_helper.Logger(20)
+logger = logging_helper.Logger('INFO')
+
 
 class IfmsConfigCommon:
     def __init__(self, config_name):
@@ -15,17 +15,14 @@ class IfmsConfigCommon:
         self.config = configparser.ConfigParser()
         self.config.read(config_name)
 
-
-    def getClients(self):
+    def get_clients(self):
         return self.config['main']['clients'].split(',')
 
-
-    def getDate(self, section, property_name):
+    def get_date(self, section, property_name):
         value = self.config[section][property_name]
         return datetime.datetime.strptime(value, "%Y-%m-%d").date()
 
-
-    def getProperty(self, section, property_name):
+    def get_property(self, section, property_name):
         try:
             property_value = self.config[section][property_name]
             if 'True' in property_value:
@@ -46,12 +43,10 @@ class IfmsConfigCommon:
         except KeyError:
             return None
 
+    def get_property_from_main_section(self, property_name):
+        return IfmsConfigCommon.get_property(self, 'main', property_name)
 
-    def getPropertyFromMainSection(self, property_name):
-        return IfmsConfigCommon.getProperty(self, 'main', property_name)
-
-
-    def getTimedeltaProperty(self, section, property_name):
+    def get_timedelta_property(self, section, property_name):
         time_property = self.config[section][property_name]
         days = 0
         hours = 0
@@ -92,7 +87,7 @@ class IfmsConfigClient(IfmsConfigCommon):
         return connection_dict
 
     def get_sql_connection_params(self, stage):
-        param_array= ['sqlhost', 'sqluser', 'sqlpassword', 'sqldb']
+        param_array = ['sqlhost', 'sqluser', 'sqlpassword', 'sqldb']
         connection_dict = {}
         if stage is None:
             stage = ''
