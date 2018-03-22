@@ -2,7 +2,7 @@ import requests
 import time
 import json
 
-token = 'xoxp-11762569766-12059412145-204665881315-de4676ceb6baa275e78f1be03088994e'
+token = 'here should be slack-token'
 
 #Delete files older than this:
 ts_to = int(time.time()) - 30 * 24 * 60 * 60
