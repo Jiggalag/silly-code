@@ -1,6 +1,6 @@
 import datetime
 from py_scripts.dbComparator import process_uniqs, queryConstructor, process_dates
-from py_scripts.helpers import dbHelper, converters
+from py_scripts.helpers import dbcmp_sql_helper, converters
 
 
 def compare_table(prod_connection, test_connection, table, is_report, service_dir, mapping, start_time,
@@ -34,8 +34,8 @@ def compare_table(prod_connection, test_connection, table, is_report, service_di
 
 
 def check_amount(prod_connection, test_connection, table, dates, logger):
-    prod_record_amount, test_record_amount = dbHelper.get_amount_records(table, dates,
-                                                                         [prod_connection, test_connection])
+    prod_record_amount, test_record_amount = dbcmp_sql_helper.get_amount_records(table, dates,
+                                                                                 [prod_connection, test_connection])
     if prod_record_amount == 0 and test_record_amount == 0:
         logger.warn("Table {} is empty on both servers!".format(table))
         return True, 0
@@ -118,7 +118,7 @@ def iterate_by_query_list(prod_connection, test_connection, query_list, table, s
 
 def get_differences(prod_connection, test_connection, table, query, comparing_info,
                     strings_amount, service_dir, logger):
-    prod_entities, test_entities = dbHelper.DbConnector.parallel_select([prod_connection, test_connection], query)
+    prod_entities, test_entities = dbcmp_sql_helper.DbCmpSqlHelper.parallel_select([prod_connection, test_connection], query)
     if (prod_entities is None) or (test_entities is None):
         logger.warn('Table {} skipped because something going bad'.format(table))
         return False, set(), set()

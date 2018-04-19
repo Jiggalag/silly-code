@@ -1,4 +1,4 @@
-from py_scripts.helpers import dbHelper
+from py_scripts.helpers import dbcmp_sql_helper
 
 
 class InitializeQuery:
@@ -39,7 +39,7 @@ class InitializeQuery:
                 for column in column_string:
                     if "id" == column[-2:]:
                         sections.append(column)
-                        column_list_with_sums = dbHelper.get_column_list_for_sum(set_column_list)
+                        column_list_with_sums = dbcmp_sql_helper.get_column_list_for_sum(set_column_list)
                         query = "SELECT {} FROM `{}` {} WHERE dt = '{}' GROUP BY {} ORDER BY {};".format(
                             ",".join(column_list_with_sums), self.table, set_join_section, dt, column, set_order_list)
                         query_list.append(query)
@@ -96,7 +96,7 @@ def prepare_column_mapping(sql_connection, logger):
                         "'PRIMARY' AND referenced_table_name " +
                         "IS NOT NULL AND table_schema = '{}';".format(sql_connection.db))
     logger.debug(query_get_column)
-    raw_column_list = sql_connection.select_rf(query_get_column)
+    raw_column_list = sql_connection.select(query_get_column)
     for item in raw_column_list:
         column_dict.update({"`{}`".format(item.get('column_name').lower()): "`{}`"
                            .format(item.get('referenced_table_name').lower())})

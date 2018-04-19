@@ -1,3 +1,7 @@
+Tech debt:
+
+1. Move dbHelper on two different classes: dbHelper with basic sql-functions and advanced class especially for dbCmp.
+
 Bugfixes:
 
 1. Fix error Username and Password not accepted.

@@ -9,7 +9,7 @@ from os.path import basename
 from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
 from email.mime.text import MIMEText
-from py_scripts.helpers import configHelper, converters, logging_helper, dbHelper
+from py_scripts.helpers import configHelper, converters, logging_helper, dbcmp_sql_helper
 from py_scripts.dbComparator import tableData, sqlComparing
 from py_scripts.dbComparator import queryConstructor
 
@@ -190,11 +190,11 @@ for client in config.get_clients():
     }
     comparing_info = tableData.Info(logger)
     comparing_info.update_table_list("prod",
-                                     dbHelper.DbConnector(client_config.get_sql_connection_params("prod"),
-                                                          logger).get_tables())
+                                     dbcmp_sql_helper.DbCmpSqlHelper(client_config.get_sql_connection_params("prod"),
+                                                                     logger).get_tables())
     comparing_info.update_table_list("test",
-                                     dbHelper.DbConnector(client_config.get_sql_connection_params("test"),
-                                                          logger).get_tables())
+                                     dbcmp_sql_helper.DbCmpSqlHelper(client_config.get_sql_connection_params("test"),
+                                                                     logger).get_tables())
     global_break = False
     if "Linux" in os_type:
         create_test_dir("/mxf/data/test_results/", client)
@@ -202,7 +202,7 @@ for client in config.get_clients():
         create_test_dir("C:\\dbComparator\\", client)
     start_time = datetime.datetime.now()
     logger.info("Start {} processing!".format(client))
-    prod_sql_connection = dbHelper.DbConnector(client_config.get_sql_connection_params("prod"), logger)
+    prod_sql_connection = dbcmp_sql_helper.DbCmpSqlHelper(client_config.get_sql_connection_params("prod"), logger)
     mapping = queryConstructor.prepare_column_mapping(prod_sql_connection, logger)
     if check_schema:
         # TODO: Object fixed, now this code not works

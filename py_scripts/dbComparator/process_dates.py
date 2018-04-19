@@ -1,11 +1,11 @@
 import datetime
 
-from py_scripts.helpers import dbHelper, converters
+from py_scripts.helpers import dbcmp_sql_helper, converters
 
 
 def compare_dates(prod_connection, test_connection, table, depth_report_check, comparing_info, logger):
     select_query = "SELECT distinct(`dt`) from {};".format(table)
-    prod_dates, test_dates = dbHelper.DbConnector.parallel_select([prod_connection, test_connection], select_query)
+    prod_dates, test_dates = dbcmp_sql_helper.DbCmpSqlHelper.parallel_select([prod_connection, test_connection], select_query)
     if (prod_dates is None) or (test_dates is None):
         logger.warn('Table {} skipped because something going bad'.format(table))
         return []

@@ -1,5 +1,5 @@
 import datetime
-from py_scripts.helpers import dbHelper
+from py_scripts.helpers import dbcmp_sql_helper
 from py_scripts.dbComparator import unified_comparing_class
 
 
@@ -125,7 +125,7 @@ class Object:
             booler.append(True)
         else:
             booler.append(False)
-        if 'dt' in dbHelper.DbConnector(self.prod_sql, self.logger).get_column_list(table):
+        if 'dt' in dbcmp_sql_helper.DbCmpSqlHelper(self.prod_sql, self.logger).get_column_list(table):
             booler.append(True)
         else:
             booler.append(False)
@@ -144,7 +144,7 @@ class Object:
             booler.append(True)
         else:
             booler.append(False)
-        if 'dt' in dbHelper.DbConnector(self.prod_sql, self.logger).get_column_list(table):
+        if 'dt' in dbcmp_sql_helper.DbCmpSqlHelper(self.prod_sql, self.logger).get_column_list(table):
             booler.append(True)
         else:
             booler.append(False)
@@ -154,8 +154,8 @@ class Object:
             return False
 
     def compare_data(self, start_time, service_dir, mapping):
-        prod_connection = dbHelper.DbConnector(self.prod_sql, self.logger)
-        test_connection = dbHelper.DbConnector(self.test_sql, self.logger)
+        prod_connection = dbcmp_sql_helper.DbCmpSqlHelper(self.prod_sql, self.logger)
+        test_connection = dbcmp_sql_helper.DbCmpSqlHelper(self.test_sql, self.logger)
         tables = self.calculate_table_list()
         for table in tables:
             # table = 'campaignosreport'
@@ -187,8 +187,8 @@ class Object:
             return self.only_tables
 
     def compare_metadata(self, start_time):
-        prod_connection = dbHelper.DbConnector(self.prod_sql, self.logger)
-        test_connection = dbHelper.DbConnector(self.test_sql, self.logger)
+        prod_connection = dbcmp_sql_helper.DbCmpSqlHelper(self.prod_sql, self.logger)
+        test_connection = dbcmp_sql_helper.DbCmpSqlHelper(self.test_sql, self.logger)
         tables = self.calculate_table_list()
         for table in tables:
             self.logger.info("Check schema for table {}...".format(table))
@@ -196,7 +196,7 @@ class Object:
                      "WHERE TABLE_SCHEMA = 'DBNAME' AND TABLE_NAME='TABLENAME' ".replace("TABLENAME", table) +
                      "ORDER BY COLUMN_NAME;")
 
-            prod_columns, test_columns = dbHelper.DbConnector.parallel_select([prod_connection, test_connection], query)
+            prod_columns, test_columns = dbcmp_sql_helper.DbCmpSqlHelper.parallel_select([prod_connection, test_connection], query)
             if (prod_columns is None) or (test_columns is None):
                 self.logger.warn('Table {} skipped because something going bad'.format(table))
                 continue

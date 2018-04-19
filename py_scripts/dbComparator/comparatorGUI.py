@@ -5,9 +5,8 @@ import sys
 import os
 import platform
 import pymysql
-
 from py_scripts.dbComparator.comparatorWithUI import Backend
-import py_scripts.helpers.dbHelper as dbHelper
+from py_scripts.helpers import dbcmp_sql_helper
 from py_scripts.helpers.logging_helper import Logger
 
 import PyQt5
@@ -506,7 +505,7 @@ class Example(QWidget):
             'db': prod_db_value
         }
         try:
-            dbHelper.DbConnector(prod_dict, logger).get_tables()
+            dbcmp_sql_helper.DbCmpSqlHelper(prod_dict, logger).get_tables()
             logger.info('Connection to db {} established successfully!'.format(self.prod_db.text()))
             if not disable_mboxes:
                 QMessageBox.information(PyQt5.QtWidgets.QMessageBox(), 'Information',
@@ -564,7 +563,7 @@ class Example(QWidget):
             'db': test_db_value
         }
         try:
-            dbHelper.DbConnector(test_dict, logger).get_tables()
+            dbcmp_sql_helper.DbCmpSqlHelper(test_dict, logger).get_tables()
             logger.info('Connection to db {} established successfully!'.format(self.test_db.text()))
             if not disable_mboxes:
                 QMessageBox.information(PyQt5.QtWidgets.QMessageBox(), 'Information',

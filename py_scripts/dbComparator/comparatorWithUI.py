@@ -9,7 +9,7 @@ from email.mime.text import MIMEText
 from os.path import basename
 from py_scripts.helpers import converters
 from py_scripts.dbComparator import tableData, sqlComparing
-from py_scripts.helpers.dbHelper import DbConnector
+from py_scripts.helpers.dbcmp_sql_helper import DbCmpSqlHelper
 from py_scripts.dbComparator import queryConstructor
 
 
@@ -26,8 +26,8 @@ class Backend:
         else:
             service_dir = "/tmp/comparator/"
         check_service_dir(service_dir)
-        prod_sql_connection = DbConnector(self.sql_connection_properties.get('prod'), self.logger)
-        test_sql_connection = DbConnector(self.sql_connection_properties.get('test'), self.logger)
+        prod_sql_connection = DbCmpSqlHelper(self.sql_connection_properties.get('prod'), self.logger)
+        test_sql_connection = DbCmpSqlHelper(self.sql_connection_properties.get('test'), self.logger)
         comparing_info = tableData.Info(self.logger)
         comparing_info.update_table_list("prod", prod_sql_connection.get_tables())
         comparing_info.update_table_list("test", test_sql_connection.get_tables())
