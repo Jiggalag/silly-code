@@ -304,7 +304,7 @@ class Example(QWidget):
             self.path_to_logs.setText(log_path + 'DbComparator.log')
 
     def show_dialog(self):
-        current_dir = '{}/resorces/properties/'.format(os.getcwd())
+        current_dir = '{}/resources/properties/'.format(os.getcwd())
         fname = QFileDialog.getOpenFileName(PyQt5.QtWidgets.QFileDialog(), 'Open file', current_dir)[0]
         with open(fname, 'r') as file:
             data = file.read()

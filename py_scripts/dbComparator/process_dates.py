@@ -44,7 +44,8 @@ class ProcessDates:
     def get_comparing_timeframe(self, prod_dates):
         comparing_timeframe = []
         for item in prod_dates[-self.depth_report_check:]:
-            comparing_timeframe.append(item.date().strftime("%Y-%m-%d"))
+            for i in item:
+                comparing_timeframe.append(i.date().strftime("%Y-%m-%d"))
         return comparing_timeframe
 
     def get_timeframe_intersection(self, prod_dates, test_dates):
