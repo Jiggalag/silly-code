@@ -45,7 +45,7 @@ def check_uniqs(prod_set, test_set, strings_amount, table, query, service_dir, l
 def thin_uniq_list(target_set, second_set, logger):
     result = target_set - second_set
     if not result:
-        logger.warn('Thining finished unsuccessfully')
+        logger.debug('Thining finished unsuccessfully')
     return result
 
 

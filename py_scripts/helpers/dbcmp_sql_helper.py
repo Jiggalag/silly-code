@@ -118,35 +118,10 @@ class DbCmpSqlHelper:
                     return None
                 time.sleep(TIMEOUT)
 
-    # TODO: refactor, make one select function from this two methods
-    def select_rf(self, query):
-        connection = self.get_connection()
-        if connection is not None:
-            error_count = 0
-            while error_count < self.attempts:
-                try:
-                    with connection.cursor() as cursor:
-                        sql_query = query.replace('DBNAME', self.db)
-                        self.logger.debug(sql_query)
-                        try:
-                            cursor.execute(sql_query)
-                        except pymysql.err.InternalError as e:
-                            self.logger.error('Error code: {}, error message: {}'.format(e.args[0], e.args[1]))
-                            return None
-                        result = cursor.fetchall()
-                        return result
-                except pymysql.OperationalError:
-                    error_count += 1
-                    self.logger.error("There are some SQL query error " + str(pymysql.OperationalError))
-                finally:
-                    try:
-                        connection.close()
-                    except pymysql.Error:
-                        self.logger.info("Connection already closed...")
-                        return []
-        else:
-            return None
+    def get_comparable_objects(self, connection_list, query, result_type="frozenset"):
+        result = self.parallel_select(connection_list, query, result_type)
 
+    # TODO: refactor, make one select function from this two methods
     def select(self, query):
         connection = self.get_connection()
         if connection is not None:
@@ -162,24 +137,7 @@ class DbCmpSqlHelper:
                             self.logger.error('Error code: {}, error message: {}'.format(e.args[0], e.args[1]))
                             return None
                         result = cursor.fetchall()
-                        processed_result = []
-                        try:
-                            keys = list(result[0].keys())
-                            keys.sort()
-                        except IndexError:
-                            self.logger.debug('Raised IndexError in dbHelper.select() method')
-                            return result
-                        for item in result:
-                            tmp_record = []
-                            for key in keys:
-                                tmp_record.append(item.get(key))
-                            if len(tmp_record) == 1:
-                                processed_result.append(tmp_record[0])
-                            # elif result_type == "list":
-                            #    processed_result.append(tmp_record)
-                            else:
-                                processed_result.append(tuple(tmp_record))
-                        return processed_result
+                        return result
                 except pymysql.OperationalError:
                     error_count += 1
                     self.logger.error("There are some SQL query error " + str(pymysql.OperationalError))

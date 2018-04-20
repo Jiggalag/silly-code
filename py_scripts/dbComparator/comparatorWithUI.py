@@ -23,18 +23,18 @@ class Backend:
     def run_comparing(self):
         if self.OS == "Windows":
             service_dir = "C:\\comparator"
+            test_dir = "C:\\dbComparator\\"
         else:
             service_dir = "/tmp/comparator/"
+            test_dir = "/mxf/data/test_results/"
         check_service_dir(service_dir)
+        check_service_dir(test_dir)
         prod_sql_connection = DbCmpSqlHelper(self.sql_connection_properties.get('prod'), self.logger)
         test_sql_connection = DbCmpSqlHelper(self.sql_connection_properties.get('test'), self.logger)
         comparing_info = tableData.Info(self.logger)
         comparing_info.update_table_list("prod", prod_sql_connection.get_tables())
         comparing_info.update_table_list("test", test_sql_connection.get_tables())
-        if "Linux" in self.OS:
-            create_test_dir("/mxf/data/test_results/")
-        else:
-            create_test_dir("C:\\dbComparator\\")
+
         start_time = datetime.datetime.now()
         self.logger.info("Start processing!")
         mapping = queryConstructor.prepare_column_mapping(prod_sql_connection, self.logger)
@@ -61,11 +61,6 @@ def check_service_dir(service_dir):
     if os.path.exists(service_dir):
         shutil.rmtree(service_dir)
     os.mkdir(service_dir)
-
-
-def create_test_dir(path):
-    if not os.path.exists(path):
-        os.mkdir(path)
 
 
 def generate_mail_text(comparing_info, sql_comparing_properties, data_comparing_time, schema_comparing_time):

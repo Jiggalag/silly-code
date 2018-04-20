@@ -1,6 +1,6 @@
 import datetime
 from py_scripts.helpers import dbcmp_sql_helper
-from py_scripts.dbComparator import unified_comparing_class
+from py_scripts.dbComparator.unified_comparing_class import Comparation
 
 
 class Object:
@@ -119,25 +119,6 @@ class Object:
             'table_timeout': self.table_timeout
         }
 
-    def complex_condition(self, table):
-        booler = []
-        if ('report' in table) or ('statistic' in table):
-            booler.append(True)
-        else:
-            booler.append(False)
-        if 'dt' in dbcmp_sql_helper.DbCmpSqlHelper(self.prod_sql, self.logger).get_column_list(table):
-            booler.append(True)
-        else:
-            booler.append(False)
-        if 'onlyEntities' not in self.separate_checking:
-            booler.append(True)
-        else:
-            booler.append(False)
-        if all(booler):
-            return True
-        else:
-            return False
-
     def is_report(self, table):
         booler = []
         if ('report' in table) or ('statistic' in table):
@@ -166,9 +147,10 @@ class Object:
                 continue
             if 'onlyEntities' in self.separate_checking and is_report:
                 continue
-            global_break = unified_comparing_class.compare_table(prod_connection, test_connection, table, is_report,
-                                                                 service_dir, mapping, start_time, self.comparing_info,
-                                                                 **self.sql_comparing_properties)
+            cmp_params = self.sql_comparing_properties.update({'service_dir': service_dir})
+            compared_table = Comparation(prod_connection, test_connection, table, self.logger, cmp_params)
+            global_break = compared_table.compare_table(is_report, mapping, start_time, self.comparing_info,
+                                                        self.sql_comparing_properties.get('comparing_step'))
             self.logger.info("Table {} ".format(table) +
                              "checked in {}...".format(datetime.datetime.now() - start_table_check_time))
             if global_break:
@@ -196,13 +178,14 @@ class Object:
                      "WHERE TABLE_SCHEMA = 'DBNAME' AND TABLE_NAME='TABLENAME' ".replace("TABLENAME", table) +
                      "ORDER BY COLUMN_NAME;")
 
-            prod_columns, test_columns = dbcmp_sql_helper.DbCmpSqlHelper.parallel_select([prod_connection, test_connection], query)
+            prod_columns, test_columns = dbcmp_sql_helper.DbCmpSqlHelper.parallel_select([prod_connection,
+                                                                                          test_connection], query)
             if (prod_columns is None) or (test_columns is None):
                 self.logger.warn('Table {} skipped because something going bad'.format(table))
                 continue
             uniq_for_prod = list(set(prod_columns) - set(test_columns))
             uniq_for_test = list(set(test_columns) - set(prod_columns))
-            if len(uniq_for_prod) > 0:
+            if len(uniq_for_prod) > 0 and self.fail_with_first_error:
                 return self.schema_comparing_time(table, uniq_for_prod, start_time)
             if len(uniq_for_test) > 0 and self.fail_with_first_error:
                 return self.schema_comparing_time(table, uniq_for_test, start_time)
