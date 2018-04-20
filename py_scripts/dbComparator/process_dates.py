@@ -12,9 +12,8 @@ class ProcessDates:
 
     def compare_dates(self, comparing_info):
         select_query = "SELECT distinct(`dt`) from {};".format(self.table)
-        prod_dates, test_dates = dbcmp_sql_helper.DbCmpSqlHelper.parallel_select([self.prod_connection,
-                                                                                  self.test_connection],
-                                                                                 select_query)
+        prod_dates, test_dates = dbcmp_sql_helper.get_comparable_objects([self.prod_connection, self.test_connection],
+                                                                         select_query)
         if (prod_dates is None) or (test_dates is None):
             self.logger.warn('Table {} skipped because something going bad'.format(self.table))
             return []

@@ -147,7 +147,8 @@ class Object:
                 continue
             if 'onlyEntities' in self.separate_checking and is_report:
                 continue
-            cmp_params = self.sql_comparing_properties.update({'service_dir': service_dir})
+            self.sql_comparing_properties.update({'service_dir': service_dir})
+            cmp_params = self.sql_comparing_properties
             compared_table = Comparation(prod_connection, test_connection, table, self.logger, cmp_params)
             global_break = compared_table.compare_table(is_report, mapping, start_time, self.comparing_info,
                                                         self.sql_comparing_properties.get('comparing_step'))
@@ -178,11 +179,12 @@ class Object:
                      "WHERE TABLE_SCHEMA = 'DBNAME' AND TABLE_NAME='TABLENAME' ".replace("TABLENAME", table) +
                      "ORDER BY COLUMN_NAME;")
 
-            prod_columns, test_columns = dbcmp_sql_helper.DbCmpSqlHelper.parallel_select([prod_connection,
-                                                                                          test_connection], query)
+            prod_columns, test_columns = dbcmp_sql_helper.get_comparable_objects([prod_connection, test_connection],
+                                                                                 query)
             if (prod_columns is None) or (test_columns is None):
                 self.logger.warn('Table {} skipped because something going bad'.format(table))
                 continue
+            # TODO: Type error: unhashable type: 'dict'
             uniq_for_prod = list(set(prod_columns) - set(test_columns))
             uniq_for_test = list(set(test_columns) - set(prod_columns))
             if len(uniq_for_prod) > 0 and self.fail_with_first_error:

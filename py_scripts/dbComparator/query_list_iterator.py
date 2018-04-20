@@ -3,7 +3,7 @@ from py_scripts.dbComparator import process_uniqs
 from py_scripts.helpers import dbcmp_sql_helper
 
 
-class QueryListIterator():
+class QueryListIterator:
     def __init__(self, prod_connection, test_connection, table, logger, cmp_params):
         self.prod_connection = prod_connection
         self.test_connection = test_connection
@@ -60,8 +60,8 @@ class QueryListIterator():
             return False, True
 
     def get_differences(self, query, comparing_info, strings_amount, service_dir):
-        prod_entities, test_entities = dbcmp_sql_helper.DbCmpSqlHelper.parallel_select([self.prod_connection,
-                                                                                        self.test_connection], query)
+        prod_entities, test_entities = dbcmp_sql_helper.get_comparable_objects([self.prod_connection,
+                                                                                self.test_connection], query)
         if (prod_entities is None) or (test_entities is None):
             self.logger.warn('Table {} skipped because something going bad'.format(self.table))
             return False, set(), set()

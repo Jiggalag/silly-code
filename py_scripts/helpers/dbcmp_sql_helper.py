@@ -1,6 +1,6 @@
 import pymysql
 import time
-from multiprocessing.dummy import Pool
+from py_scripts.helpers import dbHelper
 
 TIMEOUT = 10
 
@@ -73,34 +73,6 @@ class DbCmpSqlHelper:
             if 'separateChecking' in key:
                 self.separate_checking = kwargs.get(key)
 
-    @staticmethod
-    def parallel_select(connection_list, query, result_type="frozenset"):
-        pool = Pool(2)
-        result = pool.map((lambda x: x.select(query)), connection_list)
-        pool.close()
-        pool.join()
-        if (result[0] is None) or (result[1] is None):
-            return None, None
-        if result_type == "list":
-            prod_result = []
-            test_result = []
-            for item in result[0]:
-                prod_result.append(list(item))
-            for item in result[1]:
-                test_result.append(list(item))
-        else:
-            prod_result = result[0]
-            test_result = result[1]
-        if len(prod_result) == 1:  # TODO: strongly refactor this code
-            prod = prod_result[0]
-        else:
-            prod = prod_result
-        if len(test_result) == 1:
-            test = test_result[0]
-        else:
-            test = test_result
-        return prod, test
-
     def get_connection(self):
         attempt_number = 0
         while True:
@@ -118,10 +90,6 @@ class DbCmpSqlHelper:
                     return None
                 time.sleep(TIMEOUT)
 
-    def get_comparable_objects(self, connection_list, query, result_type="frozenset"):
-        result = self.parallel_select(connection_list, query, result_type)
-
-    # TODO: refactor, make one select function from this two methods
     def select(self, query):
         connection = self.get_connection()
         if connection is not None:
@@ -201,7 +169,43 @@ def get_amount_records(table, dates, sql_connection_list):
         query = "SELECT COUNT(*) FROM `{}`;".format(table)
     else:
         query = "SELECT COUNT(*) FROM `{}` WHERE dt >= '{}';".format(table, dates[0])
-    return DbCmpSqlHelper.parallel_select(sql_connection_list, query)
+    return get_comparable_objects(sql_connection_list, query)
+
+# TODO: strongly refactor this code!
+def get_comparable_objects(connection_list, query, result_type="frozenset"):
+    result = dbHelper.DbConnector.parallel_select(connection_list, query)
+    if (result[0] is None) or (result[1] is None):
+        return None, None
+    if result_type == "list":
+        prod_result = []
+        test_result = []
+        for item in result[0]:
+            prod_result.append(list(item))
+        for item in result[1]:
+            test_result.append(list(item))
+    else:
+        tmp_prod_result = result[0]
+        tmp_test_result = result[1]
+        prod = collapse_item(tmp_prod_result)
+        test = collapse_item(tmp_test_result)
+        prod_result = []
+        test_result = []
+        if type(prod) is list:
+            for item in prod:
+                prod_result.append(frozenset(item.values()))
+            for item in test:
+                test_result.append(frozenset(item.values()))
+        else:
+            prod_result = prod
+            test_result = test
+    return prod_result, test_result
+
+
+def collapse_item(target_list):
+    if len(target_list) == 1:
+        return list(target_list[0].values())[0]
+    else:
+        return target_list
 
 
 def get_column_list_for_sum(set_column_list):
