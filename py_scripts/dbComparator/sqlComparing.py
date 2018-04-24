@@ -119,17 +119,18 @@ class Object:
             'table_timeout': self.table_timeout
         }
 
-    def is_report(self, table):
+    def is_report(self, table, connection):
         booler = []
-        if ('report' in table) or ('statistic' in table):
-            booler.append(True)
-        else:
-            booler.append(False)
-        if 'dt' in dbcmp_sql_helper.DbCmpSqlHelper(self.prod_sql, self.logger).get_column_list(table):
-            booler.append(True)
-        else:
-            booler.append(False)
-        if all(booler):
+        query = "DESCRIBE {};".format(table)
+        result = connection.select(query)
+        for field in result:
+            if 'dt' in field.get('Field'):
+                booler.append(True)
+            if 'impressions' in field.get('Field'):
+                booler.append(True)
+            if 'clicks' in field.get('Field'):
+                booler.append(True)
+        if len(booler) == 3:
             return True
         else:
             return False
@@ -142,7 +143,7 @@ class Object:
             # table = 'campaignosreport'
             start_table_check_time = datetime.datetime.now()
             self.logger.info("Table {} processing started now...".format(table))
-            is_report = self.is_report(table)
+            is_report = self.is_report(table, prod_connection)
             if 'onlyReports' in self.separate_checking and not is_report:
                 continue
             if 'onlyEntities' in self.separate_checking and is_report:

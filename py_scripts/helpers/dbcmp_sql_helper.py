@@ -169,41 +169,48 @@ def get_amount_records(table, dates, sql_connection_list):
         query = "SELECT COUNT(*) FROM `{}`;".format(table)
     else:
         query = "SELECT COUNT(*) FROM `{}` WHERE dt >= '{}';".format(table, dates[0])
-    return get_comparable_objects(sql_connection_list, query)
+    result = get_comparable_objects(sql_connection_list, query)
+    return result[0][0], result[1][0]
+
 
 # TODO: strongly refactor this code!
-def get_comparable_objects(connection_list, query, result_type="frozenset"):
+def get_raw_objects(connection_list, query):
     result = dbHelper.DbConnector.parallel_select(connection_list, query)
     if (result[0] is None) or (result[1] is None):
         return None, None
-    if result_type == "list":
-        prod_result = []
-        test_result = []
-        for item in result[0]:
-            prod_result.append(list(item))
-        for item in result[1]:
-            test_result.append(list(item))
     else:
-        tmp_prod_result = result[0]
-        tmp_test_result = result[1]
-        prod = collapse_item(tmp_prod_result)
-        test = collapse_item(tmp_test_result)
-        prod_result = []
-        test_result = []
-        if type(prod) is list:
-            for item in prod:
-                prod_result.append(frozenset(item.values()))
-            for item in test:
-                test_result.append(frozenset(item.values()))
-        else:
-            prod_result = prod
-            test_result = test
-    return prod_result, test_result
+        return result[0], result[1]
+
+
+# returns list for easy convertation to set
+def get_comparable_objects(connection_list, query):
+    result = list(get_raw_objects(connection_list, query))
+    objects = []
+    for bulk in result:
+        server_objects = []
+        for item in bulk:
+            if len(item.keys()) == 1:
+                server_objects.append(next(iter(item.values())))
+            else:
+                server_objects.append(frozenset(item.values()))
+        objects.append(server_objects)
+    return objects[0], objects[1]
+
+
+def get_dates(connection_list, query):
+    result = list(get_raw_objects(connection_list, query))
+    dates = []
+    for bulk in result:
+        server_dates = []
+        for item in bulk:
+            server_dates.append(next(iter(item.values())))
+        dates.append(server_dates)
+    return dates[0], dates[1]
 
 
 def collapse_item(target_list):
     if len(target_list) == 1:
-        return list(target_list[0].values())[0]
+        return list(target_list[0].values())
     else:
         return target_list
 
