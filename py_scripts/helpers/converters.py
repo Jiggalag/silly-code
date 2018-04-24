@@ -6,12 +6,13 @@ from multiprocessing.dummy import Pool
 def convert_to_list(structure_to_convert):
     result_list = []
     for item in structure_to_convert:
-        if type(item) is dict:
-            key = list(item.keys())[0]
-            result_list.append(item.get(key))
-        else:
-            result_list.append(item)
-    # TODO: critical change, test it
+        for dt in item:
+            if type(dt) is dict:
+                key = list(dt.keys())[0]
+                result_list.append(dt.get(key))
+            else:
+                result_list.append(dt)
+        # TODO: critical change, test it
     try:
         result_list.sort()
     except TypeError:

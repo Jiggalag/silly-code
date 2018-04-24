@@ -33,13 +33,17 @@ def get_header(query):
 
 
 def check_uniqs(prod_set, test_set, strings_amount, table, query, service_dir, logger):
-    header = get_header(query)
     if len(prod_set) > strings_amount or len(test_set) > strings_amount:
-        write_unique_entities_to_file(table, prod_set, 'prod', header, service_dir, logger)
-        write_unique_entities_to_file(table, test_set, 'test', header, service_dir, logger)
+        dump_uniqs(prod_set, test_set, table, query, service_dir, logger)
         return True
     else:
         return False
+
+
+def dump_uniqs(prod_set, test_set, table, query, service_dir, logger):
+    header = get_header(query)
+    write_unique_entities_to_file(table, prod_set, 'prod', header, service_dir, logger)
+    write_unique_entities_to_file(table, test_set, 'test', header, service_dir, logger)
 
 
 def thin_uniq_list(target_set, second_set, logger):
