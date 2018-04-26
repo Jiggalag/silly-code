@@ -1,0 +1,1 @@
+{"searchTermExpression":{"and":[{"and":[{"op":"NOT_EQUALS","name":"18","value":"258029"},{"op":"NOT_EQUALS","name":"18","value":"258030"},{"op":"NOT_EQUALS","name":"18","value":"258939"}]},{"op":"EQUALS","name":"36","value":"185953"},{"op":"EQUALS","name":"6","value":"137344"}]}}
