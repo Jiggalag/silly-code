@@ -32,7 +32,8 @@ standard_properties = {
     '-Dauth.user': 'app_default',
     '-Dauth.scope': 'default',
     '-Dcpo.properties.auth.only': 'false',
-    '-Dauth.service.config': '/mxf/etc/ifms/open.cfg',  # TODO: config should be changed!
+    # TODO: config should be changed!
+    '-Dauth.service.config': '/mxf/etc/ifms/open.cfg',
     '-Dcpo.registry.file': 'none',
     '-Dauth.client': 'rick', # TODO: value should be changed
     '-Drabbitmq.uri': 'amqp://msp4_auth:msp4@eu-smr-rmq-01.maxifier.com:5672/msp4',
@@ -42,11 +43,17 @@ standard_properties = {
     '-Dmail.smtp.pass': 'AozX4RZRnXUlhRxbzAPgriH0AnVkJhYcQ5aQYJCi/0d/',
     '-Dmail.smtp.starttls.enable': 'true',
     '-Dmail.smtp.auth': 'true',
-    '-Dmail.smtp.socketFactory.class=javax.net.ssl.SSLSocketFactory',
-    '-Dmail.smtp.socketFactory.fallback=false',
-    '-Dgraphite.host=graphite.inventale.com',
-    '-Dgraphite.port=2003',
-    '-Dgraphite.prefix=eu-smr-dev-01.internal.ifms.rick -Dsentry.dsn=https://f105285043a34986b01c361fec593044:bbaf41e391a34092ae1ad61937078a03@sentry.maxifier.com/33 -Dsentry.servername=eu-smr-dev-01 -Dsentry.environment=internal -Dsentry.tags=app:ifms,client:rick -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=60037 -Dcom.sun.management.jmxremote.local.only=false -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Djava.awt.headless=true -Djava.rmi.server.hostname=eu-smr-dev-01.inventale.com -Djava.net.preferipv4stack=true -Dmongo.connection.bucket= -Dforecasting.sampling.directory=/mxf/data/rick/sampling -Dmonitoring.order.hide-tab=true -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/mxf/data/rick/dumps -Dforecasting.ifms.default-weight=0 -Dforecasting.date-profile.spike-enabled=false -Dforecasting.sampling.cumulative-days=7 -Dforecasting.sampling.uniques-extrapolation.stat-days=14 -Dforecasting.searchterm.allowed-keynames=1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,59 -Dforecasting.ifms.keynames-with-undefined=3,4,6,12,13,18,24,30,31,49,50,55,57,59 -Dforecasting.ifms.keynames-for-breakdown=3,4,6,12,13,18,24,30,31,49,50,55,57,59 -Dforecasting.ifms.ui-allowed-keynames=3,4,6,12,13,18,24,30,31,49,50,55,57,59 -jar ./lib/maxifier-ifms.jar'
+    '-Dmail.smtp.socketFactory.class': 'javax.net.ssl.SSLSocketFactory',
+    '-Dmail.smtp.socketFactory.fallback': 'false',
+    '-Dgraphite.host': 'graphite.inventale.com',
+    '-Dgraphite.port': '2003',
+    # '-Dgraphite.prefix=eu-smr-dev-01.internal.ifms.rick',
+    # '-Dsentry.dsn=https://f105285043a34986b01c361fec593044:bbaf41e391a34092ae1ad61937078a03@sentry.maxifier.com/33',
+    # '-Dsentry.servername=eu-smr-dev-01',
+    # '-Dsentry.environment=internal',
+    # '-Dsentry.tags=app:ifms,client:rick',
+    # '-Dcom.sun.management.jmxremote',
+    # '-Dcom.sun.management.jmxremote.port=60037 -Dcom.sun.management.jmxremote.local.only=false -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Djava.awt.headless=true -Djava.rmi.server.hostname=eu-smr-dev-01.inventale.com -Djava.net.preferipv4stack=true -Dmongo.connection.bucket= -Dforecasting.sampling.directory=/mxf/data/rick/sampling -Dmonitoring.order.hide-tab=true -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/mxf/data/rick/dumps -Dforecasting.ifms.default-weight=0 -Dforecasting.date-profile.spike-enabled=false -Dforecasting.sampling.cumulative-days=7 -Dforecasting.sampling.uniques-extrapolation.stat-days=14 -Dforecasting.searchterm.allowed-keynames=1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,59 -Dforecasting.ifms.keynames-with-undefined=3,4,6,12,13,18,24,30,31,49,50,55,57,59 -Dforecasting.ifms.keynames-for-breakdown=3,4,6,12,13,18,24,30,31,49,50,55,57,59 -Dforecasting.ifms.ui-allowed-keynames=3,4,6,12,13,18,24,30,31,49,50,55,57,59 -jar ./lib/maxifier-ifms.jar'
 }
 
 
@@ -101,8 +108,9 @@ class IfmsRunner:
                 else:
                     tmp_array = item.split(' ')
                     break
-            raw_time = tmp_array[0] + ' ' + tmp_array[1]
-            start_time = datetime.datetime.strptime(raw_time, '%Y-%m-%d %H:%M:%S.%f')
+            if tmp_array:
+                raw_time = tmp_array[0] + ' ' + tmp_array[1]
+                start_time = datetime.datetime.strptime(raw_time, '%Y-%m-%d %H:%M:%S.%f')
             if datetime.datetime.now() - start_time < datetime.timedelta(seconds=30):
                 self.logger.info('Application has been launched')
                 break
