@@ -17,7 +17,7 @@ def write_unique_entities_to_file(table, list_uniqs, stage, header, service_dir,
     with open(file_name, "a") as file:
         first_list = converters.convert_to_list(list_uniqs)
         for item in first_list:
-            file.write(str(next(iter(item))) + "\n")
+            file.write(str(item) + "\n")
 
 
 def get_header(query):
