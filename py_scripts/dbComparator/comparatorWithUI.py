@@ -38,18 +38,15 @@ class Backend:
         start_time = datetime.datetime.now()
         self.logger.info("Start processing!")
         mapping = queryConstructor.prepare_column_mapping(prod_sql_connection, self.logger)
+        comparing_object = sqlComparing.Object(self.sql_connection_properties, self.sql_comparing_properties,
+                                               comparing_info)
+        tables = comparing_object.calculate_table_list(prod_sql_connection)
         if self.sql_comparing_properties.get('check_schema'):
-            schema_comparing_time = sqlComparing.Object(self.sql_connection_properties,
-                                                        self.sql_comparing_properties,
-                                                        comparing_info).compare_metadata(start_time)
+            schema_comparing_time = comparing_object.compare_metadata(start_time, tables)
         else:
             self.logger.info("Schema checking disabled...")
             schema_comparing_time = None
-        data_comparing_time = sqlComparing.Object(self.sql_connection_properties,
-                                                  self.sql_comparing_properties,
-                                                  comparing_info).compare_data(start_time,
-                                                                               service_dir,
-                                                                               mapping)
+        data_comparing_time = comparing_object.compare_data(start_time, service_dir, mapping, tables)
         subject = "[Test] Check databases"
         text = generate_mail_text(comparing_info, self.sql_comparing_properties,
                                   data_comparing_time, schema_comparing_time)

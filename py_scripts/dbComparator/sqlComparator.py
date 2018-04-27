@@ -182,6 +182,7 @@ for client in config.get_clients():
         'schema_columns': config.get_property('sqlProperties', 'schema_columns'),
         'retry_attempts': config.get_property('sqlProperties', 'retry_attempts'),
         'only_tables': config.get_property('sqlProperties', 'separate_checking'),
+        'only_reports': config.get_property('sqlProperties', 'only_reports'),
         'table_timeout': config.get_property('sqlProperties', 'table_timeout'),
         'os': os_type
 
@@ -204,15 +205,19 @@ for client in config.get_clients():
     logger.info("Start {} processing!".format(client))
     prod_sql_connection = dbcmp_sql_helper.DbCmpSqlHelper(client_config.get_sql_connection_params("prod"), logger)
     mapping = queryConstructor.prepare_column_mapping(prod_sql_connection, logger)
+    excluded_tables = sql_comparing_properties.get('excluded_tables')
+    client_ignored_tables = sql_comparing_properties.get('client_ignored_tables')
+    only_reports = sql_comparing_properties.get('client_ignored_tables')
+    tables = comparing_info.define_table_list(excluded_tables, client_ignored_tables, only_reports, prod_sql_connection)
     if check_schema:
         # TODO: Object fixed, now this code not works
         schema_comparing_time = sqlComparing.Object(sql_connection_properties, sql_comparing_properties,
-                                                    comparing_info).compare_metadata(start_time)
+                                                    comparing_info).compare_metadata(start_time, tables)
     else:
         logger.info("Schema checking disabled...")
     # TODO: Object fixed, now this code not works
     data_comparing_time = sqlComparing.Object(sql_connection_properties, sql_comparing_properties,
-                                              comparing_info).compare_data(start_time, service_dir, mapping)
+                                              comparing_info).compare_data(start_time, service_dir, mapping, tables)
     subject = "[Test] Check databases for client {}".format(client)
     body = generate_mail_text(comparing_info, mode)
     sendmail(body, args.send_mail_from, args.send_mail_to, args.mail_password, subject, None)

@@ -115,6 +115,8 @@ class Example(QWidget):
         self.cb_enable_schema_checking.toggle()
         self.cb_fail_with_first_error = QCheckBox('Only first error', self)
         self.cb_fail_with_first_error.toggle()
+        self.cb_only_reports_checking = QCheckBox('Only reports', self)
+        self.cb_only_reports_checking.toggle()
 
         # Buttons
 
@@ -231,6 +233,7 @@ class Example(QWidget):
         grid.addWidget(self.hide_columns, 9, 1)
         grid.addWidget(self.cb_enable_schema_checking, 10, 0)
         grid.addWidget(self.cb_fail_with_first_error, 11, 0)
+        grid.addWidget(self.cb_only_reports_checking, 10, 1)
         grid.addWidget(btn_set_configuration, 11, 5)
         grid.addWidget(checking_mode_label, 6, 3)
         grid.addWidget(self.day_summary_mode, 7, 3)
@@ -382,6 +385,18 @@ class Example(QWidget):
                     else:
                         if self.cb_fail_with_first_error.isChecked():
                             self.cb_fail_with_first_error.setChecked(False)
+                        else:
+                            pass
+                elif 'only_reports' in string:
+                    only_reports = string[string.find('=') + 1:]
+                    if only_reports == 'True':
+                        if self.cb_only_reports_checking.isChecked():
+                            pass
+                        else:
+                            self.cb_only_reports_checking.setChecked(True)
+                    else:
+                        if self.cb_only_reports_checking.isChecked():
+                            self.cb_only_reports_checking.setChecked(False)
                         else:
                             pass
                 elif 'logging_level' in string:
@@ -650,10 +665,16 @@ class Example(QWidget):
             check_schema = True
         else:
             check_schema = False
+
         if self.cb_fail_with_first_error.checkState() == 2:
             fail_with_first_error = True
         else:
             fail_with_first_error = False
+
+        if self.cb_only_reports_checking.checkState() == 2:
+            only_reports = True
+        else:
+            only_reports = False
 
         if self.day_summary_mode.isChecked():
             mode = 'day-sum'
@@ -681,6 +702,7 @@ class Example(QWidget):
             'schema_columns': self.schema_columns.text(),
             'retry_attempts': self.retry_attempts.text(),
             'only_tables': self.only_tables.text(),
+            'only_reports': only_reports,
             # TODO: add try/catch
             'table_timeout': int(self.table_timeout.text()),
             'os': OS

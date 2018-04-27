@@ -48,6 +48,7 @@ class Object:
             'GENERATION_EXPRESSION'
         ]
         self.only_tables = ''
+        self.only_reports = False
         self.excluded_tables = [
             'databasechangelog',
             'download',
@@ -99,6 +100,8 @@ class Object:
             self.table_timeout = int(sql_comparing_properties.get('table_timeout'))
             if self.table_timeout == 0:
                 self.table_timeout = None
+        if 'only_reports' in sql_comparing_properties.keys():
+            self.only_reports = sql_comparing_properties.get('only_reports')
         if 'strings_amount' in sql_comparing_properties.keys():
             self.strings_amount = int(sql_comparing_properties.get('strings_amount'))
         self.sql_comparing_properties = {
@@ -116,7 +119,8 @@ class Object:
             'only_tables': self.only_tables,
             'skip_tables': self.excluded_tables,
             'send_mail_to': self.send_mail_to,
-            'table_timeout': self.table_timeout
+            'table_timeout': self.table_timeout,
+            'only_reports': self.only_reports
         }
 
     @staticmethod
@@ -136,10 +140,9 @@ class Object:
         else:
             return False
 
-    def compare_data(self, start_time, service_dir, mapping):
+    def compare_data(self, start_time, service_dir, mapping, tables):
         prod_connection = dbcmp_sql_helper.DbCmpSqlHelper(self.prod_sql, self.logger)
         test_connection = dbcmp_sql_helper.DbCmpSqlHelper(self.test_sql, self.logger)
-        tables = self.calculate_table_list()
         for table in tables:
             # table = 'campaignosreport'
             start_table_check_time = datetime.datetime.now()
@@ -165,16 +168,16 @@ class Object:
         self.logger.info("Comparing finished in {}".format(data_comparing_time))
         return data_comparing_time
 
-    def calculate_table_list(self):
+    def calculate_table_list(self, connection):
         if len(self.only_tables) == 1 and self.only_tables[0] == '':
-            return self.comparing_info.get_tables(self.excluded_tables, self.client_ignored_tables)
+            return self.comparing_info.define_table_list(self.excluded_tables, self.client_ignored_tables,
+                                                         self.only_reports, connection)
         else:
             return self.only_tables
 
-    def compare_metadata(self, start_time):
+    def compare_metadata(self, start_time, tables):
         prod_connection = dbcmp_sql_helper.DbCmpSqlHelper(self.prod_sql, self.logger)
         test_connection = dbcmp_sql_helper.DbCmpSqlHelper(self.test_sql, self.logger)
-        tables = self.calculate_table_list()
         for table in tables:
             self.logger.info("Check schema for table {}...".format(table))
             query = ("SELECT {} FROM INFORMATION_SCHEMA.COLUMNS ".format(', '.join(self.schema_columns)) +

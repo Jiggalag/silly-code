@@ -5,7 +5,6 @@ UI Bugfixes:
 3. Hide advanced settings. Probably, move it to different window.
 4. UI hangs and disables during comparing DBs. Add modal window with progress bar and some information about
 progress of comparing.
-5. Add "Check only reports" flag in UI. Support it on backend.
 
 Bugs:
 
