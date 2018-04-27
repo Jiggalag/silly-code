@@ -5,6 +5,8 @@ import sys
 import os
 import platform
 import pymysql
+from PyQt5 import QtCore
+
 from py_scripts.dbComparator.comparatorWithUI import Backend
 from py_scripts.helpers import dbcmp_sql_helper
 from py_scripts.helpers.logging_helper import Logger
@@ -179,7 +181,7 @@ class Example(QWidget):
         comparing_step_label.setToolTip(('Max amount of records which should be requested in single sql-query\n' +
                                          'Do not touch this value if you not shure!'))
         self.comparing_step.setToolTip(('Max amount of records which should be requested in single sql-query\n' +
-                                         'Do not touch this value if you not shure!'))
+                                        'Do not touch this value if you not shure!'))
         depth_report_check_label.setToolTip('Amount of days in past, which should be compared in case of report tables')
         self.depth_report_check.setToolTip('Amount of days in past, which should be compared in case of report tables')
         schema_columns_label.setToolTip(('List of columns, which should be compared during schema comparing\n' +
@@ -197,9 +199,9 @@ class Example(QWidget):
                                          'will be interrupted, and uniqs will be stored in file in /tmp/comparator\n' +
                                          'directory'))
         self.strings_amount.setToolTip(('Maximum amount of uniqs for single table.\n' +
-                                         'When amount of uniqs exceeds this threshould, checking of this table\n' +
-                                         'will be interrupted, and uniqs will be stored in file in /tmp/comparator\n' +
-                                         'directory'))
+                                        'When amount of uniqs exceeds this threshould, checking of this table\n' +
+                                        'will be interrupted, and uniqs will be stored in file in /tmp/comparator\n' +
+                                        'directory'))
 
         grid.addWidget(prod_host_label, 0, 0)
         grid.addWidget(self.prod_host, 0, 1)

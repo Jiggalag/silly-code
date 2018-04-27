@@ -1,16 +1,16 @@
-Tech debt:
+UI Bugfixes:
 
-1. Move dbHelper on two different classes: dbHelper with basic sql-functions and advanced class especially for dbCmp.
-
-Bugfixes:
-
-1. Fix error Username and Password not accepted.
-
-Enchancement:
-
-1. Add hints to all UI elements.
-2. UI hangs and disables during comparing DBs. Add modal window with progress bar and some information about
+1. Move test-connection modal window nearly to center.
+2. Add alignment to line edit fields.
+3. Add hotkey to start comparing.
+4. Hide advanced settings. Probably, move it to different window.
+5. UI hangs and disables during comparing DBs. Add modal window with progress bar and some information about
 progress of comparing.
+6. Add "Check only reports" flag in UI. Support it on backend.
+
+Bugs:
+
+1. There are some fields in header of dumped file but only one field in data for page table on marvin.
 
 Epics:
 1. Present summary information more flexible.

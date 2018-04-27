@@ -119,7 +119,8 @@ class Object:
             'table_timeout': self.table_timeout
         }
 
-    def is_report(self, table, connection):
+    @staticmethod
+    def is_report(table, connection):
         booler = []
         query = "DESCRIBE {};".format(table)
         result = connection.select(query)
