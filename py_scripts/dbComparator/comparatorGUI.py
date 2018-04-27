@@ -5,7 +5,6 @@ import sys
 import os
 import platform
 import pymysql
-from PyQt5 import QtCore
 
 from py_scripts.dbComparator.comparatorWithUI import Backend
 from py_scripts.helpers import dbcmp_sql_helper
@@ -124,6 +123,7 @@ class Example(QWidget):
         btn_check_test = QPushButton('Check test connection', self)
         btn_check_test.clicked.connect(self.check_test)
         btn_set_configuration = QPushButton('       Compare!       ', self)
+        btn_set_configuration.setShortcut('Ctrl+F')
         btn_set_configuration.clicked.connect(self.on_click)
         btn_clear_all = QPushButton('Clear all', self)
         btn_clear_all.clicked.connect(self.clear_all)

@@ -2,11 +2,10 @@ UI Bugfixes:
 
 1. Move test-connection modal window nearly to center.
 2. Add alignment to line edit fields.
-3. Add hotkey to start comparing.
-4. Hide advanced settings. Probably, move it to different window.
-5. UI hangs and disables during comparing DBs. Add modal window with progress bar and some information about
+3. Hide advanced settings. Probably, move it to different window.
+4. UI hangs and disables during comparing DBs. Add modal window with progress bar and some information about
 progress of comparing.
-6. Add "Check only reports" flag in UI. Support it on backend.
+5. Add "Check only reports" flag in UI. Support it on backend.
 
 Bugs:
 
