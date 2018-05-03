@@ -147,31 +147,31 @@ class Example(QWidget):
         # Set tooltips
 
         prod_host_label.setToolTip('Input host, where prod-db located.\nExample: samaradb03.maxifier.com')
-        self.prod_host.setToolTip('Input host, where prod-db located.\nExample: samaradb03.maxifier.com')
+        self.prod_host.setToolTip(self.prod_host.text())
         prod_user_label.setToolTip('Input user for connection to prod-db.\nExample: itest')
-        self.prod_user.setToolTip('Input user for connection to prod-db.\nExample: itest')
+        self.prod_user.setToolTip(self.prod_user.text())
         prod_password_label.setToolTip('Input password for user from prod.sql-user field')
-        self.prod_password.setToolTip('Input password for user from prod.sql-user field')
+        self.prod_password.setToolTip(self.prod_password.text())
         prod_db_label.setToolTip('Input prod-db name.\nExample: irving')
-        self.prod_db.setToolTip('Input prod-db name.\nExample: irving')
+        self.prod_db.setToolTip(self.prod_db.text())
         test_host_label.setToolTip('Input host, where test-db located.\nExample: samaradb03.maxifier.com')
-        self.test_host.setToolTip('Input host, where test-db located.\nExample: samaradb03.maxifier.com')
+        self.test_host.setToolTip(self.test_host.text())
         test_user_label.setToolTip('Input user for connection to test-db.\nExample: itest')
-        self.test_user.setToolTip('Input user for connection to test-db.\nExample: itest')
+        self.test_user.setToolTip(self.test_user.text())
         test_password_label.setToolTip('Input password for user from test.sql-user field')
-        self.test_password.setToolTip('Input password for user from test.sql-user field')
+        self.test_password.setToolTip(self.test_password.text())
         test_db_label.setToolTip('Input test-db name.\nExample: irving')
-        self.test_db.setToolTip('Input test-db name.\nExample: irving')
+        self.test_db.setToolTip(self.test_db.text())
         btn_check_test.setToolTip('Reset all fields to default values')
         self.cb_enable_schema_checking.setToolTip('If you set this option, program will compare also schemas of dbs')
         self.cb_fail_with_first_error.setToolTip('If you set this option, comparing will be finished after first error')
         send_mail_to_label.setToolTip('Add one or list of e-mails for receiving results of comparing')
-        self.send_mail_to.setToolTip('Add one or list of e-mails for receiving results of comparing')
+        self.send_mail_to.setToolTip(self.send_mail_to.text().replace(',', ',\n'))
         only_tables_label.setToolTip('Set comma-separated list of tables, which should be compared')
-        self.only_tables.setToolTip('Set comma-separated list of tables, which should be compared')
-        excluded_tables_label.setToolTip(self.excluded_tables.text().replace(',', ',\n'))
+        self.only_tables.setToolTip(self.only_tables.text().replace(',', ',\n'))
+        excluded_tables_label.setToolTip('Set tables, which should not be checked')
         self.excluded_tables.setToolTip(self.excluded_tables.text().replace(',', ',\n'))
-        hide_columns_label.setToolTip(self.skip_columns.text().replace(',', ',\n'))
+        hide_columns_label.setToolTip('Set columns, which should not be compared during checking')
         self.skip_columns.setToolTip(self.skip_columns.text().replace(',', ',\n'))
         btn_set_configuration.setToolTip('Start comparing of dbs')
         btn_check_prod.setToolTip('Check connection to prod-server')
@@ -185,28 +185,23 @@ class Example(QWidget):
         self.logging_level.setToolTip('Messages with this label and higher will be writed to logs')
         comparing_step_label.setToolTip(('Max amount of records which should be requested in single sql-query\n' +
                                          'Do not touch this value if you not shure!'))
-        self.comparing_step.setToolTip(('Max amount of records which should be requested in single sql-query\n' +
-                                        'Do not touch this value if you not shure!'))
+        self.comparing_step.setToolTip(self.comparing_step.text())
         depth_report_check_label.setToolTip('Amount of days in past, which should be compared in case of report tables')
-        self.depth_report_check.setToolTip('Amount of days in past, which should be compared in case of report tables')
+        self.depth_report_check.setToolTip(self.depth_report_check.text())
         schema_columns_label.setToolTip(('List of columns, which should be compared during schema comparing\n' +
                                          'Do not touch this value if you not shure!'))
-        self.schema_columns.setToolTip(('List of columns, which should be compared during schema comparing\n' +
-                                        'Do not touch this value if you not shure!'))
+        self.schema_columns.setToolTip(self.schema_columns.text().replace(',', ',\n'))
         retry_attempts_label.setToolTip('Amount of attempts for reconnecting to dbs in case of connection lost error')
-        self.retry_attempts.setToolTip('Amount of attempts for reconnecting to dbs in case of connection lost error')
+        self.retry_attempts.setToolTip(self.retry_attempts.text())
         path_to_logs_label.setToolTip('Path, where log file should be created')
-        self.path_to_logs.setToolTip('Path, where log file should be created')
+        self.path_to_logs.setToolTip(self.path_to_logs.text())
         table_timeout_label.setToolTip('Timeout in minutes for checking any single table')
-        self.table_timeout.setToolTip('Timeout in minutes for checking any single table')
+        self.table_timeout.setToolTip(self.table_timeout.text())
         strings_amount_label.setToolTip(('Maximum amount of uniqs for single table.\n' +
                                          'When amount of uniqs exceeds this threshould, checking of this table\n' +
                                          'will be interrupted, and uniqs will be stored in file in /tmp/comparator\n' +
                                          'directory'))
-        self.strings_amount.setToolTip(('Maximum amount of uniqs for single table.\n' +
-                                        'When amount of uniqs exceeds this threshould, checking of this table\n' +
-                                        'will be interrupted, and uniqs will be stored in file in /tmp/comparator\n' +
-                                        'directory'))
+        self.strings_amount.setToolTip(self.strings_amount.text())
 
         grid.addWidget(prod_host_label, 0, 0)
         grid.addWidget(self.prod_host, 0, 1)
@@ -459,6 +454,28 @@ class Example(QWidget):
                         self.section_summary_mode.setChecked(True)
                     else:
                         self.detailed_mode.setChecked(True)
+
+        # Set tooltips
+
+        self.prod_host.setToolTip(self.prod_host.text())
+        self.prod_user.setToolTip(self.prod_user.text())
+        self.prod_password.setToolTip(self.prod_password.text())
+        self.prod_db.setToolTip(self.prod_db.text())
+        self.test_host.setToolTip(self.test_host.text())
+        self.test_user.setToolTip(self.test_user.text())
+        self.test_password.setToolTip(self.test_password.text())
+        self.test_db.setToolTip(self.test_db.text())
+        self.only_tables.setToolTip(self.only_tables.text().replace(',', ',\n'))
+        self.excluded_tables.setToolTip(self.excluded_tables.text().replace(',', ',\n'))
+        self.skip_columns.setToolTip(self.skip_columns.text().replace(',', ',\n'))
+        self.comparing_step.setToolTip(self.comparing_step.text())
+        self.depth_report_check.setToolTip(self.depth_report_check.text())
+        self.schema_columns.setToolTip(self.schema_columns.text().replace(',', ',\n'))
+        self.retry_attempts.setToolTip(self.retry_attempts.text())
+        self.path_to_logs.setToolTip(self.path_to_logs.text())
+        self.table_timeout.setToolTip(self.table_timeout.text())
+        self.send_mail_to.setToolTip(self.send_mail_to.text().replace(',', ',\n'))
+
 
     def save_configuration(self):
         text = []
