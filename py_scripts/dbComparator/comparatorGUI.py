@@ -478,6 +478,7 @@ class Example(QWidget):
 
     def save_configuration(self):
         text = []
+        non_verified = {}
         if self.prod_host.text() != '':
             text.append('prod.host = {}'.format(self.prod_host.text()))
         if self.prod_user.text() != '':
@@ -498,23 +499,31 @@ class Example(QWidget):
             raw_array = self.send_mail_to.text().split(',')
             raw_array.sort()
             text.append('send_mail_to = {}'.format(str(raw_array).strip('[]').replace("'", "").replace(' ', '')))
-        if self.only_tables != '':
+        if self.only_tables.text() != '':
             raw_array = self.only_tables.text().split(',')
             raw_array.sort()
             text.append('only_tables = {}'.format(str(raw_array).strip('[]').replace("'", "").replace(' ', '')))
-        if self.excluded_tables != '':
+        if self.excluded_tables.text() != '':
             raw_array = self.excluded_tables.text().split(',')
             raw_array.sort()
             text.append('excluded_tables = {}'.format(str(raw_array).strip('[]').replace("'", "").replace(' ', '')))
-        if self.skip_columns != '':
+        if self.skip_columns.text() != '':
             raw_array = self.skip_columns.text().split(',')
             raw_array.sort()
             text.append('skip_columns = {}'.format(str(raw_array).strip('[]').replace("'", "").replace(' ', '')))
-        if self.comparing_step != '' and self.comparing_step != '10000':
-            text.append('comparing_step = {}'.format(self.comparing_step.text()))
-        if self.depth_report_check != '' and self.depth_report_check != '7':
-            text.append('depth_report_check = {}'.format(self.depth_report_check.text()))
-        if self.schema_columns != '' and self.schema_columns != ('TABLE_CATALOG,TABLE_NAME,COLUMN_NAME,' +
+        if self.comparing_step.text() != '' and self.comparing_step.text() != '10000':
+            try:
+                int(self.comparing_step.text())
+                text.append('comparing_step = {}'.format(self.comparing_step.text()))
+            except ValueError:
+                non_verified.update({'Comparing step': self.comparing_step.text()})
+        if self.depth_report_check.text() != '' and self.depth_report_check.text() != '7':
+            try:
+                int(self.depth_report_check.text())
+                text.append('depth_report_check = {}'.format(self.depth_report_check.text()))
+            except ValueError:
+                non_verified.update({'Days in past': self.depth_report_check.text()})
+        if self.schema_columns.text() != '' and self.schema_columns.text() != ('TABLE_CATALOG,TABLE_NAME,COLUMN_NAME,' +
                                                                  'ORDINAL_POSITION,COLUMN_DEFAULT,' +
                                                                  'IS_NULLABLE,DATA_TYPE,CHARACTER_MAXIMUM_LENGTH,' +
                                                                  'CHARACTER_OCTET_LENGTH,NUMERIC_PRECISION,' +
@@ -525,12 +534,35 @@ class Example(QWidget):
             raw_array = self.schema_columns.text().split(',')
             raw_array.sort()
             text.append('schema_columns = {}'.format(str(raw_array).strip('[]').replace("'", "").replace(' ', '')))
-        if self.retry_attempts != '' and self.retry_attempts != '5':
-            text.append('retry_attempts = {}'.format(self.retry_attempts.text()))
-        if self.path_to_logs != '':
+        if self.retry_attempts.text() != '' and self.retry_attempts.text() != '5':
+            try:
+                int(self.retry_attempts.text())
+                text.append('retry_attempts = {}'.format(self.retry_attempts.text()))
+            except ValueError:
+                non_verified.update({'Retry attempts': self.retry_attempts.text()})
+        if self.path_to_logs.text() != '':
             text.append('path_to_logs = {}'.format(self.path_to_logs.text()))
-        if self.table_timeout != '':
-            text.append('table_timeout = {}'.format(self.table_timeout.text()))
+        if self.table_timeout.text() != '':
+            try:
+                int(self.table_timeout.text())
+                text.append('table_timeout = {}'.format(self.table_timeout.text()))
+            except ValueError:
+                non_verified.update({'Timeout for single table': self.table_timeout.text()})
+        if self.strings_amount.text() != '':
+            try:
+                int(self.strings_amount.text())
+                text.append('string_amount = {}'.format(self.strings_amount.text()))
+            except ValueError:
+                non_verified.update({'Amount of stored uniq strings': self.strings_amount.text()})
+        if non_verified:
+            text = ''
+            for item in non_verified.keys():
+                text = '{}\n{}: {}'.format(text, item, non_verified.get(item))
+            QMessageBox.warning(PyQt5.QtWidgets.QMessageBox(), 'Error',
+                                ("Incorrect value(s):\n{}\n\n".format(text) +
+                                 "Please, input a number!"),
+                                QMessageBox.Ok, QMessageBox.Ok)
+            return False
         if self.cb_enable_schema_checking.isChecked():
             text.append('compare_schema = True')
         if not self.cb_enable_schema_checking.isChecked():
