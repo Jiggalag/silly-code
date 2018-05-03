@@ -6,8 +6,7 @@ UI Bugfixes:
 progress of comparing.
 4. Disable checking mode group if "Only reports flag" disabled.
 5. Add verification to line edits.
-6. Add sorting of elements during saving to property file.
-7. Add verification case when entities and reports flag disabled at same time.
+6. Add verification case when entities and reports flag disabled at same time.
 
 Bugs:
 

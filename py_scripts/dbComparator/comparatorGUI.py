@@ -476,7 +476,6 @@ class Example(QWidget):
         self.table_timeout.setToolTip(self.table_timeout.text())
         self.send_mail_to.setToolTip(self.send_mail_to.text().replace(',', ',\n'))
 
-
     def save_configuration(self):
         text = []
         if self.prod_host.text() != '':
@@ -496,13 +495,21 @@ class Example(QWidget):
         if self.test_db.text() != '':
             text.append('test.db = {}'.format(self.test_db.text()))
         if self.send_mail_to.text() != '':
-            text.append('send_mail_to = {}'.format(self.send_mail_to.text()))
+            raw_array = self.send_mail_to.text().split(',')
+            raw_array.sort()
+            text.append('send_mail_to = {}'.format(str(raw_array).strip('[]').replace("'", "").replace(' ', '')))
         if self.only_tables != '':
-            text.append('only_tables = {}'.format(self.only_tables.text()))
+            raw_array = self.only_tables.text().split(',')
+            raw_array.sort()
+            text.append('only_tables = {}'.format(str(raw_array).strip('[]').replace("'", "").replace(' ', '')))
         if self.excluded_tables != '':
-            text.append('excluded_tables = {}'.format(self.excluded_tables.text()))
+            raw_array = self.excluded_tables.text().split(',')
+            raw_array.sort()
+            text.append('excluded_tables = {}'.format(str(raw_array).strip('[]').replace("'", "").replace(' ', '')))
         if self.skip_columns != '':
-            text.append('skip_columns = {}'.format(self.skip_columns.text()))
+            raw_array = self.skip_columns.text().split(',')
+            raw_array.sort()
+            text.append('skip_columns = {}'.format(str(raw_array).strip('[]').replace("'", "").replace(' ', '')))
         if self.comparing_step != '' and self.comparing_step != '10000':
             text.append('comparing_step = {}'.format(self.comparing_step.text()))
         if self.depth_report_check != '' and self.depth_report_check != '7':
@@ -515,11 +522,11 @@ class Example(QWidget):
                                                                  'CHARACTER_SET_NAME,COLLATION_NAME,COLUMN_TYPE,' +
                                                                  'COLUMN_KEY,EXTRA,COLUMN_COMMENT,' +
                                                                  'GENERATION_EXPRESSION'):
-            text.append('schema_columns = {}'.format(self.schema_columns.text()))
+            raw_array = self.schema_columns.text().split(',')
+            raw_array.sort()
+            text.append('schema_columns = {}'.format(str(raw_array).strip('[]').replace("'", "").replace(' ', '')))
         if self.retry_attempts != '' and self.retry_attempts != '5':
             text.append('retry_attempts = {}'.format(self.retry_attempts.text()))
-        if self.send_mail_to != '':
-            text.append('send_mail_to = {}'.format(self.send_mail_to.text()))
         if self.path_to_logs != '':
             text.append('path_to_logs = {}'.format(self.path_to_logs.text()))
         if self.table_timeout != '':
