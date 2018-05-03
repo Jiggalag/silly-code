@@ -42,7 +42,7 @@ class Info:
     def update_diff_data(self, value):
             self.diff_data.append(value)
 
-    def define_table_list(self, excluded_tables, client_ignored_tables, only_reports, connection):
+    def define_table_list(self, excluded_tables, client_ignored_tables, reports, entities, connection):
         self.tables = list(self.prod_list & self.test_list)
         self.tables.sort()
         for table in excluded_tables:
@@ -56,14 +56,14 @@ class Info:
             for table in client_ignored_tables:
                 if table in self.tables:
                     self.tables.remove(table)
-        if only_reports:
-            table_list = []
-            for table in self.tables:
-                if sqlComparing.Object.is_report(table, connection):
+        table_list = []
+        for table in self.tables:
+            if sqlComparing.Object.is_report(table, connection):
+                if reports:
                     table_list.append(table)
-            return table_list
-        table_list = list(self.tables)
-        table_list.sort()
+            else:
+                if entities:
+                    table_list.append(table)
         return table_list
 
     def get_uniq_tables(self, stage):

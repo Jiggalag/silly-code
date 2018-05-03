@@ -116,8 +116,10 @@ class Example(QWidget):
         self.cb_enable_schema_checking.toggle()
         self.cb_fail_with_first_error = QCheckBox('Only first error', self)
         self.cb_fail_with_first_error.toggle()
-        self.cb_only_reports_checking = QCheckBox('Only reports', self)
-        self.cb_only_reports_checking.toggle()
+        self.cb_reports = QCheckBox('Reports', self)
+        self.cb_reports.toggle()
+        self.cb_entities = QCheckBox('Entities and others', self)
+        self.cb_entities.toggle()
 
         # Buttons
 
@@ -234,7 +236,8 @@ class Example(QWidget):
         grid.addWidget(self.skip_columns, 9, 1)
         grid.addWidget(self.cb_enable_schema_checking, 10, 0)
         grid.addWidget(self.cb_fail_with_first_error, 11, 0)
-        grid.addWidget(self.cb_only_reports_checking, 10, 1)
+        grid.addWidget(self.cb_reports, 10, 1)
+        grid.addWidget(self.cb_entities, 11, 1)
         grid.addWidget(btn_set_configuration, 11, 5)
         grid.addWidget(checking_mode_label, 6, 3)
         grid.addWidget(self.day_summary_mode, 7, 3)
@@ -416,16 +419,28 @@ class Example(QWidget):
                             self.cb_fail_with_first_error.setChecked(False)
                         else:
                             pass
-                elif 'only_reports' in string:
-                    only_reports = string[string.find('=') + 1:]
-                    if only_reports == 'True':
-                        if self.cb_only_reports_checking.isChecked():
+                elif 'reports' in string:
+                    reports = string[string.find('=') + 1:]
+                    if reports == 'True':
+                        if self.cb_reports.isChecked():
                             pass
                         else:
-                            self.cb_only_reports_checking.setChecked(True)
+                            self.cb_reports.setChecked(True)
                     else:
-                        if self.cb_only_reports_checking.isChecked():
-                            self.cb_only_reports_checking.setChecked(False)
+                        if self.cb_reports.isChecked():
+                            self.cb_reports.setChecked(False)
+                        else:
+                            pass
+                elif 'entities' in string:
+                    entities = string[string.find('=') + 1:]
+                    if entities == 'True':
+                        if self.cb_entities.isChecked():
+                            pass
+                        else:
+                            self.cb_entities.setChecked(True)
+                    else:
+                        if self.cb_entities.isChecked():
+                            self.cb_entities.setChecked(False)
                         else:
                             pass
                 elif 'logging_level' in string:
@@ -700,10 +715,15 @@ class Example(QWidget):
         else:
             fail_with_first_error = False
 
-        if self.cb_only_reports_checking.checkState() == 2:
-            only_reports = True
+        if self.cb_reports.checkState() == 2:
+            reports = True
         else:
-            only_reports = False
+            reports = False
+
+        if self.cb_entities.checkState() == 2:
+            entities = True
+        else:
+            entities = False
 
         if self.day_summary_mode.isChecked():
             mode = 'day-sum'
@@ -731,8 +751,9 @@ class Example(QWidget):
             'schema_columns': self.schema_columns.text(),
             'retry_attempts': self.retry_attempts.text(),
             'only_tables': self.only_tables.text(),
-            'only_reports': only_reports,
-            # TODO: add try/catch
+            'reports': reports,
+            'entities': entities,
+            # TODO: add try/catch?
             'table_timeout': int(self.table_timeout.text()),
             'os': OS
         }

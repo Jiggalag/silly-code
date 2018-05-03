@@ -48,7 +48,8 @@ class Object:
             'GENERATION_EXPRESSION'
         ]
         self.only_tables = ''
-        self.only_reports = False
+        self.reports = True
+        self.entities = True
         self.excluded_tables = [
             'databasechangelog',
             'download',
@@ -100,27 +101,28 @@ class Object:
             self.table_timeout = int(sql_comparing_properties.get('table_timeout'))
             if self.table_timeout == 0:
                 self.table_timeout = None
-        if 'only_reports' in sql_comparing_properties.keys():
-            self.only_reports = sql_comparing_properties.get('only_reports')
+        if 'reports' in sql_comparing_properties.keys():
+            self.reports = sql_comparing_properties.get('reports')
         if 'strings_amount' in sql_comparing_properties.keys():
             self.strings_amount = int(sql_comparing_properties.get('strings_amount'))
         self.sql_comparing_properties = {
-            'retry_attempts': self.attempts,
+            'check_schema': self.check_schema,
             'comparing_step': self.comparing_step,
+            'depth_report_check': self.depth_report_check,
+            'entities': self.entities,
+            'fail_with_first_error': self.fail_with_first_error,
             'hide_columns': self.hide_columns,
             'mode': self.mode,
-            'check_schema': self.check_schema,
-            'depth_report_check': self.depth_report_check,
-            'fail_with_first_error': self.fail_with_first_error,
+            'only_tables': self.only_tables,
             'schema_columns': self.schema_columns,
             'logger': self.logger,
-            'strings_amount': self.strings_amount,
-            'separateChecking': self.separate_checking,  # TODO: now disabled
-            'only_tables': self.only_tables,
-            'skip_tables': self.excluded_tables,
+            'reports': self.reports,
+            'retry_attempts': self.attempts,
             'send_mail_to': self.send_mail_to,
-            'table_timeout': self.table_timeout,
-            'only_reports': self.only_reports
+            'separateChecking': self.separate_checking,  # TODO: now disabled
+            'skip_tables': self.excluded_tables,
+            'strings_amount': self.strings_amount,
+            'table_timeout': self.table_timeout
         }
 
     @staticmethod
@@ -148,6 +150,9 @@ class Object:
             start_table_check_time = datetime.datetime.now()
             self.logger.info("Table {} processing started now...".format(table))
             is_report = self.is_report(table, prod_connection)
+
+            # TODO: refactor this place! Rename onlyReports/Entities
+
             if 'onlyReports' in self.separate_checking and not is_report:
                 continue
             if 'onlyEntities' in self.separate_checking and is_report:
@@ -171,7 +176,7 @@ class Object:
     def calculate_table_list(self, connection):
         if len(self.only_tables) == 1 and self.only_tables[0] == '':
             return self.comparing_info.define_table_list(self.excluded_tables, self.client_ignored_tables,
-                                                         self.only_reports, connection)
+                                                         self.reports, self.entities, connection)
         else:
             return self.only_tables
 
