@@ -5,6 +5,7 @@ import sys
 import os
 import platform
 import pymysql
+from PyQt5 import QtCore
 
 from py_scripts.dbComparator.comparatorWithUI import Backend
 from py_scripts.helpers import dbcmp_sql_helper
@@ -91,7 +92,7 @@ class Example(QWidget):
         self.send_mail_to = QLineEdit(self)
         self.excluded_tables = QLineEdit(self)
         self.only_tables = QLineEdit(self)
-        self.hide_columns = QLineEdit(self)
+        self.skip_columns = QLineEdit(self)
         self.comparing_step = QLineEdit(self)
         self.depth_report_check = QLineEdit(self)
         self.schema_columns = QLineEdit(self)
@@ -168,8 +169,8 @@ class Example(QWidget):
         self.only_tables.setToolTip('Set comma-separated list of tables, which should be compared')
         excluded_tables_label.setToolTip(self.excluded_tables.text().replace(',', ',\n'))
         self.excluded_tables.setToolTip(self.excluded_tables.text().replace(',', ',\n'))
-        hide_columns_label.setToolTip(self.hide_columns.text().replace(',', ',\n'))
-        self.hide_columns.setToolTip(self.hide_columns.text().replace(',', ',\n'))
+        hide_columns_label.setToolTip(self.skip_columns.text().replace(',', ',\n'))
+        self.skip_columns.setToolTip(self.skip_columns.text().replace(',', ',\n'))
         btn_set_configuration.setToolTip('Start comparing of dbs')
         btn_check_prod.setToolTip('Check connection to prod-server')
         btn_check_test.setToolTip('Check connection to test-server')
@@ -230,7 +231,7 @@ class Example(QWidget):
         grid.addWidget(excluded_tables_label, 8, 0)
         grid.addWidget(self.excluded_tables, 8, 1)
         grid.addWidget(hide_columns_label, 9, 0)
-        grid.addWidget(self.hide_columns, 9, 1)
+        grid.addWidget(self.skip_columns, 9, 1)
         grid.addWidget(self.cb_enable_schema_checking, 10, 0)
         grid.addWidget(self.cb_fail_with_first_error, 11, 0)
         grid.addWidget(self.cb_only_reports_checking, 10, 1)
@@ -279,17 +280,25 @@ class Example(QWidget):
         self.excluded_tables.setText('databasechangelog,download,migrationhistory,mntapplog,reportinfo,synchistory,' +
                                      'syncstage,synctrace,synctracelink,syncpersistentjob,forecaststatistics,' +
                                      'migrationhistory')
-        self.hide_columns.setText('archived,addonFields,hourOfDayS,dayOfWeekS,impCost,id')
+        self.excluded_tables.setCursorPosition(0)
+        self.skip_columns.setText('archived,addonFields,hourOfDayS,dayOfWeekS,impCost,id')
+        self.skip_columns.setCursorPosition(0)
         self.comparing_step.setText('10000')
+        self.comparing_step.setCursorPosition(0)
         self.depth_report_check.setText('7')
+        self.depth_report_check.setCursorPosition(0)
         self.schema_columns.setText('TABLE_CATALOG,TABLE_NAME,COLUMN_NAME,ORDINAL_POSITION,COLUMN_DEFAULT,' +
                                     'IS_NULLABLE,DATA_TYPE,CHARACTER_MAXIMUM_LENGTH,CHARACTER_OCTET_LENGTH,' +
                                     'NUMERIC_PRECISION,NUMERIC_SCALE,DATETIME_PRECISION,CHARACTER_SET_NAME,' +
                                     'COLLATION_NAME,COLUMN_TYPE,COLUMN_KEY,EXTRA,COLUMN_COMMENT,GENERATION_EXPRESSION')
+        self.schema_columns.setCursorPosition(0)
         self.retry_attempts.setText('5')
+        self.retry_attempts.setCursorPosition(0)
         self.set_path_to_logs(OS)
         self.table_timeout.setText('5')
+        self.table_timeout.setCursorPosition(0)
         self.strings_amount.setText('1000')
+        self.strings_amount.setCursorPosition(0)
         self.cb_enable_schema_checking.setChecked(True)
         self.cb_fail_with_first_error.setChecked(True)
         self.day_summary_mode.setChecked(True)
@@ -318,51 +327,71 @@ class Example(QWidget):
                 if 'prod.host' in string:
                     host = string[string.find('=') + 1:]
                     self.prod_host.setText(host)
+                    self.prod_host.setCursorPosition(0)
                 elif 'prod.user' in string:
                     user = string[string.find('=') + 1:]
                     self.prod_user.setText(user)
+                    self.prod_user.setCursorPosition(0)
                 elif 'prod.password' in string:
                     password = string[string.find('=') + 1:]
                     self.prod_password.setText(password)
+                    self.prod_password.setCursorPosition(0)
                 elif 'prod.db' in string:
                     db = string[string.find('=') + 1:]
                     self.prod_db.setText(db)
+                    self.prod_db.setCursorPosition(0)
                 elif 'test.host' in string:
                     host = string[string.find('=') + 1:]
                     self.test_host.setText(host)
+                    self.test_host.setCursorPosition(0)
                 elif 'test.user' in string:
                     user = string[string.find('=') + 1:]
                     self.test_user.setText(user)
+                    self.test_user.setCursorPosition(0)
                 elif 'test.password' in string:
                     password = string[string.find('=') + 1:]
                     self.test_password.setText(password)
+                    self.test_password.setCursorPosition(0)
                 elif 'test.db' in string:
                     db = string[string.find('=') + 1:]
                     self.test_db.setText(db)
+                    self.test_db.setCursorPosition(0)
                 elif 'only_tables' in string:
                     only_tables = string[string.find('=') + 1:]
                     self.only_tables.setText(only_tables)
+                    self.only_tables.setCursorPosition(0)
                 elif 'excluded_tables' in string:
                     excluded_tables = string[string.find('=') + 1:]
                     self.excluded_tables.setText(excluded_tables)
+                    self.excluded_tables.setCursorPosition(0)
                 elif 'comparing_step' in string:
                     comparing_step = string[string.find('=') + 1:]
                     self.comparing_step.setText(comparing_step)
+                    self.comparing_step.setCursorPosition(0)
                 elif 'depth_report_check' in string:
                     depth_report_check = string[string.find('=') + 1:]
                     self.depth_report_check.setText(depth_report_check)
+                    self.depth_report_check.setCursorPosition(0)
                 elif 'schema_columns' in string:
                     schema_columns = string[string.find('=') + 1:]
                     self.schema_columns.setText(schema_columns)
+                    self.schema_columns.setCursorPosition(0)
                 elif 'retry_attempts' in string:
                     retry_attempts = string[string.find('=') + 1:]
                     self.retry_attempts.setText(retry_attempts)
+                    self.retry_attempts.setCursorPosition(0)
                 elif 'path_to_logs' in string:
                     path_to_logs = string[string.find('=') + 1:]
                     self.path_to_logs.setText(path_to_logs)
+                    self.path_to_logs.setCursorPosition(0)
                 elif 'send_mail_to' in string:
                     send_mail_to = string[string.find('=') + 1:]
                     self.send_mail_to.setText(send_mail_to)
+                    self.send_mail_to.setCursorPosition(0)
+                elif 'skip_columns' in string:
+                    skip_columns = string[string.find('=') + 1:]
+                    self.skip_columns.setText(skip_columns)
+                    self.skip_columns.setCursorPosition(0)
                 elif 'compare_schema' in string:
                     compare_schema = string[string.find('=') + 1:]
                     if compare_schema == 'True':
@@ -440,8 +469,8 @@ class Example(QWidget):
             text.append('only_tables = {}'.format(self.only_tables.text()))
         if self.excluded_tables != '':
             text.append('excluded_tables = {}'.format(self.excluded_tables.text()))
-        if self.hide_columns != '':
-            text.append('hide_columns = {}'.format(self.hide_columns.text()))
+        if self.skip_columns != '':
+            text.append('skip_columns = {}'.format(self.skip_columns.text()))
         if self.comparing_step != '' and self.comparing_step != '10000':
             text.append('comparing_step = {}'.format(self.comparing_step.text()))
         if self.depth_report_check != '' and self.depth_report_check != '7':
@@ -693,7 +722,7 @@ class Example(QWidget):
             'send_mail_to': self.send_mail_to.text(),
             'mode': mode,
             'excluded_tables': self.excluded_tables.text(),
-            'hide_columns': self.hide_columns.text(),
+            'hide_columns': self.skip_columns.text(),
             'strings_amount': self.strings_amount.text(),
             # 'check_type': check_type,
             'logger': Logger(self.logging_level.currentText(), path_to_logs),

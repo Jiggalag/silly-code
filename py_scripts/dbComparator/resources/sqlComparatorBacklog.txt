@@ -1,10 +1,11 @@
 UI Bugfixes:
 
 1. Move test-connection modal window nearly to center.
-2. Add alignment to line edit fields.
-3. Hide advanced settings. Probably, move it to different window.
-4. UI hangs and disables during comparing DBs. Add modal window with progress bar and some information about
+2. Hide advanced settings. Probably, move it to different window.
+3. UI hangs and disables during comparing DBs. Add modal window with progress bar and some information about
 progress of comparing.
+4. Add "entities and other" flag.
+5. Disable checking mode group if "Only reports flag" disabled.
 
 Bugs:
 
