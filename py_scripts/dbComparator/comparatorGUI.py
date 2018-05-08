@@ -148,6 +148,7 @@ class Example(QWidget):
 
         prod_host_label.setToolTip('Input host, where prod-db located.\nExample: samaradb03.maxifier.com')
         self.prod_host.setToolTip(self.prod_host.text())
+        self.prod_host.textChanged.connect(self.check_connection)
         prod_user_label.setToolTip('Input user for connection to prod-db.\nExample: itest')
         self.prod_user.setToolTip(self.prod_user.text())
         prod_password_label.setToolTip('Input password for user from prod.sql-user field')
@@ -303,6 +304,21 @@ class Example(QWidget):
         self.section_summary_mode.setChecked(False)
         self.detailed_mode.setChecked(False)
 
+    def check_connection(self):
+        if all([self.prod_host, self.prod_user, self.prod_password, self.prod_db]):
+            prod_dict = {
+                'host': self.prod_host,
+                'user': self.prod_user,
+                'password': self.prod_password,
+                'db': self.prod_db
+            }
+            logger = Logger(self.logging_level.currentText())
+            try:
+                dbcmp_sql_helper.DbCmpSqlHelper(prod_dict, logger).get_tables()
+                self.statusBar().showMessage('Prod connected')
+            except:
+                self.statusBar().showMessage('Prod not connected')
+
     def set_path_to_logs(self, OS):
         if OS == 'Windows':
             # TODO: add defining disc
@@ -358,7 +374,7 @@ class Example(QWidget):
                     only_tables = string[string.find('=') + 1:]
                     self.only_tables.setText(only_tables)
                     self.only_tables.setCursorPosition(0)
-                elif 'excluded_tables' in string:
+                elif 'skip_tables' in string:
                     excluded_tables = string[string.find('=') + 1:]
                     self.excluded_tables.setText(excluded_tables)
                     self.excluded_tables.setCursorPosition(0)
@@ -506,7 +522,7 @@ class Example(QWidget):
         if self.excluded_tables.text() != '':
             raw_array = self.excluded_tables.text().split(',')
             raw_array.sort()
-            text.append('excluded_tables = {}'.format(str(raw_array).strip('[]').replace("'", "").replace(' ', '')))
+            text.append('skip_tables = {}'.format(str(raw_array).strip('[]').replace("'", "").replace(' ', '')))
         if self.skip_columns.text() != '':
             raw_array = self.skip_columns.text().split(',')
             raw_array.sort()
@@ -797,7 +813,7 @@ class Example(QWidget):
             'fail_with_first_error': fail_with_first_error,
             'send_mail_to': self.send_mail_to.text(),
             'mode': mode,
-            'excluded_tables': self.excluded_tables.text(),
+            'skip_tables': self.excluded_tables.text(),
             'hide_columns': self.skip_columns.text(),
             'strings_amount': self.strings_amount.text(),
             # 'check_type': check_type,
@@ -829,6 +845,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
+        self.statusBar()
         self.ex = Example()
         self.setCentralWidget(self.ex)
 
@@ -844,6 +861,11 @@ class MainWindow(QMainWindow):
         open_action.setStatusTip('Open custom file with cmp_properties')
         open_action.triggered.connect(self.ex.show_dialog)
 
+        compare_action = QAction(QIcon('compare.png'), '&Compare', self)
+        compare_action.setShortcut('Ctrl+F')
+        compare_action.setStatusTip('Run comparing')
+        compare_action.triggered.connect(self.ex.on_click)
+
         save_action = QAction(QIcon('save.png'), '&Save', self)
         save_action.setShortcut('Ctrl+S')
         save_action.setStatusTip('Save current configuration to file')
@@ -858,6 +880,7 @@ class MainWindow(QMainWindow):
         file_menu = menubar.addMenu('&File')
         file_menu.addAction(open_action)
         file_menu.addAction(save_action)
+        file_menu.addAction(compare_action)
         file_menu.addAction(exit_action)
 
 

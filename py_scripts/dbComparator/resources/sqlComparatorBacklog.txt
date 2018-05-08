@@ -7,6 +7,7 @@ progress of comparing.
 4. Disable checking mode group if "Only reports flag" disabled.
 5. Add verification case when entities and reports flag disabled at same time.
 6. Add try/except construction in case of defining non-existent columns/tables.
+7. We shouldn't run describe query on skipped tables.
 
 Bugs:
 
