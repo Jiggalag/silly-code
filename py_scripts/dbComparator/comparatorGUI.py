@@ -35,9 +35,14 @@ class MainUI(QWidget):
     def __init__(self, status_bar):
         super().__init__()
         self.statusBar = status_bar
+        self.statusBar.messageChanged.connect(self.calculate_table_list)
         grid = QGridLayout()
         grid.setSpacing(10)
         self.setLayout(grid)
+
+        self.tables = list()
+        self.prod_tables = list()
+        self.test_tables = list()
 
         # Labels
 
@@ -283,6 +288,12 @@ class MainUI(QWidget):
         self.only_tables.clear()
         self.set_default_values()
 
+    def calculate_table_list(self):
+        if self.statusBar.currentMessage() == 'Prod connected, test connected':
+            self.tables = list(set(self.prod_tables) & set(self.test_tables))
+            self.tables.sort()
+            # TODO: here we should insert constructing of tree element
+
     def set_default_values(self):
         self.excluded_tables.setText('databasechangelog,download,migrationhistory,mntapplog,reportinfo,synchistory,' +
                                      'syncstage,synctrace,synctracelink,syncpersistentjob,forecaststatistics,' +
@@ -326,8 +337,8 @@ class MainUI(QWidget):
             logger = Logger(self.logging_level.currentText())
             try:
                 kwargs = {'read_timeout': '5'}
-                prod_tables = dbcmp_sql_helper.DbCmpSqlHelper(prod_dict, logger, **kwargs).get_tables()
-                if prod_tables:
+                self.prod_tables = dbcmp_sql_helper.DbCmpSqlHelper(prod_dict, logger, **kwargs).get_tables()
+                if self.prod_tables:
                     prod_state = 'Prod connected'
                 else:
                     prod_state = 'Prod disconnected'
@@ -350,8 +361,8 @@ class MainUI(QWidget):
             logger = Logger(self.logging_level.currentText())
             try:
                 kwargs = {'read_timeout': '5'}
-                test_tables = dbcmp_sql_helper.DbCmpSqlHelper(test_dict, logger, **kwargs).get_tables()
-                if test_tables:
+                self.test_tables = dbcmp_sql_helper.DbCmpSqlHelper(test_dict, logger, **kwargs).get_tables()
+                if self.test_tables:
                     test_state = 'test connected'
                 else:
                     test_state = 'test disconnected'
