@@ -7,6 +7,7 @@ TIMEOUT = 10
 
 class DbCmpSqlHelper:
     def __init__(self, connect_parameters, logger, **kwargs):
+        self.read_timeout = None
         self.host = connect_parameters.get('host')
         self.user = connect_parameters.get('user')
         self.password = connect_parameters.get('password')
@@ -72,6 +73,8 @@ class DbCmpSqlHelper:
                 self.schema_columns = kwargs.get(key)  # TODO: add split?
             if 'separateChecking' in key:
                 self.separate_checking = kwargs.get(key)
+            if 'read_timeout' in key:
+                self.read_timeout = int(kwargs.get(key))
 
     def get_connection(self):
         attempt_number = 0
@@ -82,7 +85,8 @@ class DbCmpSqlHelper:
                                              password=self.password,
                                              db=self.db,
                                              charset='utf8',
-                                             cursorclass=pymysql.cursors.DictCursor)
+                                             cursorclass=pymysql.cursors.DictCursor,
+                                             read_timeout=self.read_timeout)
                 return connection
             except pymysql.err.OperationalError:
                 attempt_number += 1

@@ -8,6 +8,7 @@ progress of comparing.
 5. Add verification case when entities and reports flag disabled at same time.
 6. Add try/except construction in case of defining non-existent columns/tables.
 7. We shouldn't run describe query on skipped tables.
+8. Great UI refactoring - move different element groups to different classes.
 
 Bugs:
 

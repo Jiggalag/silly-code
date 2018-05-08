@@ -31,9 +31,10 @@ else:
     propertyFile = os.getcwd() + "\\resources\\properties\\sqlComparator.properties"
 
 
-class Example(QWidget):
-    def __init__(self):
-        super(Example, self).__init__()
+class MainUI(QWidget):
+    def __init__(self, status_bar):
+        super().__init__()
+        self.statusBar = status_bar
         grid = QGridLayout()
         grid.setSpacing(10)
         self.setLayout(grid)
@@ -148,21 +149,28 @@ class Example(QWidget):
 
         prod_host_label.setToolTip('Input host, where prod-db located.\nExample: samaradb03.maxifier.com')
         self.prod_host.setToolTip(self.prod_host.text())
-        self.prod_host.textChanged.connect(self.check_connection)
+        self.prod_host.textChanged.connect(self.check_prod_connection)
         prod_user_label.setToolTip('Input user for connection to prod-db.\nExample: itest')
         self.prod_user.setToolTip(self.prod_user.text())
+        self.prod_user.textChanged.connect(self.check_prod_connection)
         prod_password_label.setToolTip('Input password for user from prod.sql-user field')
         self.prod_password.setToolTip(self.prod_password.text())
+        self.prod_password.textChanged.connect(self.check_prod_connection)
         prod_db_label.setToolTip('Input prod-db name.\nExample: irving')
         self.prod_db.setToolTip(self.prod_db.text())
+        self.prod_db.textChanged.connect(self.check_prod_connection)
         test_host_label.setToolTip('Input host, where test-db located.\nExample: samaradb03.maxifier.com')
         self.test_host.setToolTip(self.test_host.text())
+        self.test_host.textChanged.connect(self.check_test_connection)
         test_user_label.setToolTip('Input user for connection to test-db.\nExample: itest')
         self.test_user.setToolTip(self.test_user.text())
+        self.test_user.textChanged.connect(self.check_test_connection)
         test_password_label.setToolTip('Input password for user from test.sql-user field')
         self.test_password.setToolTip(self.test_password.text())
+        self.test_password.textChanged.connect(self.check_test_connection)
         test_db_label.setToolTip('Input test-db name.\nExample: irving')
         self.test_db.setToolTip(self.test_db.text())
+        self.test_db.textChanged.connect(self.check_test_connection)
         btn_check_test.setToolTip('Reset all fields to default values')
         self.cb_enable_schema_checking.setToolTip('If you set this option, program will compare also schemas of dbs')
         self.cb_fail_with_first_error.setToolTip('If you set this option, comparing will be finished after first error')
@@ -304,20 +312,53 @@ class Example(QWidget):
         self.section_summary_mode.setChecked(False)
         self.detailed_mode.setChecked(False)
 
-    def check_connection(self):
-        if all([self.prod_host, self.prod_user, self.prod_password, self.prod_db]):
+    def check_prod_connection(self):
+        states = self.statusBar.currentMessage().split(', ')
+        prod_state = states[0]
+        test_state = states[1]
+        if all([self.prod_host.text(), self.prod_user.text(), self.prod_password.text(), self.prod_db.text()]):
             prod_dict = {
-                'host': self.prod_host,
-                'user': self.prod_user,
-                'password': self.prod_password,
-                'db': self.prod_db
+                'host': self.prod_host.text(),
+                'user': self.prod_user.text(),
+                'password': self.prod_password.text(),
+                'db': self.prod_db.text()
             }
             logger = Logger(self.logging_level.currentText())
             try:
-                dbcmp_sql_helper.DbCmpSqlHelper(prod_dict, logger).get_tables()
-                self.statusBar().showMessage('Prod connected')
+                kwargs = {'read_timeout': '5'}
+                prod_tables = dbcmp_sql_helper.DbCmpSqlHelper(prod_dict, logger, **kwargs).get_tables()
+                if prod_tables:
+                    prod_state = 'Prod connected'
+                else:
+                    prod_state = 'Prod disconnected'
+            # TODO: bad idea to exceptecerything
             except:
-                self.statusBar().showMessage('Prod not connected')
+                prod_state = 'Prod disconnected'
+        self.statusBar.showMessage('{}, {}'.format(prod_state, test_state))
+
+    def check_test_connection(self):
+        states = self.statusBar.currentMessage().split(', ')
+        prod_state = states[0]
+        test_state = states[1]
+        if all([self.test_host.text(), self.test_user.text(), self.test_password.text(), self.test_db.text()]):
+            test_dict = {
+                'host': self.test_host.text(),
+                'user': self.test_user.text(),
+                'password': self.test_password.text(),
+                'db': self.test_db.text()
+            }
+            logger = Logger(self.logging_level.currentText())
+            try:
+                kwargs = {'read_timeout': '5'}
+                test_tables = dbcmp_sql_helper.DbCmpSqlHelper(test_dict, logger, **kwargs).get_tables()
+                if test_tables:
+                    test_state = 'test connected'
+                else:
+                    test_state = 'test disconnected'
+            # TODO: bad idea to exceptecerything
+            except:
+                test_state = 'test disconnected'
+        self.statusBar.showMessage('{}, {}'.format(prod_state, test_state))
 
     def set_path_to_logs(self, OS):
         if OS == 'Windows':
@@ -845,8 +886,9 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.statusBar()
-        self.ex = Example()
+        self.statusBar = self.statusBar()
+        self.statusBar.showMessage('Prod disconnected, test disconnected')
+        self.ex = MainUI(self.statusBar)
         self.setCentralWidget(self.ex)
 
         self.setGeometry(300, 300, 900, 600)
