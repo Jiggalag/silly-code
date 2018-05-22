@@ -1,14 +1,20 @@
-UI Bugfixes:
+Enchancements:
 
-1. Move test-connection modal window nearly to center.
-2. Hide advanced settings. Probably, move it to different window.
-3. UI hangs and disables during comparing DBs. Add modal window with progress bar and some information about
-progress of comparing.
-4. Disable checking mode group if "Only reports flag" disabled.
-5. Add verification case when entities and reports flag disabled at same time.
-6. Add try/except construction in case of defining non-existent columns/tables.
-7. We shouldn't run describe query on skipped tables.
-8. Great UI refactoring - move different element groups to different classes.
+1. Add try/except construction in case of defining non-existent columns/tables.
+2. We shouldn't run describe query on skipped tables.
+3. Comparing step should be moved from UI. Instead of manually possibility of setting comparing step I should implement
+feature which automatically changes comparing step in case of slow or fast connection.
+4. Implement correct working of table timeout (probably, we should stop query, if timeout falls).
+5. Great UI refactoring - move different element groups to different classes.
+6. Add verification case when entities and reports flag disabled at same time.
+7. Disable checking mode group if "Only reports flag" disabled.
+8. UI hangs and disables during comparing DBs. Add modal window with progress bar and some information about
+progress of comparing. Probably, we should generate all sql-queries before running and use this queries to calculate
+comparing progress.
+9. Hide advanced settings. Probably, move it to different window.
+10. Probably remove Schema columns field, and move this data to hardcode.
+-> 11. Add scrollable list with checkboxes to fields "Only tables", "Skip tables" and "Skip columns".
+12. Remove Check connection buttons.
 
 Bugs:
 

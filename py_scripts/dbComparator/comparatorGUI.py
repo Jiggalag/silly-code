@@ -5,11 +5,12 @@ import sys
 import os
 import platform
 import pymysql
-from PyQt5 import QtCore
 
 from py_scripts.dbComparator.comparatorWithUI import Backend
 from py_scripts.helpers import dbcmp_sql_helper
 from py_scripts.helpers.logging_helper import Logger
+from py_scripts.dbComparator.skip_tables_view import SkipTablesView
+from py_scripts.dbComparator.clickable_lineedit import ClickableLineEdit
 
 import PyQt5
 from PyQt5.QtCore import Qt, pyqtSlot
@@ -88,15 +89,24 @@ class MainUI(QWidget):
         # Line edits
 
         self.prod_host = QLineEdit(self)
+        self.prod_host.textChanged.connect(self.check_prod_connection)
         self.prod_user = QLineEdit(self)
+        self.prod_user.textChanged.connect(self.check_prod_connection)
         self.prod_password = QLineEdit(self)
+        self.prod_password.textChanged.connect(self.check_prod_connection)
         self.prod_db = QLineEdit(self)
+        self.prod_db.textChanged.connect(self.check_prod_connection)
         self.test_host = QLineEdit(self)
+        self.test_host.textChanged.connect(self.check_test_connection)
         self.test_user = QLineEdit(self)
+        self.test_user.textChanged.connect(self.check_test_connection)
         self.test_password = QLineEdit(self)
+        self.test_password.textChanged.connect(self.check_test_connection)
         self.test_db = QLineEdit(self)
+        self.test_db.textChanged.connect(self.check_test_connection)
         self.send_mail_to = QLineEdit(self)
-        self.excluded_tables = QLineEdit(self)
+        self.excluded_tables = ClickableLineEdit(self)
+        self.excluded_tables.clicked.connect(self.set_excluded_tables)
         self.only_tables = QLineEdit(self)
         self.skip_columns = QLineEdit(self)
         self.comparing_step = QLineEdit(self)
@@ -154,28 +164,20 @@ class MainUI(QWidget):
 
         prod_host_label.setToolTip('Input host, where prod-db located.\nExample: samaradb03.maxifier.com')
         self.prod_host.setToolTip(self.prod_host.text())
-        self.prod_host.textChanged.connect(self.check_prod_connection)
         prod_user_label.setToolTip('Input user for connection to prod-db.\nExample: itest')
         self.prod_user.setToolTip(self.prod_user.text())
-        self.prod_user.textChanged.connect(self.check_prod_connection)
         prod_password_label.setToolTip('Input password for user from prod.sql-user field')
         self.prod_password.setToolTip(self.prod_password.text())
-        self.prod_password.textChanged.connect(self.check_prod_connection)
         prod_db_label.setToolTip('Input prod-db name.\nExample: irving')
         self.prod_db.setToolTip(self.prod_db.text())
-        self.prod_db.textChanged.connect(self.check_prod_connection)
         test_host_label.setToolTip('Input host, where test-db located.\nExample: samaradb03.maxifier.com')
         self.test_host.setToolTip(self.test_host.text())
-        self.test_host.textChanged.connect(self.check_test_connection)
         test_user_label.setToolTip('Input user for connection to test-db.\nExample: itest')
         self.test_user.setToolTip(self.test_user.text())
-        self.test_user.textChanged.connect(self.check_test_connection)
         test_password_label.setToolTip('Input password for user from test.sql-user field')
         self.test_password.setToolTip(self.test_password.text())
-        self.test_password.textChanged.connect(self.check_test_connection)
         test_db_label.setToolTip('Input test-db name.\nExample: irving')
         self.test_db.setToolTip(self.test_db.text())
-        self.test_db.textChanged.connect(self.check_test_connection)
         btn_check_test.setToolTip('Reset all fields to default values')
         self.cb_enable_schema_checking.setToolTip('If you set this option, program will compare also schemas of dbs')
         self.cb_fail_with_first_error.setToolTip('If you set this option, comparing will be finished after first error')
@@ -322,6 +324,11 @@ class MainUI(QWidget):
         self.day_summary_mode.setChecked(True)
         self.section_summary_mode.setChecked(False)
         self.detailed_mode.setChecked(False)
+
+    def set_excluded_tables(self):
+        if self.statusBar.currentMessage() == 'Prod connected, test connected':
+            SkipTablesView(self.tables)
+            # TODO: here we should construct skip table view
 
     def check_prod_connection(self):
         states = self.statusBar.currentMessage().split(', ')
