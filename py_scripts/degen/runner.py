@@ -1,6 +1,7 @@
 import argparse
 from target_parser import TargetParser
 from table_cloner import TableCloner
+from delta import Delta
 from py_scripts.helpers.dbHelper import DbConnector
 from py_scripts.helpers.logging_helper import Logger
 
@@ -48,6 +49,8 @@ connection = DbConnector(connection_params, logger).get_connection()
 parser = TargetParser(connection, source_db, logger)
 targeting = parser.get_targeting()
 cloner = TableCloner(connection, source_db, target_db, tables, logger)
-cloner.create_tables()
+check_deltas = cloner.create_tables()
+if check_deltas:
+    Delta.calculate_deltas()
 cloner.drop_tables()
 print('debug...')
