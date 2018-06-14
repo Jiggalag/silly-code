@@ -1,11 +1,20 @@
+import argparse
 import os.path
 from py_scripts.helpers.ifmsApiHelper import IFMSApiHelper
 from py_scripts.helpers.logging_helper import Logger
 import json
 
-server = 'dev01.inventale.com'
+parser = argparse.ArgumentParser(description='Utility intended to comparing databases')
+parser.add_argument('password', type=str, help='Password hash for user')
+parser.add_argument('--server', type=str, default='dev01.inventale.com',
+                    help='Host, where script sends requests (default: dev01.inventale.com)')
+
+
+args = parser.parse_args()
+
+server = args.server
 user = 'pavel.kiselev'
-password = '6561bf7aacf5e58c6e03d6badcf13831'
+password = args.password
 context = 'ifms'
 client = 'rick'
 scope = 'default'
@@ -85,15 +94,25 @@ def aggregate_for_campaigns(data):
 
 
 def aggregate_kv_forecast(kv_section, kv_name):
+    unknown_list = [
+        'UNKNOWN',
+        'section!?',
+        'subsection!?',
+        'age!?',
+        'income!?',
+        'gender!?',
+        'interest!?'
+    ]
     order = init_dict()
     for item in kv_section:
         if kv_name in item.get('keyname').get('path'):
             target_kv = item.get('byValue')
             for section in target_kv:
                 # remoteids.append(section.get('criteria').get('remoteId'))
-                if target_kv[0].get('criteria').get('remoteId') == 'UNKNOWN':
-                    for u in order.keys():
-                        logger.info('Statistics for UNKNOWN: {} is {}'.format(u, item.get(u)))
+                for unknown in unknown_list:
+                    if section.get('criteria').get('remoteId') == unknown:
+                        for u in order.keys():
+                            logger.info('Statistics for UNKNOWN: {} is {}'.format(u, section .get(u)))
                 for key in order.keys():
                     new_value = order.get(key) + section.get(key)
                     order.update({key: new_value})

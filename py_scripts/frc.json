@@ -1,8 +1,8 @@
 {
   "startDate": "2018-06-13T21:00:00.000Z",
-  "endDate": "2018-06-14T20:59:59.000Z",
-  "priority": "3",
-  "weight": "100",
+  "endDate": "2018-06-30T20:59:59.000Z",
+  "priority": "55",
+  "weight": "0",
   "pacing": "ASAP",
   "dimensions": []
 }
