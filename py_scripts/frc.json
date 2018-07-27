@@ -1,8 +1,15 @@
 {
-  "startDate": "2018-06-13T21:00:00.000Z",
-  "endDate": "2018-06-30T20:59:59.000Z",
-  "priority": "55",
-  "weight": "0",
-  "pacing": "ASAP",
-  "dimensions": []
+    "startDate": "2018-08-27T21:00:00.000Z",
+    "endDate": "2018-12-28T20:59:59.999Z",
+    "priority": "1",
+    "weight": 100,
+    "dimensions": [],
+    "frequencyTargetings": [{
+        "scope": "WEEKLY",
+        "impsLimit": 3
+    },
+    {
+        "scope": "DAILY",
+        "impsLimit": "1"
+    }]
 }
