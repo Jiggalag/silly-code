@@ -1,15 +1,11 @@
 {
-    "startDate": "2018-08-27T21:00:00.000Z",
-    "endDate": "2018-12-28T20:59:59.999Z",
-    "priority": "1",
+    "startDate": "2018-08-11T21:00:00.000Z",
+    "endDate": "2018-10-31T20:59:59.999Z",
+    "priority": "10",
     "weight": 100,
-    "dimensions": [],
-    "frequencyTargetings": [{
-        "scope": "WEEKLY",
-        "impsLimit": 3
-    },
-    {
-        "scope": "DAILY",
-        "impsLimit": "1"
-    }]
+    "keyvalueTargeting": [{
+        "keyname": "section",
+        "includeValues": []
+    }],
+    "dimensions": []
 }

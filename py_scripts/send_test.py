@@ -13,7 +13,7 @@ context = 'ifms'
 client = 'irving'
 scope = 'default'
 request = 'frc.json'
-logger = Logger('INFO')
+logger = Logger('DEBUG')
 
 sql_params = {
     'host': 'samaradb03.maxifier.com',
@@ -35,7 +35,9 @@ api_point = IFMSApiHelper(server, user, password, context, logger)
 
 results = list()
 
+# for scope in ['default', 'extrapolation']:
 for scope in ['default', 'extrapolation']:
+# for scope in ['default', 'mrv_extrapolator']:
     cookie = api_point.change_scope(client, scope)
 
     result = api_point.check_available_inventory(request, cookie).text
