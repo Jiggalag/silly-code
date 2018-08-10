@@ -20,12 +20,38 @@ class RFCApi:
             login_response = requests.post(url=login_url, data=json.dumps(data), headers=headers)
         return json.loads(login_response.text).get('sessionId')
 
-    def get_matching_list(self, limit):
-        url = '{}/api/v1/registry/matching-hit?limit={}'.format(self.server, limit)
+    def generate_url(self, url, **kwargs):
+        if 'offset' in kwargs:
+            offset = kwargs.get('offset')
+            url = url + '?offset={}'.format(offset)
+        if 'limit' in kwargs:
+            limit = kwargs.get('limit')
+            if '?' in url:
+                url = url + '&limit={}'.format(limit)
+            else:
+                url = url + '?limit={}'.format(limit)
+        if 'beginDate' in kwargs:
+            beginDate = kwargs.get('beginDate')
+            if '?' in url:
+                url = url + '&beginDate={}'.format(beginDate)
+            else:
+                url = url + '?beginDate={}'.format(beginDate)
+        if 'endDate' in kwargs:
+            endDate = kwargs.get('endDate')
+            if '?' in url:
+                url = url + '&endDate={}'.format(endDate)
+            else:
+                url = url + '?endDate={}'.format(endDate)
+        return url
+
+    def get_matching_list(self, **kwargs):
+        url = '{}/api/v1/registry/matching-hit'.format(self.server)
+        url = self.generate_url(url, **kwargs)
         headers = {
             'Content-Type': 'application/json',
             'sessionid': self.session_id
         }
+        print(url)
         try:
             login_response = requests.get(url=url, headers=headers)
         except requests.exceptions.ConnectionError:
@@ -48,12 +74,14 @@ class RFCApi:
         url = '{}/api/v1/registry/matching-hit'.format(self.server)
         pass
 
-    def get_mismatching_list(self, limit):
-        url = '{}/api/v1/registry/matching-not-hit?limit={}'.format(self.server, id, limit)
+    def get_mismatching_list(self, **kwargs):
+        url = '{}/api/v1/registry/matching-not-hit'.format(self.server)
+        url = self.generate_зurl(url, **kwargs)
         headers = {
             'Content-Type': 'application/json',
             'sessionid': self.session_id
         }
+        print(url)
         try:
             login_response = requests.get(url=url, headers=headers)
         except requests.exceptions.ConnectionError:
@@ -72,20 +100,23 @@ class RFCApi:
             login_response = requests.get(url=url, headers=headers)
         return json.loads(login_response.text)
 
-    def get_track_list(self, limit):
-        url = '{}/api/v1/registry/track?limit={}'.format(self.server, limit)
+    def get_track_list(self, **kwargs):
+        url = '{}/api/v1/registry/track'.format(self.server)
+        url = self.generate_url(url, **kwargs)
         headers = {
             'Content-Type': 'application/json',
             'sessionid': self.session_id
         }
+        print(url)
         try:
             login_response = requests.get(url=url, headers=headers)
         except requests.exceptions.ConnectionError:
             login_response = requests.get(url=url, headers=headers)
         return json.loads(login_response.text)
 
-    def get_business_notice(self, limit):
-        url = '{}/api/v1/registry/business-notice?limit={}'.format(self.server, limit)
+    def get_business_notice(self, **kwargs):
+        url = '{}/api/v1/registry/business-notice'.format(self.server)
+        url = self.generate_url(url, **kwargs)
         headers = {
             'Content-Type': 'application/json',
             'sessionid': self.session_id
@@ -108,8 +139,9 @@ class RFCApi:
             login_response = requests.get(url=url, headers=headers)
         return json.loads(login_response.text)
 
-    def get_passage_facts(self, limit):
-        url = '{}/api/v1/registry/passage-fact?limit={}'.format(self.server, limit)
+    def get_passage_facts(self, **kwargs):
+        url = '{}/api/v1/registry/passage-fact'.format(self.server)
+        url = self.generate_url(url, **kwargs)
         headers = {
             'Content-Type': 'application/json',
             'sessionid': self.session_id
