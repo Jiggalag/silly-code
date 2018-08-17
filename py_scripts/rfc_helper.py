@@ -8,6 +8,7 @@ class RFCApi:
         self.server = server
         self.login = login
         self.password = password
+        # self.session_id = '187900cb-b285-4ff7-7a92-5dd0750d718f'
         self.session_id = self.get_session_id()
 
     def get_session_id(self):

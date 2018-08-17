@@ -10,7 +10,7 @@ user = 'pavel.kiselev'
 password = '6561bf7aacf5e58c6e03d6badcf13831'
 # password = 'c64e8262333065b2f35cd52742bd5cfb'
 context = 'ifms'
-client = 'irving'
+client = 'marvin'
 scope = 'default'
 request = 'frc.json'
 logger = Logger('DEBUG')
@@ -36,7 +36,7 @@ api_point = IFMSApiHelper(server, user, password, context, logger)
 results = list()
 
 # for scope in ['default', 'extrapolation']:
-for scope in ['default', 'extrapolation']:
+for scope in ['default', 'mrv_dspbranch']:
 # for scope in ['default', 'mrv_extrapolator']:
     cookie = api_point.change_scope(client, scope)
 
