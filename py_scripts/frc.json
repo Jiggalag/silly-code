@@ -1,8 +1,11 @@
 {
-  "startDate": "2018-08-10T21:00:00.000Z",
-  "endDate": "2018-10-01T20:59:59.000Z",
-  "priority": "MAX",
-  "weight": "100",
-  "pacing": "ASAP",
-  "dimensions": []
+    "startDate": "2018-08-11T21:00:00.000Z",
+    "endDate": "2018-10-31T20:59:59.999Z",
+    "priority": "10",
+    "weight": 100,
+    "keyvalueTargeting": [{
+        "keyname": "section",
+        "includeValues": []
+    }],
+    "dimensions": []
 }
