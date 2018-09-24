@@ -15,22 +15,25 @@ class Delta:
     def calculate_deltas(self):
         # TODO: should compare two tables for different dates, find differences and write differences in special tables
         for table in self.tables:
-            source_query = "SELECT * FROM {}.{} ORDER BY remoteid;".format(self.source_db, table)
-            target_query = "SELECT * FROM {}.{}{} ORDER BY remoteid;".format(self.target_db, table,
-                                                                             self.today.replace('-', '_'))
+            # source_query = "SELECT * FROM {}.{} ORDER BY remoteid;".format(self.source_db, table)
+            source_query = "SELECT * FROM rick_quality.rickcampaign2018_06_19 ORDER BY remoteid;"
+            # target_query = "SELECT * FROM {}.{}{} ORDER BY remoteid;".format(self.target_db, table,
+            #                                                                  self.today.replace('-', '_'))
+            target_query = "SELECT * FROM rick_quality.rickcampaign2018_06_13 ORDER BY remoteid;"
             with self.connection.cursor() as cursor:
                 cursor.execute(source_query)
                 source_result = cursor.fetchall()
                 source_df = pd.DataFrame(source_result).fillna(0)
+                source_df.sort_index(inplace=True)
                 cursor.execute(target_query)
                 target_result = cursor.fetchall()
                 target_df = pd.DataFrame(target_result).fillna(0)
+                target_df.sort_index(inplace=True)
                 result = self.compare_two_dfs(target_df, source_df)
-                # df_all = pd.concat([source_df, target_df], axis='columns',
-                # join='inner', keys=['First', 'Second']).drop_duplicates().reset_index(drop=True)
-                # df_merge = source_df.merge(target_df, source_df.columns, on='remoteId', how='outer')
-                # df_final = df_all.swaplevel(axis='columns')[source_df.columns[1:]]
-                # df_final.style.apply(self.highlight_diff, axis=None)
+                df_all = pd.concat([source_df, target_df], axis='columns', join = 'inner', keys=['First', 'Second']).drop_duplicates().reset_index(drop=True)
+                df_merge = source_df.merge(target_df, source_df.columns, on='remoteId', how='outer')
+                df_final = df_all.swaplevel(axis='columns')[source_df.columns[1:]]
+                df_final.style.apply(self.highlight_diff, axis=None)
 
     def compare_two_dfs(self, input_df_1, input_df_2):
         df_1, df_2 = input_df_1.copy(), input_df_2.copy()
