@@ -4,6 +4,7 @@ from table_cloner import TableCloner
 from delta import Delta
 from py_scripts.helpers.dbHelper import DbConnector
 from py_scripts.helpers.logging_helper import Logger
+from sqlalchemy import create_engine
 
 parser = argparse.ArgumentParser(description='Make forecast great again')
 parser.add_argument('liquibase_password', type=str,
@@ -17,6 +18,7 @@ password = args.liquibase_password
 source_db = 'rick'
 target_db = 'rick_quality'
 logger = Logger('DEBUG')
+engine = create_engine('mysql+pymysql://{}:{}@{}/{}?charset=utf8mb4'.format(user, password, server, source_db))
 
 connection_params = {
     'host': server,
@@ -51,8 +53,11 @@ targeting = parser.get_targeting()
 cloner = TableCloner(connection, source_db, target_db, tables, logger)
 check_deltas = cloner.create_tables()
 delta = Delta(tables, connection, source_db, target_db, logger)
-delta.calculate_deltas()
+# delta.calculate_deltas()
+# TODO: remove after debugging
+check_deltas = True
 if check_deltas:
-    delta.calculate_deltas()
+    result = delta.calculate_deltas()
+    delta.write_deltas(engine, result)
 cloner.drop_tables()
 print('debug...')
