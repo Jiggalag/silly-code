@@ -40,12 +40,17 @@ class TableCloner:
             return False
 
     def check_date(self, today):
-        string_date = self.tables[-1][-10:].replace('_', '-')
-        last_date = datetime.datetime.date(datetime.datetime.strptime(string_date, "%Y-%m-%d"))
-        if last_date == today:
-            return False
-        else:
-            return True
+        tmp_tables = self.tables
+        tmp_tables.reverse()
+        for table in tmp_tables:
+            if any(char.isdigit() for char in table):
+                string_date = table[-10:].replace('_', '-')
+                last_date = datetime.datetime.strptime(string_date, "%Y-%m-%d").date()
+                if last_date == today:
+                    return False
+                else:
+                    return True
+        return True
 
     def get_table_list(self):
         query = "SHOW TABLES IN {};".format(self.target_db)
@@ -60,11 +65,15 @@ class TableCloner:
 
     def drop_tables(self):
         drop_list = self.find_old_tables()
-        for table in drop_list:
-            query = "DROP TABLE {}.{};".format(self.target_db, table)
-            with self.connection.cursor() as cursor:
-                cursor.execute(query)
-                self.logger('Table {}.{} successfully dropped...'.format(self.target_db, table))
+        if drop_list:
+            for table in drop_list:
+                query = "DROP TABLE {}.{};".format(self.target_db, table)
+                with self.connection.cursor() as cursor:
+                    cursor.execute(query)
+                    self.logger.info('Table {}.{} successfully dropped...'.format(self.target_db, table))
+            self.calculate_db_size()
+        else:
+            self.logger.info('There is no any tables to remove')
 
     def calculate_db_size(self):
         query = ("SELECT ROUND(SUM(data_length + index_length) / 1024 / 1024, 1) as Size " +
@@ -78,10 +87,14 @@ class TableCloner:
         self.logger.info('Size of db {} is {} Mb...'.format(self.target_db, size[0].get('Size')))
 
     def find_old_tables(self):
+        old_tables = list()
         delete_date = self.today - datetime.timedelta(days=30)
         for table in self.tables:
-            if str(delete_date) in table:
-                start_index = self.tables.index(table)
-                # TODO: check this code!
-                return self.tables[:start_index - 1]
-        self.logger.info('There is no tables for deleting...')
+            if any(char.isdigit() for char in table):
+                string_date = table[-10:].replace('_', '-')
+                target_table_date = datetime.datetime.strptime(string_date, "%Y-%m-%d").date()
+                if delete_date >= target_table_date:
+                    old_tables.append(table)
+        if not old_tables:
+            self.logger.info('There is no tables for deleting...')
+        return old_tables

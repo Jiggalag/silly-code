@@ -1,10 +1,12 @@
 import argparse
-from target_parser import TargetParser
-from table_cloner import TableCloner
+
 from delta import Delta
+from sqlalchemy import create_engine
+from table_cloner import TableCloner
+from target_parser import TargetParser
+
 from py_scripts.helpers.dbHelper import DbConnector
 from py_scripts.helpers.logging_helper import Logger
-from sqlalchemy import create_engine
 
 parser = argparse.ArgumentParser(description='Make forecast great again')
 parser.add_argument('liquibase_password', type=str,
@@ -53,11 +55,7 @@ targeting = parser.get_targeting()
 cloner = TableCloner(connection, source_db, target_db, tables, logger)
 check_deltas = cloner.create_tables()
 delta = Delta(tables, connection, source_db, target_db, logger)
-# delta.calculate_deltas()
-# TODO: remove after debugging
-check_deltas = True
 if check_deltas:
     result = delta.calculate_deltas()
     delta.write_deltas(engine, result)
 cloner.drop_tables()
-print('debug...')
