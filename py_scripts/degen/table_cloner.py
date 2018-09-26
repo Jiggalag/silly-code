@@ -95,6 +95,4 @@ class TableCloner:
                 target_table_date = datetime.datetime.strptime(string_date, "%Y-%m-%d").date()
                 if delete_date >= target_table_date:
                     old_tables.append(table)
-        if not old_tables:
-            self.logger.info('There is no tables for deleting...')
         return old_tables
