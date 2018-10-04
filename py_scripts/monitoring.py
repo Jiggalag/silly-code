@@ -1,11 +1,13 @@
-import sys
-import pandas
 import os
+import sys
 import time
-from py_scripts.helpers.logging_helper import Logger
 
+import pandas
 import selenium.common
 from selenium import webdriver
+
+from py_scripts.helpers.dbHelper import DbConnector
+from py_scripts.helpers.logging_helper import Logger
 
 logger = Logger('DEBUG')
 
@@ -16,8 +18,17 @@ scope = 'default'
 
 drv = '/home/jiggalag/Downloads/chromedriver'
 
-def load_csv():
+conn_dict = {
+    'host': 'samaradb03.maxifier.com',
+    'user': 'itest',
+    'password': 'ohk9aeVahpiz1wi',
+    'db': 'rick'
+}
 
+db_point = DbConnector(conn_dict, logger).get_connection()
+
+
+def load_csv():
     driver = webdriver.Chrome(drv)
     try:
         driver.maximize_window()
@@ -66,15 +77,23 @@ def drop_old_files(directory):
         logger.info('File {} successfully deleted...'.format(directory + item))
 
 
+def get_remoteids_from_db():
+    query = ""
+
+
+def wait_for_loading():
+    # TODO: here I should implement logics waiting for loading monitoring*.xlsx file
+    pass
+
 # drop_old_files(target_dir)
 # load_csv()
 file = get_filename(target_dir)
 if file is not None:
     content = pandas.read_excel(target_dir + file)
     tremoteids = list(content.icol(1))
-    for item in tremoteids:
-        if item == 'ID флайта':
-            remoteids = set(tremoteids[tremoteids.index(item) + 1:])
+    for column_name in tremoteids:
+        if column_name == 'ID флайта':
+            remoteids = set(tremoteids[tremoteids.index(column_name) + 1:])
 else:
     logger.error('There is no any monitoring files')
     sys.exit(1)
