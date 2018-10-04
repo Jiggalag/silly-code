@@ -1,22 +1,22 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 
-import sys
 import os
 import platform
-import pymysql
-
-from py_scripts.dbComparator.comparatorWithUI import Backend
-from py_scripts.helpers import dbcmp_sql_helper
-from py_scripts.helpers.logging_helper import Logger
-from py_scripts.dbComparator.skip_tables_view import SkipTablesView
-from py_scripts.dbComparator.clickable_lineedit import ClickableLineEdit
+import sys
 
 import PyQt5
+import pymysql
 from PyQt5.QtCore import Qt, pyqtSlot
+from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication, QLabel, QGridLayout, QWidget, QLineEdit, QCheckBox, QPushButton, QMessageBox
 from PyQt5.QtWidgets import QFileDialog, QRadioButton, QComboBox, QAction, qApp, QMainWindow
-from PyQt5.QtGui import QIcon
+
+from py_scripts.dbComparator.clickable_lineedit import ClickableLineEdit
+from py_scripts.dbComparator.comparatorWithUI import Backend
+from py_scripts.dbComparator.skip_tables_view import SkipTablesView
+from py_scripts.helpers import dbcmp_sql_helper
+from py_scripts.helpers.logging_helper import Logger
 
 # TODO: add useful redacting of skip table field
 # TODO: instead of QLineEdit for "skip" params you should use button with modal window? - minor
@@ -342,16 +342,16 @@ class MainUI(QWidget):
                 'db': self.prod_db.text()
             }
             logger = Logger(self.logging_level.currentText())
-            try:
-                kwargs = {'read_timeout': '5'}
-                self.prod_tables = dbcmp_sql_helper.DbCmpSqlHelper(prod_dict, logger, **kwargs).get_tables()
-                if self.prod_tables:
-                    prod_state = 'Prod connected'
-                else:
-                    prod_state = 'Prod disconnected'
-            # TODO: bad idea to exceptecerything
-            except:
-                prod_state = 'Prod disconnected'
+            prod_state = 'Prod disconnected'
+            for attempt in range(1, 3):
+                kwargs = {'read_timeout': attempt}
+                try:
+                    self.prod_tables = dbcmp_sql_helper.DbCmpSqlHelper(prod_dict, logger, **kwargs).get_tables()
+                    if self.prod_tables:
+                        prod_state = 'Prod connected'
+                        break
+                except pymysql.InternalError as e:
+                    logger.error('Exception is {}'.format(e.args[1]))
         self.statusBar.showMessage('{}, {}'.format(prod_state, test_state))
 
     def check_test_connection(self):
@@ -366,25 +366,24 @@ class MainUI(QWidget):
                 'db': self.test_db.text()
             }
             logger = Logger(self.logging_level.currentText())
-            try:
-                kwargs = {'read_timeout': '5'}
-                self.test_tables = dbcmp_sql_helper.DbCmpSqlHelper(test_dict, logger, **kwargs).get_tables()
-                if self.test_tables:
-                    test_state = 'test connected'
-                else:
-                    test_state = 'test disconnected'
-            # TODO: bad idea to exceptecerything
-            except:
-                test_state = 'test disconnected'
+            test_state = 'test disconnected'
+            for attempt in range(1, 3):
+                kwargs = {'read_timeout': attempt}
+                try:
+                    self.test_tables = dbcmp_sql_helper.DbCmpSqlHelper(test_dict, logger, **kwargs).get_tables()
+                    if self.test_tables:
+                        test_state = 'test connected'
+                except pymysql.InternalError as e:
+                    logger.error('Exception is {}'.format(e.args[1]))
         self.statusBar.showMessage('{}, {}'.format(prod_state, test_state))
 
-    def set_path_to_logs(self, OS):
-        if OS == 'Windows':
+    def set_path_to_logs(self, operational_system):
+        if operational_system == 'Windows':
             # TODO: add defining disc
             if not os.path.exists('C:\\DbComparator\\'):
                 os.mkdir('C:\\DbComparator\\')
             self.path_to_logs.setText('C:\\DbComparator\\DbComparator.log')
-        elif OS == 'Linux':
+        elif operational_system == 'Linux':
             log_path = os.path.expanduser('~') + '/DbComparator/'
             if not os.path.exists(log_path):
                 os.mkdir(log_path)
@@ -598,14 +597,12 @@ class MainUI(QWidget):
                 text.append('depth_report_check = {}'.format(self.depth_report_check.text()))
             except ValueError:
                 non_verified.update({'Days in past': self.depth_report_check.text()})
-        if self.schema_columns.text() != '' and self.schema_columns.text() != ('TABLE_CATALOG,TABLE_NAME,COLUMN_NAME,' +
-                                                                 'ORDINAL_POSITION,COLUMN_DEFAULT,' +
-                                                                 'IS_NULLABLE,DATA_TYPE,CHARACTER_MAXIMUM_LENGTH,' +
-                                                                 'CHARACTER_OCTET_LENGTH,NUMERIC_PRECISION,' +
-                                                                 'NUMERIC_SCALE,DATETIME_PRECISION,' +
-                                                                 'CHARACTER_SET_NAME,COLLATION_NAME,COLUMN_TYPE,' +
-                                                                 'COLUMN_KEY,EXTRA,COLUMN_COMMENT,' +
-                                                                 'GENERATION_EXPRESSION'):
+        default_column_text = ('TABLE_CATALOG,TABLE_NAME,COLUMN_NAME,ORDINAL_POSITION,COLUMN_DEFAULT,' +
+                               'IS_NULLABLE,DATA_TYPE,CHARACTER_MAXIMUM_LENGTH,CHARACTER_OCTET_LENGTH,' +
+                               'NUMERIC_PRECISION,NUMERIC_SCALE,DATETIME_PRECISION,CHARACTER_SET_NAME,COLLATION_NAME,' +
+                               'COLUMN_TYPE,COLUMN_KEY,EXTRA,COLUMN_COMMENT,GENERATION_EXPRESSION')
+
+        if self.schema_columns.text() != '' and self.schema_columns.text() != default_column_text:
             raw_array = self.schema_columns.text().split(',')
             raw_array.sort()
             text.append('schema_columns = {}'.format(str(raw_array).strip('[]').replace("'", "").replace(' ', '')))
