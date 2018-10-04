@@ -15,10 +15,13 @@ class ClickableItemsView(QDialog):
         btn_ok.clicked.connect(self.ok_pressed)
         btn_cancel = QPushButton('Cancel', self)
         btn_cancel.clicked.connect(self.cancel_pressed)
+        btn_clearall = QPushButton('Clear all', self)
+        btn_clearall.clicked.connect(self.clear_all)
 
         self.view = self.init_items()
 
         grid.addWidget(self.view, 0, 0)
+        grid.addWidget(btn_clearall, 0, 1)
         grid.addWidget(btn_ok, 1, 1)
         grid.addWidget(btn_cancel, 1, 2)
         self.setModal(True)
@@ -49,6 +52,16 @@ class ClickableItemsView(QDialog):
         self.selected_items = checked_tables
         self.init_items()
         self.close()
+
+    def clear_all(self):
+        amount = self.model.rowCount()
+        for idx in range(0, amount - 1):
+            item = self.model.item(idx, 0)
+            if item.checkState() == 2:
+                item.setCheckState(0)
+        self.selected_items = list()
+        self.init_items()
+
 
     def cancel_pressed(self):
         self.close()
