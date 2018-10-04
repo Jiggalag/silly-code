@@ -14,7 +14,7 @@ from PyQt5.QtWidgets import QFileDialog, QRadioButton, QComboBox, QAction, qApp,
 
 from py_scripts.dbComparator.clickable_lineedit import ClickableLineEdit
 from py_scripts.dbComparator.comparatorWithUI import Backend
-from py_scripts.dbComparator.skip_tables_view import SkipTablesView
+from py_scripts.dbComparator.skip_tables_view import ClickableItemsView
 from py_scripts.helpers import dbcmp_sql_helper
 from py_scripts.helpers.logging_helper import Logger
 
@@ -107,7 +107,8 @@ class MainUI(QWidget):
         self.send_mail_to = QLineEdit(self)
         self.excluded_tables = ClickableLineEdit(self)
         self.excluded_tables.clicked.connect(self.set_excluded_tables)
-        self.only_tables = QLineEdit(self)
+        self.only_tables = ClickableLineEdit(self)
+        self.only_tables.clicked.connect(self.set_included_tables)
         self.skip_columns = QLineEdit(self)
         self.comparing_step = QLineEdit(self)
         self.depth_report_check = QLineEdit(self)
@@ -327,8 +328,19 @@ class MainUI(QWidget):
 
     def set_excluded_tables(self):
         if self.statusBar.currentMessage() == 'Prod connected, test connected':
-            SkipTablesView(self.tables)
-            # TODO: here we should construct skip table view
+            tables_to_skip = self.excluded_tables.text().split(',')
+            self.skip_tables_view = ClickableItemsView(self.tables, tables_to_skip)
+            self.skip_tables_view.exec_()
+            self.excluded_tables.setText(','.join(self.skip_tables_view.selected_items))
+            self.excluded_tables.setToolTip(self.excluded_tables.text().replace(',', ',\n'))
+
+    def set_included_tables(self):
+        if self.statusBar.currentMessage() == 'Prod connected, test connected':
+            tables_to_include = self.only_tables.text().split(',')
+            self.only_tables_view = ClickableItemsView(self.tables, tables_to_include)
+            self.only_tables_view.exec_()
+            self.only_tables.setText(','.join(self.only_tables_view.selected_items))
+            self.only_tables.setToolTip(self.only_tables.text().replace(',', ',\n'))
 
     def check_prod_connection(self):
         states = self.statusBar.currentMessage().split(', ')

@@ -13,8 +13,6 @@ progress of comparing. Probably, we should generate all sql-queries before runni
 comparing progress.
 9. Hide advanced settings. Probably, move it to different window.
 10. Probably remove Schema columns field, and move this data to hardcode.
--> 11. Add scrollable list with checkboxes to fields "Only tables", "Skip tables" and "Skip columns".
-12. Remove Check connection buttons.
 
 Bugs:
 
