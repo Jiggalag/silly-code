@@ -1,19 +1,24 @@
+import json
 import sys
+
 from py_scripts.helpers.ifmsApiHelper import IFMSApiHelper
 from py_scripts.helpers.logging_helper import Logger
-import json
 
-server = 'dev01.inventale.com'
-# server = 'ifms3.inventale.com'
-user = 'pavel.kiselev'
-# user = 'qa-rick'
-password = '6561bf7aacf5e58c6e03d6badcf13831'
+# server = 'dev01.inventale.com'
+server = 'ifms.inventale.com'
+# user = 'pavel.kiselev'
+user = 'qa-ivi'
+password = '2c821c5131319f3b9cfa83885d552637'
+# password = '6561bf7aacf5e58c6e03d6badcf13831'
 # password = 'c64e8262333065b2f35cd52742bd5cfb'
 context = 'ifms'
 client = 'marvin'
 scope = 'default'
 request = 'frc.json'
 logger = Logger('DEBUG')
+
+request = {([('startDate', '2018-09-19T21:00:00.000Z'), ('endDate', '2018-09-20T21:00:00.000Z'), ('priority', 10),
+             ('dimensions', '["summary"]'), ('pacing', 'ASAP'), ('weight', 100)])}
 
 sql_params = {
     'host': 'samaradb03.maxifier.com',

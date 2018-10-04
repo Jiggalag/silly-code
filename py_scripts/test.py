@@ -1,5 +1,6 @@
 import argparse
 import time
+
 import py_scripts.rfc_helper as rcf
 
 parser = argparse.ArgumentParser(description='Intended to test RFC API')
@@ -31,12 +32,12 @@ result = {
 }
 
 ddict = {
-    # 'limit': 1000
+    'limit': 3000
     # 'offset': offset,
     # 'beginDate': '2018-08-15T00:00:00',
     # 'endDate': '2018-08-15T07:00:00'
-    'beginDate': '2018-08-15',
-    'endDate': '2018-08-16'
+    # 'beginDate': '2018-08-15',
+    # 'endDate': '2018-08-16'
 }
 start = time.clock()
 r1 = api_point.get_track_list(**ddict)

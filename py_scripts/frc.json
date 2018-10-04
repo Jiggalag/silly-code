@@ -1,7 +1,74 @@
 {
-    "startDate": "2018-08-11T21:00:00.000Z",
-    "endDate": "2018-10-01T20:59:59.999Z",
-    "priority": "10",
-    "weight": 100,
-    "dimensions": []
+  "startDate": "2018-09-17T21:00:00.000Z",
+  "endDate": "2018-10-17T20:59:59.000Z",
+  "priority": "MAX",
+  "weight": "100",
+  "pacing": "EVENLY",
+  "impressionGoal": 10000000,
+  "trafficAllocation": [
+    {
+      "traffic": {
+        "name": "Web",
+        "type": "TRAFFIC_ALLOCATION",
+        "remoteId": "web"
+      },
+      "value": 0.7
+    },
+    {
+      "traffic": {
+        "name": "Mobile",
+        "type": "TRAFFIC_ALLOCATION",
+        "remoteId": "mobile"
+      },
+      "value": 0.15
+    },
+    {
+      "traffic": {
+        "name": "SmartTV",
+        "type": "TRAFFIC_ALLOCATION",
+        "remoteId": "smarttv"
+      },
+      "value": 0.15
+    }
+  ],
+  "keyvalueTargeting": [
+    {
+      "keyname": "pos"
+    },
+    {
+      "keyname": "content_id"
+    },
+    {
+      "includeValues": [
+        "94",
+        "101",
+        "109",
+        "123",
+        "95",
+        "106",
+        "160",
+        "107",
+        "127",
+        "96",
+        "188",
+        "128",
+        "105",
+        "97",
+        "168",
+        "124",
+        "170",
+        "172",
+        "103",
+        "110",
+        "100"
+      ],
+      "keyname": "genre"
+    },
+    {
+      "keyname": "content_category"
+    },
+    {
+      "keyname": "mood"
+    }
+  ]
 }

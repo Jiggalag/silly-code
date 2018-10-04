@@ -2,7 +2,7 @@ from bs4 import BeautifulSoup
 
 # url = 'http://40.127.165.240/#/events/filter/limit=500'
 # filepath = '/home/jiggalag/Desktop/events.html'
-filepath = '/home/jiggalag/Desktop/events1000.html'
+filepath = '/home/jiggalag/Desktop/events3000.html'
 
 with open(filepath, 'r') as f:
     html = f.read()
