@@ -10,8 +10,9 @@ import pymysql
 from PyQt5.QtCore import Qt, pyqtSlot
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication, QLabel, QGridLayout, QWidget, QLineEdit, QCheckBox, QPushButton, QMessageBox
-from PyQt5.QtWidgets import QFileDialog, QRadioButton, QComboBox, QAction, qApp, QMainWindow
+from PyQt5.QtWidgets import QFileDialog, QRadioButton, QAction, qApp, QMainWindow
 
+from py_scripts.dbComparator.advanced_settings import AdvancedSettingsItem
 from py_scripts.dbComparator.clickable_lineedit import ClickableLineEdit
 from py_scripts.dbComparator.comparatorWithUI import Backend
 from py_scripts.dbComparator.skip_tables_view import ClickableItemsView
@@ -61,15 +62,15 @@ class MainUI(QWidget):
         excluded_tables_label = QLabel('Skip tables', self)
         hide_columns_label = QLabel('Skip columns', self)
 
-        advanced_label = QLabel('Advanced settings', self)
-        logging_level_label = QLabel('Logging level', self)
-        comparing_step_label = QLabel('Comparing step', self)
-        depth_report_check_label = QLabel('Days in past', self)
-        schema_columns_label = QLabel('Schema columns', self)
-        retry_attempts_label = QLabel('Retry attempts', self)
-        path_to_logs_label = QLabel('Path to logs', self)
-        table_timeout_label = QLabel('Timeout for single table, min', self)
-        strings_amount_label = QLabel('Amount of stored uniq strings', self)
+        # advanced_label = QLabel('Advanced settings', self)
+        # logging_level_label = QLabel('Logging level', self)
+        # comparing_step_label = QLabel('Comparing step', self)
+        # depth_report_check_label = QLabel('Days in past', self)
+        # schema_columns_label = QLabel('Schema columns', self)
+        # retry_attempts_label = QLabel('Retry attempts', self)
+        # path_to_logs_label = QLabel('Path to logs', self)
+        # table_timeout_label = QLabel('Timeout for single table, min', self)
+        # strings_amount_label = QLabel('Amount of stored uniq strings', self)
 
         # Splitters
 
@@ -110,22 +111,21 @@ class MainUI(QWidget):
         self.only_tables = ClickableLineEdit(self)
         self.only_tables.clicked.connect(self.set_included_tables)
         self.skip_columns = QLineEdit(self)
-        self.comparing_step = QLineEdit(self)
-        self.depth_report_check = QLineEdit(self)
-        self.schema_columns = QLineEdit(self)
-        # TODO: add possibility for useful redacting of schema columns parameter
-        self.retry_attempts = QLineEdit(self)
-        self.path_to_logs = QLineEdit(self)
-        self.table_timeout = QLineEdit(self)
-        self.strings_amount = QLineEdit(self)
+        # self.comparing_step = QLineEdit(self)
+        # self.depth_report_check = QLineEdit(self)
+        # self.schema_columns = QLineEdit(self)
+        # self.retry_attempts = QLineEdit(self)
+        # self.path_to_logs = QLineEdit(self)
+        # self.table_timeout = QLineEdit(self)
+        # self.strings_amount = QLineEdit(self)
 
         # Combobox
 
-        self.logging_level = QComboBox(self)
-        self.logging_level.addItems(['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG'])
-        index = self.logging_level.findText('DEBUG', Qt.MatchFixedString)
-        if index >= 0:
-            self.logging_level.setCurrentIndex(index)
+        # self.logging_level = QComboBox(self)
+        # self.logging_level.addItems(['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG'])
+        # index = self.logging_level.findText('DEBUG', Qt.MatchFixedString)
+        # if index >= 0:
+        #     self.logging_level.setCurrentIndex(index)
 
         # Checkboxes
 
@@ -149,6 +149,8 @@ class MainUI(QWidget):
         btn_set_configuration.clicked.connect(self.on_click)
         btn_clear_all = QPushButton('Clear all', self)
         btn_clear_all.clicked.connect(self.clear_all)
+        btn_advanced = QPushButton('Advanced', self)
+        btn_advanced.clicked.connect(self.advanced)
 
         # Radiobuttons
 
@@ -197,28 +199,28 @@ class MainUI(QWidget):
         self.day_summary_mode.setToolTip('Compare sums of impressions for each date')
         self.section_summary_mode.setToolTip('Compare sums of impressions for each date and each section')
         self.detailed_mode.setToolTip('Compare all records from table for setted period')
-        advanced_label.setToolTip('Advanced settings to customize your checking')
-        logging_level_label.setToolTip('Messages with this label and higher will be writed to logs')
-        self.logging_level.setToolTip('Messages with this label and higher will be writed to logs')
-        comparing_step_label.setToolTip(('Max amount of records which should be requested in single sql-query\n' +
-                                         'Do not touch this value if you not shure!'))
-        self.comparing_step.setToolTip(self.comparing_step.text())
-        depth_report_check_label.setToolTip('Amount of days in past, which should be compared in case of report tables')
-        self.depth_report_check.setToolTip(self.depth_report_check.text())
-        schema_columns_label.setToolTip(('List of columns, which should be compared during schema comparing\n' +
-                                         'Do not touch this value if you not shure!'))
-        self.schema_columns.setToolTip(self.schema_columns.text().replace(',', ',\n'))
-        retry_attempts_label.setToolTip('Amount of attempts for reconnecting to dbs in case of connection lost error')
-        self.retry_attempts.setToolTip(self.retry_attempts.text())
-        path_to_logs_label.setToolTip('Path, where log file should be created')
-        self.path_to_logs.setToolTip(self.path_to_logs.text())
-        table_timeout_label.setToolTip('Timeout in minutes for checking any single table')
-        self.table_timeout.setToolTip(self.table_timeout.text())
-        strings_amount_label.setToolTip(('Maximum amount of uniqs for single table.\n' +
-                                         'When amount of uniqs exceeds this threshould, checking of this table\n' +
-                                         'will be interrupted, and uniqs will be stored in file in /tmp/comparator\n' +
-                                         'directory'))
-        self.strings_amount.setToolTip(self.strings_amount.text())
+        # advanced_label.setToolTip('Advanced settings to customize your checking')
+        # logging_level_label.setToolTip('Messages with this label and higher will be writed to logs')
+        # self.logging_level.setToolTip('Messages with this label and higher will be writed to logs')
+        # comparing_step_label.setToolTip(('Max amount of records which should be requested in single sql-query\n' +
+        #                                  'Do not touch this value if you not shure!'))
+        # self.comparing_step.setToolTip(self.comparing_step.text())
+        # depth_report_check_label.setToolTip('Amount of days in past, which should be compared in case of report tables')
+        # self.depth_report_check.setToolTip(self.depth_report_check.text())
+        # schema_columns_label.setToolTip(('List of columns, which should be compared during schema comparing\n' +
+        #                                  'Do not touch this value if you not shure!'))
+        # self.schema_columns.setToolTip(self.schema_columns.text().replace(',', ',\n'))
+        # retry_attempts_label.setToolTip('Amount of attempts for reconnecting to dbs in case of connection lost error')
+        # self.retry_attempts.setToolTip(self.retry_attempts.text())
+        # path_to_logs_label.setToolTip('Path, where log file should be created')
+        # self.path_to_logs.setToolTip(self.path_to_logs.text())
+        # table_timeout_label.setToolTip('Timeout in minutes for checking any single table')
+        # self.table_timeout.setToolTip(self.table_timeout.text())
+        # strings_amount_label.setToolTip(('Maximum amount of uniqs for single table.\n' +
+        #                                  'When amount of uniqs exceeds this threshould, checking of this table\n' +
+        #                                  'will be interrupted, and uniqs will be stored in file in /tmp/comparator\n' +
+        #                                  'directory'))
+        # self.strings_amount.setToolTip(self.strings_amount.text())
 
         grid.addWidget(prod_host_label, 0, 0)
         grid.addWidget(self.prod_host, 0, 1)
@@ -256,23 +258,24 @@ class MainUI(QWidget):
         grid.addWidget(self.section_summary_mode, 8, 3)
         grid.addWidget(self.detailed_mode, 9, 3)
         grid.addWidget(btn_clear_all, 5, 1)
-        grid.addWidget(advanced_label, 0, 4)
-        grid.addWidget(logging_level_label, 1, 4)
-        grid.addWidget(self.logging_level, 1, 5)
-        grid.addWidget(comparing_step_label, 2, 4)
-        grid.addWidget(self.comparing_step, 2, 5)
-        grid.addWidget(depth_report_check_label, 3, 4)
-        grid.addWidget(self.depth_report_check, 3, 5)
-        grid.addWidget(schema_columns_label, 4, 4)
-        grid.addWidget(self.schema_columns, 4, 5)
-        grid.addWidget(retry_attempts_label, 5, 4)
-        grid.addWidget(self.retry_attempts, 5, 5)
-        grid.addWidget(path_to_logs_label, 6, 4)
-        grid.addWidget(self.path_to_logs, 6, 5)
-        grid.addWidget(table_timeout_label, 7, 4)
-        grid.addWidget(self.table_timeout, 7, 5)
-        grid.addWidget(strings_amount_label, 8, 4)
-        grid.addWidget(self.strings_amount, 8, 5)
+        grid.addWidget(btn_advanced, 10, 5)
+        # grid.addWidget(advanced_label, 0, 4)
+        # grid.addWidget(logging_level_label, 1, 4)
+        # grid.addWidget(self.logging_level, 1, 5)
+        # grid.addWidget(comparing_step_label, 2, 4)
+        # grid.addWidget(self.comparing_step, 2, 5)
+        # grid.addWidget(depth_report_check_label, 3, 4)
+        # grid.addWidget(self.depth_report_check, 3, 5)
+        # grid.addWidget(schema_columns_label, 4, 4)
+        # grid.addWidget(self.schema_columns, 4, 5)
+        # grid.addWidget(retry_attempts_label, 5, 4)
+        # grid.addWidget(self.retry_attempts, 5, 5)
+        # grid.addWidget(path_to_logs_label, 6, 4)
+        # grid.addWidget(self.path_to_logs, 6, 5)
+        # grid.addWidget(table_timeout_label, 7, 4)
+        # grid.addWidget(self.table_timeout, 7, 5)
+        # grid.addWidget(strings_amount_label, 8, 4)
+        # grid.addWidget(self.strings_amount, 8, 5)
 
         self.setWindowTitle('dbComparator')
         self.setWindowIcon(QIcon('./resources/slowpoke.png'))
@@ -291,6 +294,11 @@ class MainUI(QWidget):
         self.only_tables.clear()
         self.set_default_values()
 
+    def advanced(self):
+        # TODO: here call advanced_setting window
+        self.adv = AdvancedSettingsItem(OS)
+        self.adv.show()
+
     def calculate_table_list(self):
         if self.statusBar.currentMessage() == 'Prod connected, test connected':
             self.tables = list(set(self.prod_tables) & set(self.test_tables))
@@ -304,27 +312,28 @@ class MainUI(QWidget):
         self.excluded_tables.setCursorPosition(0)
         self.skip_columns.setText('archived,addonFields,hourOfDayS,dayOfWeekS,impCost,id')
         self.skip_columns.setCursorPosition(0)
-        self.comparing_step.setText('10000')
-        self.comparing_step.setCursorPosition(0)
-        self.depth_report_check.setText('7')
-        self.depth_report_check.setCursorPosition(0)
-        self.schema_columns.setText('TABLE_CATALOG,TABLE_NAME,COLUMN_NAME,ORDINAL_POSITION,COLUMN_DEFAULT,' +
-                                    'IS_NULLABLE,DATA_TYPE,CHARACTER_MAXIMUM_LENGTH,CHARACTER_OCTET_LENGTH,' +
-                                    'NUMERIC_PRECISION,NUMERIC_SCALE,DATETIME_PRECISION,CHARACTER_SET_NAME,' +
-                                    'COLLATION_NAME,COLUMN_TYPE,COLUMN_KEY,EXTRA,COLUMN_COMMENT,GENERATION_EXPRESSION')
-        self.schema_columns.setCursorPosition(0)
-        self.retry_attempts.setText('5')
-        self.retry_attempts.setCursorPosition(0)
-        self.set_path_to_logs(OS)
-        self.table_timeout.setText('5')
-        self.table_timeout.setCursorPosition(0)
-        self.strings_amount.setText('1000')
-        self.strings_amount.setCursorPosition(0)
+        # self.comparing_step.setText('10000')
+        # self.comparing_step.setCursorPosition(0)
+        # self.depth_report_check.setText('7')
+        # self.depth_report_check.setCursorPosition(0)
+        # self.schema_columns.setText('TABLE_CATALOG,TABLE_NAME,COLUMN_NAME,ORDINAL_POSITION,COLUMN_DEFAULT,' +
+        #                             'IS_NULLABLE,DATA_TYPE,CHARACTER_MAXIMUM_LENGTH,CHARACTER_OCTET_LENGTH,' +
+        #                             'NUMERIC_PRECISION,NUMERIC_SCALE,DATETIME_PRECISION,CHARACTER_SET_NAME,' +
+        #                             'COLLATION_NAME,COLUMN_TYPE,COLUMN_KEY,EXTRA,COLUMN_COMMENT,GENERATION_EXPRESSION')
+        # self.schema_columns.setCursorPosition(0)
+        # self.retry_attempts.setText('5')
+        # self.retry_attempts.setCursorPosition(0)
+        # self.set_path_to_logs(OS)
+        # self.table_timeout.setText('5')
+        # self.table_timeout.setCursorPosition(0)
+        # self.strings_amount.setText('1000')
+        # self.strings_amount.setCursorPosition(0)
         self.cb_enable_schema_checking.setChecked(True)
         self.cb_fail_with_first_error.setChecked(True)
         self.day_summary_mode.setChecked(True)
         self.section_summary_mode.setChecked(False)
         self.detailed_mode.setChecked(False)
+        # TODO: set logging_level to DEFAULT
 
     def set_excluded_tables(self):
         if self.statusBar.currentMessage() == 'Prod connected, test connected':
@@ -388,18 +397,6 @@ class MainUI(QWidget):
                 except pymysql.InternalError as e:
                     logger.error('Exception is {}'.format(e.args[1]))
         self.statusBar.showMessage('{}, {}'.format(prod_state, test_state))
-
-    def set_path_to_logs(self, operational_system):
-        if operational_system == 'Windows':
-            # TODO: add defining disc
-            if not os.path.exists('C:\\DbComparator\\'):
-                os.mkdir('C:\\DbComparator\\')
-            self.path_to_logs.setText('C:\\DbComparator\\DbComparator.log')
-        elif operational_system == 'Linux':
-            log_path = os.path.expanduser('~') + '/DbComparator/'
-            if not os.path.exists(log_path):
-                os.mkdir(log_path)
-            self.path_to_logs.setText(log_path + 'DbComparator.log')
 
     def show_dialog(self):
         current_dir = '{}/resources/properties/'.format(os.getcwd())
