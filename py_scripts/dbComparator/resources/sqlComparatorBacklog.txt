@@ -1,13 +1,20 @@
-Bugfixes:
+Enchancements:
 
-1. Fix error Username and Password not accepted.
-
-Enchancement:
-
-1. Add hints to all UI elements.
-2. UI hangs and disables during comparing DBs. Add modal window with progress bar and some information about
-progress of comparing.
+1. Add try/except construction in case of defining non-existent columns/tables.
+2. Comparing step should be moved from UI. Instead of manually possibility of setting comparing step I should implement
+feature which automatically changes comparing step in case of slow or fast connection.
+3. Implement correct working of table timeout (probably, we should stop query, if timeout falls).
+? 4. Great UI refactoring - move different element groups to different classes.
+5. Add verification case when entities and reports flag disabled at same time.
+6. Disable checking mode group if "Only reports flag" disabled.
+7. UI hangs and disables during comparing DBs. Add modal window with progress bar and some information about
+progress of comparing. Probably, we should generate all sql-queries before running and use this queries to calculate
+comparing progress.
+8. Add QSplitters.
+9. Probably remove Schema columns field, and move this data to hardcode.
+10. Status bar should updates in background, application should ping servers by some timeout.
 
 Epics:
+0. Support dataframe comparing.
 1. Present summary information more flexible.
 2. Probably, add functional for cloning databases.

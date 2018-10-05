@@ -1,4 +1,4 @@
-from py_scripts.helpers import dbHelper
+from py_scripts.helpers import dbcmp_sql_helper
 
 
 class InitializeQuery:
@@ -39,7 +39,7 @@ class InitializeQuery:
                 for column in column_string:
                     if "id" == column[-2:]:
                         sections.append(column)
-                        column_list_with_sums = dbHelper.get_column_list_for_sum(set_column_list)
+                        column_list_with_sums = dbcmp_sql_helper.get_column_list_for_sum(set_column_list)
                         query = "SELECT {} FROM `{}` {} WHERE dt = '{}' GROUP BY {} ORDER BY {};".format(
                             ",".join(column_list_with_sums), self.table, set_join_section, dt, column, set_order_list)
                         query_list.append(query)
@@ -56,15 +56,14 @@ class InitializeQuery:
 
     def prepare_query_sections(self):
         column_string = self.sql_connection.get_column_list(self.table)
-        set_column_list, set_join_section = self.construct_column_and_join_section(column_string)
+        set_column_list = self.construct_column_section(column_string)
+        set_join_section = self.construct_join_section(column_string)
         set_order_list = construct_order_list(set_column_list)
         columns = ",".join(set_order_list)
         return column_string, set_column_list, set_join_section, columns
 
-    # TODO: divide on two methods
-    def construct_column_and_join_section(self, columns):
+    def construct_column_section(self, columns):
         set_column_list = []
-        set_join_section = []
         for column in columns:
             if "`{}`".format(column) in list(self.mapping.keys()):
                 linked_table = self.mapping.get("`{}`".format(column))
@@ -80,13 +79,20 @@ class InitializeQuery:
                         set_column_list.append("{}.`remoteid` AS {}".format(linked_table, column))
                     else:
                         set_column_list.append("{}.`id` AS {}".format(linked_table, column))
+            else:
+                set_column_list.append("{}.{}".format(self.table, column))
+        return ", ".join(set_column_list)
+
+    def construct_join_section(self, columns):
+        set_join_section = []
+        for column in columns:
+            if "`{}`".format(column) in list(self.mapping.keys()):
+                linked_table = self.mapping.get("`{}`".format(column))
                 if "`{}`".format(self.table) != linked_table:
                     if not already_joined(set_join_section, linked_table):
                         set_join_section.append(" JOIN {0} ON {2}.{1}={0}.`id`".format(linked_table, column,
                                                                                        self.table))
-            else:
-                set_column_list.append("{}.{}".format(self.table, column))
-        return ", ".join(set_column_list), " ".join(set_join_section)
+        return " ".join(set_join_section)
 
 
 def prepare_column_mapping(sql_connection, logger):
@@ -96,7 +102,7 @@ def prepare_column_mapping(sql_connection, logger):
                         "'PRIMARY' AND referenced_table_name " +
                         "IS NOT NULL AND table_schema = '{}';".format(sql_connection.db))
     logger.debug(query_get_column)
-    raw_column_list = sql_connection.select_rf(query_get_column)
+    raw_column_list = sql_connection.select(query_get_column)
     for item in raw_column_list:
         column_dict.update({"`{}`".format(item.get('column_name').lower()): "`{}`"
                            .format(item.get('referenced_table_name').lower())})

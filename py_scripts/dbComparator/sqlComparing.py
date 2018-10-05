@@ -1,6 +1,6 @@
 import datetime
-from py_scripts.helpers import dbHelper
-from py_scripts.dbComparator import unified_comparing_class
+from py_scripts.helpers import dbcmp_sql_helper
+from py_scripts.dbComparator.unified_comparing_class import Comparation
 
 
 class Object:
@@ -48,6 +48,8 @@ class Object:
             'GENERATION_EXPRESSION'
         ]
         self.only_tables = ''
+        self.reports = True
+        self.entities = True
         self.excluded_tables = [
             'databasechangelog',
             'download',
@@ -99,76 +101,67 @@ class Object:
             self.table_timeout = int(sql_comparing_properties.get('table_timeout'))
             if self.table_timeout == 0:
                 self.table_timeout = None
+        if 'reports' in sql_comparing_properties.keys():
+            self.reports = sql_comparing_properties.get('reports')
         if 'strings_amount' in sql_comparing_properties.keys():
             self.strings_amount = int(sql_comparing_properties.get('strings_amount'))
         self.sql_comparing_properties = {
-            'retry_attempts': self.attempts,
+            'check_schema': self.check_schema,
             'comparing_step': self.comparing_step,
+            'depth_report_check': self.depth_report_check,
+            'entities': self.entities,
+            'fail_with_first_error': self.fail_with_first_error,
             'hide_columns': self.hide_columns,
             'mode': self.mode,
-            'check_schema': self.check_schema,
-            'depth_report_check': self.depth_report_check,
-            'fail_with_first_error': self.fail_with_first_error,
+            'only_tables': self.only_tables,
             'schema_columns': self.schema_columns,
             'logger': self.logger,
-            'strings_amount': self.strings_amount,
-            'separateChecking': self.separate_checking,  # TODO: now disabled
-            'only_tables': self.only_tables,
-            'skip_tables': self.excluded_tables,
+            'reports': self.reports,
+            'retry_attempts': self.attempts,
             'send_mail_to': self.send_mail_to,
+            'separateChecking': self.separate_checking,  # TODO: now disabled
+            'skip_tables': self.excluded_tables,
+            'strings_amount': self.strings_amount,
             'table_timeout': self.table_timeout
         }
 
-    def complex_condition(self, table):
+    @staticmethod
+    def is_report(table, connection):
         booler = []
-        if ('report' in table) or ('statistic' in table):
-            booler.append(True)
-        else:
-            booler.append(False)
-        if 'dt' in dbHelper.DbConnector(self.prod_sql, self.logger).get_column_list(table):
-            booler.append(True)
-        else:
-            booler.append(False)
-        if 'onlyEntities' not in self.separate_checking:
-            booler.append(True)
-        else:
-            booler.append(False)
-        if all(booler):
+        query = "DESCRIBE {};".format(table)
+        result = connection.select(query)
+        for field in result:
+            if 'dt' in field.get('Field'):
+                booler.append(True)
+            if 'impressions' in field.get('Field'):
+                booler.append(True)
+            if 'clicks' in field.get('Field'):
+                booler.append(True)
+        if len(booler) == 3:
             return True
         else:
             return False
 
-    def is_report(self, table):
-        booler = []
-        if ('report' in table) or ('statistic' in table):
-            booler.append(True)
-        else:
-            booler.append(False)
-        if 'dt' in dbHelper.DbConnector(self.prod_sql, self.logger).get_column_list(table):
-            booler.append(True)
-        else:
-            booler.append(False)
-        if all(booler):
-            return True
-        else:
-            return False
-
-    def compare_data(self, start_time, service_dir, mapping):
-        prod_connection = dbHelper.DbConnector(self.prod_sql, self.logger)
-        test_connection = dbHelper.DbConnector(self.test_sql, self.logger)
-        tables = self.calculate_table_list()
+    def compare_data(self, start_time, service_dir, mapping, tables):
+        prod_connection = dbcmp_sql_helper.DbCmpSqlHelper(self.prod_sql, self.logger)
+        test_connection = dbcmp_sql_helper.DbCmpSqlHelper(self.test_sql, self.logger)
         for table in tables:
             # table = 'campaignosreport'
             start_table_check_time = datetime.datetime.now()
             self.logger.info("Table {} processing started now...".format(table))
-            is_report = self.is_report(table)
+            is_report = self.is_report(table, prod_connection)
+
+            # TODO: refactor this place! Rename onlyReports/Entities
+
             if 'onlyReports' in self.separate_checking and not is_report:
                 continue
             if 'onlyEntities' in self.separate_checking and is_report:
                 continue
-            global_break = unified_comparing_class.compare_table(prod_connection, test_connection, table, is_report,
-                                                                 service_dir, mapping, start_time, self.comparing_info,
-                                                                 **self.sql_comparing_properties)
+            self.sql_comparing_properties.update({'service_dir': service_dir})
+            cmp_params = self.sql_comparing_properties
+            compared_table = Comparation(prod_connection, test_connection, table, self.logger, cmp_params)
+            global_break = compared_table.compare_table(is_report, mapping, start_time, self.comparing_info,
+                                                        self.sql_comparing_properties.get('comparing_step'))
             self.logger.info("Table {} ".format(table) +
                              "checked in {}...".format(datetime.datetime.now() - start_table_check_time))
             if global_break:
@@ -180,29 +173,31 @@ class Object:
         self.logger.info("Comparing finished in {}".format(data_comparing_time))
         return data_comparing_time
 
-    def calculate_table_list(self):
+    def calculate_table_list(self, connection):
         if len(self.only_tables) == 1 and self.only_tables[0] == '':
-            return self.comparing_info.get_tables(self.excluded_tables, self.client_ignored_tables)
+            return self.comparing_info.define_table_list(self.excluded_tables, self.client_ignored_tables,
+                                                         self.reports, self.entities, connection)
         else:
             return self.only_tables
 
-    def compare_metadata(self, start_time):
-        prod_connection = dbHelper.DbConnector(self.prod_sql, self.logger)
-        test_connection = dbHelper.DbConnector(self.test_sql, self.logger)
-        tables = self.calculate_table_list()
+    def compare_metadata(self, start_time, tables):
+        prod_connection = dbcmp_sql_helper.DbCmpSqlHelper(self.prod_sql, self.logger)
+        test_connection = dbcmp_sql_helper.DbCmpSqlHelper(self.test_sql, self.logger)
         for table in tables:
             self.logger.info("Check schema for table {}...".format(table))
             query = ("SELECT {} FROM INFORMATION_SCHEMA.COLUMNS ".format(', '.join(self.schema_columns)) +
                      "WHERE TABLE_SCHEMA = 'DBNAME' AND TABLE_NAME='TABLENAME' ".replace("TABLENAME", table) +
                      "ORDER BY COLUMN_NAME;")
 
-            prod_columns, test_columns = dbHelper.DbConnector.parallel_select([prod_connection, test_connection], query)
+            prod_columns, test_columns = dbcmp_sql_helper.get_comparable_objects([prod_connection, test_connection],
+                                                                                 query)
             if (prod_columns is None) or (test_columns is None):
                 self.logger.warn('Table {} skipped because something going bad'.format(table))
                 continue
+            # TODO: Type error: unhashable type: 'dict'
             uniq_for_prod = list(set(prod_columns) - set(test_columns))
             uniq_for_test = list(set(test_columns) - set(prod_columns))
-            if len(uniq_for_prod) > 0:
+            if len(uniq_for_prod) > 0 and self.fail_with_first_error:
                 return self.schema_comparing_time(table, uniq_for_prod, start_time)
             if len(uniq_for_test) > 0 and self.fail_with_first_error:
                 return self.schema_comparing_time(table, uniq_for_test, start_time)

@@ -1,5 +1,6 @@
 __author__ = 'pavel.kiselev'
 
+# TODO: remove after stabilization of master
 # TODO: 1. add meta-data comparing
 # TODO: 2. add kdiff-like visualisation?
 # TODO: 3. add intellectual comparing of reports. If amount of dates in report tables differs, we should select minimum date

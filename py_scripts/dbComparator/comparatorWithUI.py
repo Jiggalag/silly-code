@@ -9,7 +9,7 @@ from email.mime.text import MIMEText
 from os.path import basename
 from py_scripts.helpers import converters
 from py_scripts.dbComparator import tableData, sqlComparing
-from py_scripts.helpers.dbHelper import DbConnector
+from py_scripts.helpers.dbcmp_sql_helper import DbCmpSqlHelper
 from py_scripts.dbComparator import queryConstructor
 
 
@@ -23,33 +23,30 @@ class Backend:
     def run_comparing(self):
         if self.OS == "Windows":
             service_dir = "C:\\comparator"
+            test_dir = "C:\\dbComparator\\"
         else:
             service_dir = "/tmp/comparator/"
+            test_dir = "/mxf/data/test_results/"
         check_service_dir(service_dir)
-        prod_sql_connection = DbConnector(self.sql_connection_properties.get('prod'), self.logger)
-        test_sql_connection = DbConnector(self.sql_connection_properties.get('test'), self.logger)
+        check_service_dir(test_dir)
+        prod_sql_connection = DbCmpSqlHelper(self.sql_connection_properties.get('prod'), self.logger)
+        test_sql_connection = DbCmpSqlHelper(self.sql_connection_properties.get('test'), self.logger)
         comparing_info = tableData.Info(self.logger)
         comparing_info.update_table_list("prod", prod_sql_connection.get_tables())
         comparing_info.update_table_list("test", test_sql_connection.get_tables())
-        if "Linux" in self.OS:
-            create_test_dir("/mxf/data/test_results/")
-        else:
-            create_test_dir("C:\\dbComparator\\")
+
         start_time = datetime.datetime.now()
         self.logger.info("Start processing!")
         mapping = queryConstructor.prepare_column_mapping(prod_sql_connection, self.logger)
+        comparing_object = sqlComparing.Object(self.sql_connection_properties, self.sql_comparing_properties,
+                                               comparing_info)
+        tables = comparing_object.calculate_table_list(prod_sql_connection)
         if self.sql_comparing_properties.get('check_schema'):
-            schema_comparing_time = sqlComparing.Object(self.sql_connection_properties,
-                                                        self.sql_comparing_properties,
-                                                        comparing_info).compare_metadata(start_time)
+            schema_comparing_time = comparing_object.compare_metadata(start_time, tables)
         else:
             self.logger.info("Schema checking disabled...")
             schema_comparing_time = None
-        data_comparing_time = sqlComparing.Object(self.sql_connection_properties,
-                                                  self.sql_comparing_properties,
-                                                  comparing_info).compare_data(start_time,
-                                                                               service_dir,
-                                                                               mapping)
+        data_comparing_time = comparing_object.compare_data(start_time, service_dir, mapping, tables)
         subject = "[Test] Check databases"
         text = generate_mail_text(comparing_info, self.sql_comparing_properties,
                                   data_comparing_time, schema_comparing_time)
@@ -61,11 +58,6 @@ def check_service_dir(service_dir):
     if os.path.exists(service_dir):
         shutil.rmtree(service_dir)
     os.mkdir(service_dir)
-
-
-def create_test_dir(path):
-    if not os.path.exists(path):
-        os.mkdir(path)
 
 
 def generate_mail_text(comparing_info, sql_comparing_properties, data_comparing_time, schema_comparing_time):

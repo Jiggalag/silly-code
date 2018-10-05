@@ -11,7 +11,6 @@ def convert_to_list(structure_to_convert):
             result_list.append(item.get(key))
         else:
             result_list.append(item)
-    # TODO: critical change, test it
     try:
         result_list.sort()
     except TypeError:
