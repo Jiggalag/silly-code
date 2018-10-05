@@ -292,17 +292,17 @@ class MainUI(QWidget):
     def set_excluded_tables(self):
         if self.statusBar.currentMessage() == 'Prod connected, test connected':
             tables_to_skip = self.le_excluded_tables.text().split(',')
-            self.skip_tables_view = ClickableItemsView(self.tables, tables_to_skip)
-            self.skip_tables_view.exec_()
-            self.le_excluded_tables.setText(','.join(self.skip_tables_view.selected_items))
+            skip_tables_view = ClickableItemsView(self.tables, tables_to_skip)
+            skip_tables_view.exec_()
+            self.le_excluded_tables.setText(','.join(skip_tables_view.selected_items))
             self.le_excluded_tables.setToolTip(self.le_excluded_tables.text().replace(',', ',\n'))
 
     def set_included_tables(self):
         if self.statusBar.currentMessage() == 'Prod connected, test connected':
             tables_to_include = self.le_only_tables.text().split(',')
-            self.only_tables_view = ClickableItemsView(self.tables, tables_to_include)
-            self.only_tables_view.exec_()
-            self.le_only_tables.setText(','.join(self.only_tables_view.selected_items))
+            only_tables_view = ClickableItemsView(self.tables, tables_to_include)
+            only_tables_view.exec_()
+            self.le_only_tables.setText(','.join(only_tables_view.selected_items))
             self.le_only_tables.setToolTip(self.le_only_tables.text().replace(',', ',\n'))
 
     def check_prod_connection(self):

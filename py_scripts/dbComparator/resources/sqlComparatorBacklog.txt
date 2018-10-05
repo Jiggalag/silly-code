@@ -4,7 +4,7 @@ Enchancements:
 2. Comparing step should be moved from UI. Instead of manually possibility of setting comparing step I should implement
 feature which automatically changes comparing step in case of slow or fast connection.
 3. Implement correct working of table timeout (probably, we should stop query, if timeout falls).
-4. Great UI refactoring - move different element groups to different classes.
+? 4. Great UI refactoring - move different element groups to different classes.
 5. Add verification case when entities and reports flag disabled at same time.
 6. Disable checking mode group if "Only reports flag" disabled.
 7. UI hangs and disables during comparing DBs. Add modal window with progress bar and some information about
@@ -13,10 +13,6 @@ comparing progress.
 8. Add QSplitters.
 9. Probably remove Schema columns field, and move this data to hardcode.
 10. Status bar should updates in background, application should ping servers by some timeout.
-
-Bugs:
-
-1. There are some fields in header of dumped file but only one field in data for page table on marvin.
 
 Epics:
 0. Support dataframe comparing.
