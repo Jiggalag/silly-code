@@ -11,6 +11,14 @@ class AdvancedSettingsItem(QDialog):
         super().__init__()
         self.operational_system = operational_system
         self.default_values = default_values
+        self.logging_level = default_values.get('logging_level')
+        self.comparing_step = default_values.get('comparing_step')
+        self.depth_report_check = default_values.get('depth_report_check')
+        self.schema_columns = default_values.get('schema_columns')
+        self.retry_attempts = default_values.get('retry_attempts')
+        self.path_to_logs = default_values.get('path_to_logs')
+        self.table_timeout = default_values.get('table_timeout')
+        self.strings_amount = default_values.get('strings_amount')
         grid = QGridLayout()
         grid.setSpacing(10)
         self.setLayout(grid)
@@ -93,6 +101,7 @@ class AdvancedSettingsItem(QDialog):
         grid.addWidget(btn_cancel, 8, 1)
         grid.addWidget(btn_reset, 9, 0)
         self.set_default(self.default_values)
+        self.setWindowTitle('Advanced settings')
 
     def ok_pressed(self):
         self.logging_level = self.cb_logging_level.currentText()
