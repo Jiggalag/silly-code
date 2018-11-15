@@ -8,9 +8,6 @@ from py_scripts.helpers.dbHelper import DbConnector
 from py_scripts.helpers.logging_helper import Logger
 
 
-# TODO: add support of 'last' value for date. If date = last, script should find dump with newer available date
-
-
 class DumpMaster:
     def __init__(self):
         self.args = self.prepare_arguments()
