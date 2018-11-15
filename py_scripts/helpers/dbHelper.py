@@ -1,7 +1,7 @@
-import pymysql
 import time
-
 from multiprocessing.dummy import Pool
+
+import pymysql
 
 TIMEOUT = 10
 # TODO: transfer logger into connector
@@ -111,6 +111,22 @@ class DbConnector:
                                              user=self.user,
                                              password=self.password,
                                              db=self.db,
+                                             charset='utf8',
+                                             cursorclass=pymysql.cursors.DictCursor)
+                return connection
+            except pymysql.err.OperationalError:
+                attempt_number += 1
+                if attempt_number > self.attempts:
+                    return None
+                time.sleep(TIMEOUT)
+
+    def get_sql_connection(self):
+        attempt_number = 0
+        while True:
+            try:
+                connection = pymysql.connect(host=self.host,
+                                             user=self.user,
+                                             password=self.password,
                                              charset='utf8',
                                              cursorclass=pymysql.cursors.DictCursor)
                 return connection
