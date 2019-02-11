@@ -1,35 +1,21 @@
 import json
 import sys
-
 from py_scripts.helpers.ifmsApiHelper import IFMSApiHelper
 from py_scripts.helpers.logging_helper import Logger
 
 server = 'eu-dev-01.inventale.com'
 user = 'pavel.kiselev'
 password = '6561bf7aacf5e58c6e03d6badcf13831'
-# user = 'qa-ivi'
-# password = '2c821c5131319f3b9cfa83885d552637'
-# password = 'c64e8262333065b2f35cd52742bd5cfb'
 context = 'ifms'
-client = 'rick'
+client = 'irving'
 request = 'frc.json'
 logger = Logger('DEBUG')
 
 api_point = IFMSApiHelper(server, user, password, context, logger)
-#
-# cookie = api_point.change_scope(client, scope)
-#
-# result = api_point.check_available_inventory(request, cookie).text
-#
-# try:
-#     json_result = json.loads(result)
-# except json.JSONDecodeError:
-#     sys.exit(1)
-
 results = list()
 
-# for scope in ['default', 'extrapolation']:
-for scope in ['datepage']:
+
+for scope in ['def_pub', 'default']:
     print(f'Process scope {scope}')
     cookie = api_point.change_scope(client, scope)
 
