@@ -26,7 +26,7 @@ class Backend:
             test_dir = "C:\\dbComparator\\"
         else:
             service_dir = "/tmp/comparator/"
-            test_dir = "/mxf/data/test_results/"
+            test_dir = os.getcwd() + "/test_results/"
         check_service_dir(service_dir)
         check_service_dir(test_dir)
         prod_sql_connection = DbCmpSqlHelper(self.sql_connection_properties.get('prod'), self.logger)

@@ -1,8 +1,8 @@
 prod.host = ams-ifms-prd-dat-msq01.inventale.com
 prod.user = monitor
 prod.password = kqQ2YecrU0y74Qb
-prod.db = ifms3_i_cpopro
-test.host = samaradb03.maxifier.com
+prod.db = irving_cpopro
+test.host = eu-db-01.inventale.com
 test.user = itest
 test.password = ohk9aeVahpiz1wi
-test.db = irving
+test.db = irving_cpopro
