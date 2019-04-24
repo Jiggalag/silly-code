@@ -1,6 +1,30 @@
 {
-"startDate": "2019-02-06T21:00:00.000Z",
-"endDate": "2019-02-07T20:59:59.000Z",
-"priority": "1",
-"dimensions": []
+"startDate": "2019-04-29T05:00:00.000Z",
+"endDate": "2019-05-02T04:59:59.000Z",
+"dimensions": [
+            "Date",
+            "Date/AdUnit",
+            "AdUnit/Date",
+            "AdUnit",
+            "Region",
+            "City",
+            "LineItem",
+            "Country",
+            "Order",
+            "AdSize",
+            "AdFormat",
+            "DMA",
+            "BrowserLanguage",
+            "DeviceType",
+            "Device",
+            "OS",
+            "Browser",
+            "CompetingLineItem",
+            "DeviceCapability"
+],
+"pubMatic": {
+  "priority":  16,
+  "accountId": "79505",
+  "customKey": [{"is": [{"key": "section", "value": "Insights"}]}]
+  }
 }

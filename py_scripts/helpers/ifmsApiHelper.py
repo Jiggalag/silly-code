@@ -32,8 +32,27 @@ class IFMSApiHelper:
         cookies = self.api_authenticate()
         return cookies
 
-    def check_available_inventory(self, json_file, cookies, wait_timeout=600, ping_timeout=1):
-        available_forecast_url = 'https://{}/{}/api/v1/checkAvailableInventory'.format(self.server, self.context)
+    def synchronous_forecast(self, json_file, cookies):
+        available_forecast_url = 'https://{}/{}/api/v1/forecast'.format(self.server, self.context)
+        try:
+            loaded_json = json.load(open(json_file))
+        except TypeError:
+            if 'JsonQuery' in str(type(json_file)):
+                loaded_json = json_file.json_data
+            else:
+                loaded_json = json_file
+        headers = {'Content-Type': 'application/json'}
+        start = datetime.datetime.now()
+        response = requests.post(available_forecast_url, json=loaded_json, cookies=cookies, headers=headers)
+        return response, datetime.datetime.now() - start
+
+    def check_available_inventory(self, json_file, cookies, account_id=None, wait_timeout=600, ping_timeout=1):
+        if account_id is None:
+            available_forecast_url = 'https://{}/{}/api/v1/checkAvailableInventory'.format(self.server, self.context)
+        else:
+            available_forecast_url = 'https://{}/{}/api/v1/checkAvailableInventory?accountId={}'.format(self.server,
+                                                                                                        self.context,
+                                                                                                        account_id)
         try:
             loaded_json = json.load(open(json_file))
             name = json_file
