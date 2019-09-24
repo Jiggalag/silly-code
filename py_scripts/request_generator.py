@@ -1,17 +1,38 @@
+import argparse
 import json
+import requests
+import rstr
 import time
+from os.path import expanduser
 
-with open('/home/polter/123', 'r') as file:
-    content = file.read().split('\n')
-    print('stop')
+parser = argparse.ArgumentParser(description='Intended to generating file with incorrect wifi bssids')
+parser.add_argument('amount', type=int, help='amount of incorrect bssids')
+args = parser.parse_args()
+amount = args.amount
 
-prc_bssid = content[5:519]
+bad_bssids = set()
+counter = 0
 
-print('stop')
+while len(bad_bssids) < amount:
+    counter += 1
+    bssid = rstr.xeger(r'(?:[A-Fa-f0-9]{2}[:]){5}(?:[A-Fa-f0-9]{2})').lower()
+    url = 'https://api.mylnikov.org/wifi?v=1.1&bssid={}'.format(bssid)
+    response = requests.get(url)
+    result = json.loads(response.text)
+    code = result.get('result')
+    if code == 404:
+        print('{}'.format(bssid))
+        try:
+            bad_bssids.update(bssid)
+        except:
+            print('[ERROR] bssid {} already added to set'.format(bssid))
+            continue
+    print('Processed {} bssids, found {} bad bssids...'.format(counter, len(bad_bssids)))
+
 
 datalist = list()
 
-for bssid in prc_bssid:
+for bssid in bad_bssids:
     mold = {
           "bssid": "{}".format(bssid),
           "centerFreq0": 2437,
@@ -28,6 +49,7 @@ for bssid in prc_bssid:
           "timestamp": 1565241485302
     }
     datalist.append(mold)
-with open('/home/polter/bssid_result', 'w') as file:
+filepath = '{}/bssid_result'.format(expanduser('~'))
+with open(filepath, 'w') as file:
     file.write(json.dumps(datalist, indent=4))
-print('stop')
+    print('Request successfully saved to {}'.format(filepath))
