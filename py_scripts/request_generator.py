@@ -23,7 +23,7 @@ while len(bad_bssids) < amount:
     if code == 404:
         print('{}'.format(bssid))
         try:
-            bad_bssids.update(bssid)
+            bad_bssids.update({bssid})
         except:
             print('[ERROR] bssid {} already added to set'.format(bssid))
             continue
