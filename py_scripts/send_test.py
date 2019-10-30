@@ -4,16 +4,20 @@ import sys
 from py_scripts.helpers.ifmsApiHelper import IFMSApiHelper
 from py_scripts.helpers.logging_helper import Logger
 
-server = 'eu-dev-01.inventale.com'
+server = 'inv-dev-02.inventale.com'
+# server = 'pitt-us.inventale.com'
+# server = 'localhost'
 user = 'pavel.kiselev'
+# user = 'analyst'
 password = '6561bf7aacf5e58c6e03d6badcf13831'
+# password = '4c029545591e3f76e2858dcb19c31808'
 # server = 'pubmatic.inventale.com'
 # user = 'api-pubmatic'
 # password = 'ede8f9991bfae90868d0d53081a6342f'
 # user = 'qa-ivi'
 # password = '2c821c5131319f3b9cfa83885d552637'
 # password = 'c64e8262333065b2f35cd52742bd5cfb'
-context = 'ifms2'
+context = 'ifms5'
 client = 'pitt'
 request = 'frc.json'
 logger = Logger('DEBUG')
@@ -31,64 +35,33 @@ api_point = IFMSApiHelper(server, user, password, context, logger)
 
 results = list()
 
-cases = [
-    [{"is": [{"key": "section", "value": "Insights"}]}],
-    [{"isNot": [{"key": "section", "value": "Insights"}]}],
-    [{"isGreaterThan": [{"key": "section", "value": "Insights"}]}],
-    [{"isLesserThan": [{"key": "section", "value": "Insights"}]}],
-    [{"isNotGreaterThan": [{"key": "section", "value": "Insights"}]}],
-    [{"isNotLesserThan": [{"key": "section", "value": "Insights"}]}],
-    [{"isBetween": [{"key": "section", "value": "Insights"}]}],
-    [{"contains": [{"key": "section", "value": "Insights"}]}],
-    [{"doesNotContain": [{"key": "section", "value": "Insights"}]}],
-    [{"startsWith": [{"key": "section", "value": "Insights"}]}],
-    [{"endsWith": [{"key": "section", "value": "Insights"}]}]
-]
-
 # for scope in ['default', 'extrapolation']:
-cookie = api_point.change_scope(client, 156315)
+cookie = api_point.change_scope(client, 156535)
 
-for case in cases:
-    print(f'Process {case}')
-    base = {
-        "startDate": "2019-04-29T05:00:00.000Z",
-        "endDate": "2019-05-01T04:59:59.000Z",
-        "dimensions": [
-            "Date",
-            "Date/AdUnit",
-            "AdUnit/Date",
-            "AdUnit",
-            "Region",
-            "City",
-            "LineItem",
-            "Country",
-            "Order",
-            "AdSize",
-            "AdFormat",
-            "DMA",
-            "BrowserLanguage",
-            "DeviceType",
-            "Device",
-            "OS",
-            "Browser",
-            "CompetingLineItem",
-            "DeviceCapability",
-            "CustomKey"
-        ],
-        "pubMatic": {
-            "priority": 16,
-            "accountId": "156315",
-            "customKey": case
-        }
+base = {
+    "startDate": "2019-10-29T05:00:01.000Z",
+    "endDate": "2019-11-16T04:59:59.000Z",
+    "dimensions": [
+        "Date",
+        "Date/AdUnit",
+        "AdUnit/Date",
+        "AdUnit"
+    ],
+    "pubMatic": {
+        "priority": 1
     }
+}
 
-    raw_result  = api_point.check_available_inventory(base, cookie, account_id=156315)
+raw_result = api_point.check_available_inventory(base, cookie, account_id=156535)
 
-    try:
-        json_result = json.loads(raw_result.text)
-        results.append(json_result)
-    except json.JSONDecodeError:
-        sys.exit(1)
+try:
+    json_result = json.loads(raw_result.text)
+    with open('/home/polter/test', 'w') as file:
+        file.write(json.dumps(json_result, indent=4))
+        print('ok')
+except json.JSONDecodeError:
+    sys.exit(1)
+
 
 def get_size(obj, seen=None):
     """Recursively finds size of objects"""
@@ -111,9 +84,10 @@ def get_size(obj, seen=None):
     return size
 
 
-def wrwr(name, forecast):
-    with open(f'/home/polter/{name}', 'w') as f:
-        f.write(json.dumps(forecast))
+def wrwr(filename, forecast):
+    with open(f'/home/polter/{filename}', 'w') as targetfile:
+        targetfile.write(json.dumps(forecast))
+
 
 def aggregate_all_deep(collection):
     res = dict()
@@ -128,6 +102,7 @@ def aggregate_all_deep(collection):
                     res.update({key: value})
     return res
 
+
 def aggregate_all(collection):
     res = dict()
     for item in collection.keys():
@@ -140,11 +115,11 @@ def aggregate_all(collection):
                 res.update({key: value})
     return res
 
+
 def compare(one, two):
     for key in order:
         if one.get(key) != two.get(key):
             print(f'First = {one.get(key)}, second = {two.get(key)}')
-
 
 
 order = [
@@ -162,11 +137,6 @@ d = dict()
 f = dict()
 
 size1 = get_size(results[0])
-
-first = '{"Native": {"matchedImpressions": 3307953, "bookedImpressions": 578754, "expectedDelivery": 2892945, "sharedImpressions": 163746, "matchedUniques": 181269, "availableUniques": 181269, "criteria": {"type": "AD_FORMAT", "remoteId": "Native", "name": "Native", "path": "stub-none", "parentRemoteId": "stub-none"}}, "Banner/Rich Media": {"matchedImpressions": 3442560, "bookedImpressions": 3399, "expectedDelivery": 3442560, "sharedImpressions": 3399, "matchedUniques": 531927, "availableUniques": 531927, "criteria": {"type": "AD_FORMAT", "remoteId": "Banner/Rich Media", "name": "Banner/Rich Media", "path": "stub-none", "parentRemoteId": "stub-none"}}}'
-ff = json.loads(first)
-
-raw_time = json_result.get('dbgInfo').get('requestTime')
 
 for name in order:
     with open('/home/jiggalag/results/{}.tsv'.format(name), 'w') as file:

@@ -1,6 +1,6 @@
 {
-"startDate": "2019-04-29T05:00:00.000Z",
-"endDate": "2019-05-02T04:59:59.000Z",
+"startDate": "2019-08-01T05:00:00.000Z",
+"endDate": "2019-08-31T04:59:59.000Z",
 "dimensions": [
             "Date",
             "Date/AdUnit",
@@ -23,7 +23,7 @@
             "DeviceCapability"
 ],
 "pubMatic": {
-  "priority":  16,
+  "priority":  1,
   "accountId": "79505",
   "customKey": [{"is": [{"key": "section", "value": "Insights"}]}]
   }

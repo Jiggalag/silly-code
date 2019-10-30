@@ -48,9 +48,9 @@ class IFMSApiHelper:
 
     def check_available_inventory(self, json_file, cookies, account_id=None, wait_timeout=600, ping_timeout=1):
         if account_id is None:
-            available_forecast_url = 'https://{}/{}/api/v1/checkAvailableInventory'.format(self.server, self.context)
+            available_forecast_url = 'https://{}/{}/api/v2/checkAvailableInventory'.format(self.server, self.context)
         else:
-            available_forecast_url = 'https://{}/{}/api/v1/checkAvailableInventory?accountId={}'.format(self.server,
+            available_forecast_url = 'https://{}/{}/api/v2/forecast?accountId={}'.format(self.server,
                                                                                                         self.context,
                                                                                                         account_id)
         try:

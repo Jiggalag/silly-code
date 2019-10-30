@@ -18,7 +18,15 @@ while len(bad_bssids) < amount:
     bssid = rstr.xeger(r'(?:[A-Fa-f0-9]{2}[:]){5}(?:[A-Fa-f0-9]{2})').lower()
     url = 'https://api.mylnikov.org/wifi?v=1.1&bssid={}'.format(bssid)
     response = requests.get(url)
-    result = json.loads(response.text)
+    if response.status_code != 200:
+        response = requests.get(url)
+        if response.status_code != 200:
+            response = requests.get(url)
+    try:
+        result = json.loads(response.text)
+    except json.decoder.JSONDecodeError as e:
+        print(e.args[0])
+        continue
     code = result.get('result')
     if code == 404:
         print('{}'.format(bssid))
