@@ -1,5 +1,6 @@
 import json
 import sys
+from datetime import datetime, timedelta
 
 from py_scripts.helpers.ifmsApiHelper import IFMSApiHelper
 from py_scripts.helpers.logging_helper import Logger
@@ -17,51 +18,65 @@ password = '6561bf7aacf5e58c6e03d6badcf13831'
 # user = 'qa-ivi'
 # password = '2c821c5131319f3b9cfa83885d552637'
 # password = 'c64e8262333065b2f35cd52742bd5cfb'
-context = 'ifms5'
-client = 'pitt'
-request = 'frc.json'
-logger = Logger('DEBUG')
+context = 'ifms'
+client = 'rick'
+logger = Logger('WARNING')
 
-api_point = IFMSApiHelper(server, user, password, context, logger)
-#
-# cookie = api_point.change_scope(client, scope)
-#
-# result = api_point.check_available_inventory(request, cookie).text
-#
-# try:
-#     json_result = json.loads(result)
-# except json.JSONDecodeError:
-#     sys.exit(1)
+api_point_default = IFMSApiHelper(server, user, password, 'ifms5', logger)
+api_point_merge = IFMSApiHelper(server, user, password, 'ifms', logger)
 
+time = str(datetime.now()).replace(' ', '').replace(':', '')
 results = list()
 
-# for scope in ['default', 'extrapolation']:
-cookie = api_point.change_scope(client, 156535)
-
-base = {
-    "startDate": "2019-10-29T05:00:01.000Z",
-    "endDate": "2019-11-16T04:59:59.000Z",
-    "dimensions": [
-        "Date",
-        "Date/AdUnit",
-        "AdUnit/Date",
-        "AdUnit"
-    ],
-    "pubMatic": {
-        "priority": 1
+for i in range(1,59):
+    print(f'Forecast for {i} days')
+    base = {
+        "startDate": "{}T05:00:01.000Z".format(datetime.today().date()),
+        "endDate": "{}T04:59:59.000Z".format(datetime.today().date() + timedelta(days=i)),
+        # "geoTargeting": {"includeOther": ["1305"]},
+        # "keyvalueTargeting":[{
+        #     "keyname": "device_width",
+        #     "includeValues": [],
+        #     "excludeValues": [],
+        # }],
+        "dimensions": ["page", "campaign", "order", "country", "state", "city", "keyvalue", "browser", "os", "event",
+                       "eventByDate", "trafficAllocation", "summary"],
+        "priority": 90
     }
-}
 
-raw_result = api_point.check_available_inventory(base, cookie, account_id=156535)
+    cookie = api_point_default.change_scope(client, 'default')
+    raw_result = api_point_default.check_available_inventory(base, cookie)
+    times = list()
+    try:
+        json_result = json.loads(raw_result.text)
+        print(f"Forecast time for scope default is {json_result.get('dbgInfo').get('requestTime')}")
+        # kvs = json_result.get('byKeyvalue')
+        # for item in kvs:
+        #     t = item.get('keyname').get('remoteId')
+        #     if t == 'device_width':
+        #         device_width = item
+        # with open('/home/polter/default-{}'.format(time), 'w') as file:
+        #     file.write(json.dumps(json_result, indent=4))
+    except json.JSONDecodeError:
+        sys.exit(1)
 
-try:
-    json_result = json.loads(raw_result.text)
-    with open('/home/polter/test', 'w') as file:
-        file.write(json.dumps(json_result, indent=4))
-        print('ok')
-except json.JSONDecodeError:
-    sys.exit(1)
+    cookie = api_point_merge.change_scope(client, 'great_merge')
+    raw_result = api_point_merge.check_available_inventory(base, cookie)
 
+    try:
+        json_result = json.loads(raw_result.text)
+        print(f"Forecast time for scope great_merge is {json_result.get('dbgInfo').get('requestTime')}")
+        # kvs = json_result.get('byKeyvalue')
+        # for item in kvs:
+        #     t = item.get('keyname').get('remoteId')
+        #     if t == 'device_width':
+        #         device_width = item
+        # with open('/home/polter/greatmerge-{}'.format(time), 'w') as file:
+        #     file.write(json.dumps(json_result, indent=4))
+    except json.JSONDecodeError:
+        sys.exit(1)
+
+print('stop')
 
 def get_size(obj, seen=None):
     """Recursively finds size of objects"""
@@ -133,18 +148,19 @@ order = [
 
 # wrwr('757n801', results[0])
 
-d = dict()
-f = dict()
-
-size1 = get_size(results[0])
-
-for name in order:
-    with open('/home/jiggalag/results/{}.tsv'.format(name), 'w') as file:
-        for num in range(len(results[0].get('byDate'))):
-            date = results[0].get('byDate')[num].get('to')
-            default = results[0].get('byDate')[num].get(name)
-            extrapolator = results[1].get('byDate')[num].get(name)
-            file.write('{},{},{}\n'.format(date, default, extrapolator))
-
-
-print('OK')
+# d = dict()
+# f = dict()
+#
+# size1 = get_size(results[0])
+#
+# for name in order:
+#     with open('/home/jiggalag/results/{}.tsv'.format(name), 'w') as file:
+#         for num in range(len(results[0].get('byDate'))):
+#             date = results[0].get('byDate')[num].get('to')
+#             default = results[0].get('byDate')[num].get(name)
+#             extrapolator = results[1].get('byDate')[num].get(name)
+#             file.write('{},{},{}\n'.format(date, default, extrapolator))
+#
+#
+# print('OK')
+#
