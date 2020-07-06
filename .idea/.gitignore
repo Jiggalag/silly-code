@@ -1,2 +1,8 @@
 # Default ignored files
 /workspace.xml
+/encodings.xml
+/../get-pip.py
+/misc.xml
+/modules.xml
+/inspectionProfiles/Project_Default.xml
+/silly-code.iml
