@@ -1,16 +1,18 @@
-import requests
-import time
 import json
+import time
+
+import requests
 
 token = 'here should be slack-token'
 
-#Delete files older than this:
+# Delete files older than this:
 ts_to = int(time.time()) - 30 * 24 * 60 * 60
+
 
 def list_files():
   params = {
     'token': token
-    ,'ts_to': ts_to
+    , 'ts_to': ts_to
     ,'count': 1000
   }
   uri = 'https://slack.com/api/files.list'

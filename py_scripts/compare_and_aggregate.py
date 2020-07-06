@@ -1,8 +1,9 @@
 import argparse
+import json
 import os.path
+
 from py_scripts.helpers.ifmsApiHelper import IFMSApiHelper
 from py_scripts.helpers.logging_helper import Logger
-import json
 
 parser = argparse.ArgumentParser(description='Utility intended to comparing databases')
 parser.add_argument('password', type=str, help='Password hash for user')

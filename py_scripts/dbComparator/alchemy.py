@@ -1,7 +1,6 @@
 import sqlalchemy
-from sqlalchemy.ext.automap import automap_base
-from sqlalchemy.orm import sessionmaker
 from sqlalchemy import MetaData
+from sqlalchemy.ext.automap import automap_base
 
 
 class SQLConnection:

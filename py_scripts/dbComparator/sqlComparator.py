@@ -2,17 +2,17 @@ import argparse
 import datetime
 import os
 import os.path
+import platform
 import shutil
 import smtplib
-import platform
-from os.path import basename
-from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
+from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from py_scripts.helpers import configHelper, converters, logging_helper, dbHelper
-from py_scripts.dbComparator import tableData, sqlComparing
-from py_scripts.dbComparator import queryConstructor
+from os.path import basename
 
+from py_scripts.dbComparator import queryConstructor
+from py_scripts.dbComparator import tableData, sqlComparing
+from py_scripts.helpers import configHelper, converters, logging_helper, dbHelper
 
 parser = argparse.ArgumentParser(description='Utility intended to comparing databases')
 parser.add_argument('--server', type=str, default='dev01.inventale.com',

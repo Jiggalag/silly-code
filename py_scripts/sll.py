@@ -1,9 +1,10 @@
 import json
-from dsp.dspapi_entity import DspApiConnection
-from helpers.loggingHelper import Logger
 from urllib.error import URLError, HTTPError
 from urllib.parse import parse_qs
 from urllib.request import Request, urlopen
+
+from dsp.dspapi_entity import DspApiConnection
+from helpers.loggingHelper import Logger
 
 # The Slack channel to send a message to stored in the slackChannel environment variable
 SLACK_CHANNEL = "#alert"

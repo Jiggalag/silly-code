@@ -1,5 +1,5 @@
-import os
 import json
+import os
 
 file = os.getcwd() + '/123'
 with open(file, 'r') as f:

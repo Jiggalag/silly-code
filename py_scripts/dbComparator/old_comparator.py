@@ -10,9 +10,10 @@ __author__ = 'pavel.kiselev'
 import configparser
 import datetime
 import os
+from multiprocessing.dummy import Pool as ThreadPool
+
 import pymysql
 from helpers import helper
-from multiprocessing.dummy import Pool as ThreadPool
 
 config = configparser.ConfigParser()
 propertyFile = './resources/properties/dbComparing.properties'

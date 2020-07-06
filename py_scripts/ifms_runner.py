@@ -1,8 +1,9 @@
 import datetime
 import os
-import psutil
 import subprocess
 import time
+
+import psutil
 
 # TODO: it's only mold for ifms-python-runner
 

@@ -1,20 +1,20 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 
-import sys
 import os
 import platform
-import pymysql
-
-from py_scripts.dbComparator.comparatorWithUI import Backend
-import py_scripts.helpers.dbHelper as dbHelper
-from py_scripts.helpers.logging_helper import Logger
+import sys
 
 import PyQt5
+import pymysql
 from PyQt5.QtCore import Qt, pyqtSlot
+from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication, QLabel, QGridLayout, QWidget, QLineEdit, QCheckBox, QPushButton, QMessageBox
 from PyQt5.QtWidgets import QFileDialog, QRadioButton, QComboBox, QAction, qApp, QMainWindow
-from PyQt5.QtGui import QIcon
+
+import py_scripts.helpers.dbHelper as dbHelper
+from py_scripts.dbComparator.comparatorWithUI import Backend
+from py_scripts.helpers.logging_helper import Logger
 
 # TODO: add useful redacting of skip table field
 # TODO: instead of QLineEdit for "skip" params you should use button with modal window? - minor

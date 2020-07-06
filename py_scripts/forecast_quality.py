@@ -1,9 +1,11 @@
 import datetime
-from helpers.dbHelper import DbConnector
+
 import pymysql
-from helpers.loggingHelper import Logger
-from helpers.jsonHelper import JsonQuery
+from helpers.dbHelper import DbConnector
 from helpers.ifmsApiHelper import IFMSApiHelper
+from helpers.jsonHelper import JsonQuery
+from helpers.loggingHelper import Logger
+
 
 # TODO: 2. iterate over this dict and get forecast for each page
 # TODO: 3. Write page-map to db
@@ -11,7 +13,6 @@ from helpers.ifmsApiHelper import IFMSApiHelper
 
 
 def create_page_map(connection, logger):
-
     get_pages_query = 'SELECT * FROM page WHERE isDeleted=0 AND archived IS null'
     pages = list()
     try:

@@ -1,9 +1,10 @@
 import os
+
 from helpers import loggingHelper
 from selenium import webdriver
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
-from stem import Signal
 from stem import CircStatus
+from stem import Signal
 from stem.control import Controller
 
 logLevel = 20

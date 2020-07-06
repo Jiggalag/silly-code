@@ -1,7 +1,8 @@
 # Script sends json-query to API. Script can be used for forecast perfomance testing.
 
-import helper
 import os.path
+
+import helper
 
 jsonName = 'forecastQuery1.json'
 resultFile = 'timediff'
