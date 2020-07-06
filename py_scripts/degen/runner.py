@@ -14,10 +14,10 @@ parser.add_argument('liquibase_password', type=str,
 
 args = parser.parse_args()
 
-server = 'samaradb03.maxifier.com'
+server = 'eu-db-01.inventale.com'
 user = 'liquibase'
 password = args.liquibase_password
-source_db = 'rick'
+source_db = 'rick_cpopro'
 target_db = 'rick_quality'
 logger = Logger('DEBUG')
 engine = create_engine('mysql+pymysql://{}:{}@{}/{}?charset=utf8mb4'.format(user, password, server, source_db))
