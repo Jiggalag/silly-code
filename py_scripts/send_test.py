@@ -129,10 +129,10 @@ for campaign in campaign2:
     if remoteid in rrr:
         print(f'remoteId {remoteid}: matchedImpressions {matchedImpressions}')
 
-with open('/home/polter/forecast/default0', 'w') as file:
+with open('/home/polter/forecast/default1', 'w') as file:
     file.write(json.dumps(results[0], indent=4))
 
-with open('/home/polter/forecast/improve0', 'w') as file:
+with open('/home/polter/forecast/improve1', 'w') as file:
     file.write(json.dumps(results[1], indent=4))
 
 for name in order:
