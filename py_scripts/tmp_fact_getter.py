@@ -1,23 +1,11 @@
 import json
-import sys
 
 import pymysql
-
-from py_scripts.helpers.ifmsApiHelper import IFMSApiHelper
-from py_scripts.helpers.logging_helper import Logger
 
 host = 'eu-db-01.inventale.com'
 user = 'liquibase'
 password = 'thiequ0WiW6UaNgelilu'
 db = 'rick_cpopro'
-
-server = 'inv-dev-02.inventale.com'
-ifmsuser = 'pavel.kiselev'
-ifmspassword = '6561bf7aacf5e58c6e03d6badcf13831'  # from PoKuTe713
-context = 'ifms1'
-client = 'rick'
-request = 'frc.json'
-logger = Logger('DEBUG')
 
 
 def get_connection(host, user, password, db):
@@ -34,79 +22,69 @@ def get_connection(host, user, password, db):
         return None
 
 
-request = open('frc.json', 'r').read()
+def get_forecast_dict(filename, value_type):
+    with open(filename, 'r') as file:
+        campaign_list = json.loads(file.read()).get('byCampaign')
+        campaign_forecast = dict()
+        for item in campaign_list:
+            remoteid = item.get('campaign').get('remoteId')
+            forecast = item.get(value_type)
+            campaign_forecast.update({remoteid: forecast})
+    return campaign_forecast
 
-# api_point = IFMSApiV2(server, user, password, context, 'pitt', '132109', logger)
-api_point = IFMSApiHelper(server, ifmsuser, ifmspassword, context, logger)
 
-results = list()
+for count in [4]:
+    print(f'Count {count}')
+    default_file = f'/home/polter/forecast/default{count}'
+    improve_file = f'/home/polter/forecast/improve{count}'
+    value_type = 'matchedImpressions'
 
-for scope in ['default', 'improve']:
-    print(f'Forecast for scope {scope}')
-    cookie = api_point.change_scope(client, scope)
-    # result = api_point.get_query(cookie, 'a0306ab0-7bb7-11e9-8e25-7d73cdcbd8fa')
-    result = api_point.check_available_inventory('frc.json', cookie).text
-    try:
-        json_result = json.loads(result)
-        # with open('/home/polter/wee2', 'w') as file:
-        #     file.write(json.dumps(json_result, indent=4))
-        results.append(json_result)
-    except json.JSONDecodeError:
-        sys.exit(1)
+    default_forecast = get_forecast_dict(default_file, value_type)
+    improve_forecast = get_forecast_dict(improve_file, value_type)
 
-campaigns = list()
-for result in results:
-    tmp_campaigns = set()
-    for item in result['byCampaign']:
-        tmp_campaigns.add(item.get('campaign').get('remoteId'))
-    campaigns.append(tmp_campaigns)
+    startdate = "2020-07-13"
+    enddate = "2020-07-16"
 
-c1 = dict()
-c2 = dict()
-for item in results[0]['byCampaign']:
-    id = item['campaign']['remoteId']
-    imps = item['matchedImpressions']
-    c1.update({id: imps})
-
-for item in results[1]['byCampaign']:
-    id = item['campaign']['remoteId']
-    imps = item['matchedImpressions']
-    c2.update({id: imps})
-
-common = set(c1.keys()).intersection(set(c2.keys()))
-for item in common:
-    sub = abs(c1.get(item) - c2.get(item))
-    perc = sub / c1.get(item) * 100
-    if perc > 20:
-        print(f'remoteid {item}: default - {c1.get(item)}, improve - {c2.get(item)}')
-
-remoteId = 78979879
-startdate = "2020-07-01"
-enddate = "2020-07-05"
-commonquery = (f"SELECT cmp.remoteId, sum(r.impressions) FROM rickcreativesiteplacereport r " +
-               f"JOIN rickCreative crv ON crv.id = r.rickCreativeId " +
-               f"JOIN rickcampaign cmp ON cmp.id = crv.rickCampaign_id " +
-               f"WHERE r.dt BETWEEN '{startdate}' AND '{enddate}' " +
-               f"group by cmp.remoteId;")
-
-sql = get_connection(host, user, password, db)
-
-with sql.cursor() as cursor:
-    cursor.execute(commonquery)
-    commonresult = cursor.fetchall()
-
-resultids = set()
-
-for item in commonresult:
-    resultids.add(item.get('remoteId'))
-
-query = (f"SELECT cmp.remoteId, sum(r.impressions) FROM rickcreativesiteplacereport r " +
-         f"JOIN rickCreative crv ON crv.id = r.rickCreativeId " +
-         f"JOIN rickcampaign cmp ON cmp.id = crv.rickCampaign_id " +
-         f"WHERE cmp.remoteId in ({', '.join(campaigns[0])}) and r.dt BETWEEN '{startdate}' AND '{enddate}' " +
-         f"group by cmp.remoteId;")
-print(query)
-with sql.cursor() as cursor:
-    cursor.execute(query)
-    result = cursor.fetchall()
+    sql = get_connection(host, user, password, db)
+    query = (f"SELECT cmp.remoteId, sum(r.impressions) FROM rickcreativesiteplacereport r " +
+             f"JOIN rickCreative crv ON crv.id = r.rickCreativeId " +
+             f"JOIN rickcampaign cmp ON cmp.id = crv.rickCampaign_id " +
+             f"WHERE r.dt BETWEEN '{startdate}' AND '{enddate}' " +
+             f"group by cmp.remoteId;")
+    testquery = 'describe rickcampaign;'
+    with sql.cursor() as cursor:
+        cursor.execute(query)
+        result = cursor.fetchall()
+    fact = dict()
+    for item in result:
+        remoteid = item.get('remoteId')
+        fact_value = item.get('sum(r.impressions)')
+        fact.update({remoteid: fact_value})
+    improve_fact = set(improve_forecast.keys()).intersection(set(fact.keys()))
+    default_fact = set(default_forecast.keys()).intersection(set(fact.keys()))
+    ucamp = default_fact.union(improve_fact)
+    default_fail = 0
+    improve_fail = 0
+    for key in ucamp:
+        default_f = default_forecast.get(key, None)
+        improve_f = improve_forecast.get(key, None)
+        f = fact.get(key, None)
+        if default_f is not None and improve_f is not None and fact is not None:
+            default_delta = abs(default_f - f) / default_f * 100
+            improve_delta = abs(improve_f - f) / improve_f * 100
+            # if improve_delta > 20 or default_delta > 20:
+            #     print(f'Campaign {key}, default_forecast {default_f}, improve_forecast {improve_f}, fact {f}, default_delta {default_delta:.2f}, improve_delta {improve_delta:.2f}')
+            if improve_delta > default_delta:
+                improve_fail += 1
+                print(
+                    f'Campaign {key}, default_forecast {default_f}, improve_forecast {improve_f}, fact {f}, default_delta {default_delta:.2f}, improve_delta {improve_delta:.2f}')
+            elif default_delta > improve_delta:
+                default_fail += 1
+                print(
+                    f'Campaign {key}, default_forecast {default_f}, improve_forecast {improve_f}, fact {f}, default_delta {default_delta:.2f}, improve_delta {improve_delta:.2f}')
+    print(f'Default fail {default_fail}, improve_fail {improve_fail}')
+    # for key in improve_fact:
+    #     print(f'Improve {key} forecast: {improve_forecast.get(key)}, fact {fact.get(key)}')
+    # for key in default_fact:
+    #     print(f'Default {key} forecast: {default_forecast.get(key)}, fact {fact.get(key)}')
 print('stop')

@@ -1,6 +1,8 @@
 {
-  "startDate": "2020-07-06T21:00:00.000Z",
-  "endDate": "2020-07-10T20:59:57.000Z",
-  "dimensions": [],
-  "priority": 70
+  "startDate": "2020-07-30T00:00:00.000Z",
+  "endDate": "2020-08-30T00:00:00.000Z",
+  "dimensions": [
+    "keyvalue"
+  ],
+  "priority": 20
 }

@@ -9,13 +9,13 @@ import requests
 from py_scripts.helpers.ifms_api_v2 import IFMSApiV2
 from py_scripts.helpers.logging_helper import Logger
 
-server = 'eu-dev-01.inventale.com'
-user = 'pavel.kiselev'
-password = '6561bf7aacf5e58c6e03d6badcf13831'
+server = 'ifms3.inventale.com'
+user = 'analyst'
+password = '4c029545591e3f76e2858dcb19c31808'
 context = 'ifms'
-client = 'pitt'
+client = 'rick'
 
-scope = '156535'
+scope = 'default'
 scopes = [
     '1269',
     '132109',
@@ -148,34 +148,35 @@ def check_available_inventory(json_file, cookies, account_id=None, wait_timeout=
 
 cookie = change_scope(server, user, password, client, scope)
 request = {
-    "startDate": "2020-05-10T21:00:00.000Z",
-    "endDate": "2021-05-19T20:59:{}.000Z".format(randrange(60)),
+    "startDate": "2020-07-16T21:00:00.000Z",
+    "endDate": "2021-09-19T20:59:{}.000Z".format(randrange(60)),
     "dimensions": [
-        "Date",
-        "Date/AdUnit",
-        "AdUnit/Date",
-        "AdUnit"
+        'site',
+        'page',
+        'geo',
+        'keyvalue',
+        'campaign',
+        'order',
+        'date'
     ],
-    "priority": 90,
-    "pubMatic": {
-        "priority": 1
-    }}
+    "priority": 90
+}
 
 while True:
     request = {
-        "startDate": "2020-04-21T21:00:00.000Z",
-        "endDate": "2021-06-22T20:59:59.000Z",
+        "startDate": "2020-10-18T21:00:00.000Z",
+        "endDate": "2021-10-06T20:59:59.000Z",
         # "endDate": "2020-06-21T20:{0:0>2}:{0:0>2}.{0:0>3}Z".format(randrange(60), format(randrange(60)), randrange(500)),
         "dimensions": [
-            "Date"
-            # "Date/AdUnit",
-            # "AdUnit/Date",
-            # "AdUnit"
+            "Date",
+            "summary"
         ],
-        "priority": 90,
-        "pubMatic": {
-            "priority": 1
-        }
+        # "frequencyTargetings": [
+        #     {"scope": "DAILY",
+        #     "timePeriod": 20,
+        #      "impsLimit": 3}
+        # ],
+        "priority": 20
     }
     # print(request.get('endDate'))
     apiv2 = IFMSApiV2(server, user, password, context, client, scope, Logger('DEBUG'))
