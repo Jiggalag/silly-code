@@ -1,60 +1,82 @@
-import argparse
-import time
+import json
 
-import py_scripts.rfc_helper as rcf
+with open('/tmp/default', 'r') as file:
+    default = json.loads(file.read())
 
-parser = argparse.ArgumentParser(description='Intended to test RFC API')
-parser.add_argument('login', type=str, help='Login')
-parser.add_argument('password_hash', type=str, help='password_hash')
-parser.add_argument('server', type=str, help='Host, where script sends requests')
+with open('/tmp/dcos', 'r') as file:
+    dcos = json.loads(file.read())
+
+default_flights = ['534615554',
+                   '534057820',
+                   '534615480',
+                   '534059736',
+                   '534615540',
+                   '534728928',
+                   '533580023',
+                   '534059708',
+                   '534615510',
+                   '534683376',
+                   '534681552']
+
+default_flights2 = ['534728928',
+                    '534059736',
+                    '534615510',
+                    '534615480',
+                    '534059708',
+                    '534057820',
+                    '534681552',
+                    '534683376',
+                    '534615554',
+                    '534615540',
+                    '533580023']
 
 
-args = parser.parse_args()
+dcos_flights = ['534623012',
+                '534779372',
+                '534641810',
+                '534774834',
+                '534615584',
+                '534734254',
+                '534748656',
+                '534623642',
+                '534778532',
+                '534342116',
+                '534710530',
+                '534059778',
+                '534778196',
+                '534753208',
+                '534683680',
+                '534749076',
+                '534645110',
+                '534742360',
+                '534024505',
+                '534742374',
+                '532186349',
+                '534059750']
 
-server = args.server
-login = args.login
-password_hash = args.password_hash
-start = time.clock()
+default_interest = ['14891','14873']
+dcos_interest = ['3379','3937']
+default_subsection = ['5307']
 
-api_point = rcf.RFCApi(server, login, password_hash)
 
-print('Time taken to login {}'.format(time.clock() - start))
+print('Default flights:')
+for item in default_flights:
+    print(f'{item}: {default.get("Flight").get(item)}')
 
-# result = api_point.get_matching_list(100)
+print('Dcos flights:')
+for item in dcos_flights:
+    print(f'{item}: {dcos.get("Flight").get(item)}')
 
-# r2 = api_point.get_matching_list(**ddict)
+print('Default interest:')
+for item in default_interest:
+    print(f'{item}: {default.get("Interest").get(item)}')
 
-offset = 0
+print('Dcos interest:')
+for item in dcos_interest:
+    print(dcos.get('Interest').get(item))
 
-result = {
-    'mismatch': 0,
-    'match': 0
-}
+print('Default subsection:')
+for item in default_subsection:
+    print(default.get('SubSection').get(item))
 
-ddict = {
-    'limit': 3000
-    # 'offset': offset,
-    # 'beginDate': '2018-08-15T00:00:00',
-    # 'endDate': '2018-08-15T07:00:00'
-    # 'beginDate': '2018-08-15',
-    # 'endDate': '2018-08-16'
-}
-start = time.clock()
-r1 = api_point.get_track_list(**ddict)
-print('Duration is {}'.format(time.clock() - start))
-offset += 100
-for item in r1.get('items'):
-    tmp_match = 0
-    tmp_mismatch = 0
-    fio = item.get('fio')
-    if fio == '<Не найден в базе профилей>':
-        tmp_mismatch += 1
-    else:
-        tmp_match += 1
-    new_mismatch = result.get('mismatch') + tmp_mismatch
-    result.update({'mismatch': new_mismatch})
-    new_match = result.get('match') + tmp_match
-    result.update({'match': new_match})
-print('Mismatch = {}'.format(result.get('mismatch')))
-print('Match = {}'.format(result.get('match')))
-print('OK')
+print('stop')
