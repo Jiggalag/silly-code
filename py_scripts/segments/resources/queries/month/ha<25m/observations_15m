@@ -1,0 +1,30 @@
+WITH zones AS
+    (SELECT
+        loc,
+        poly ,
+        ST_MIN_X(ST_POLYGON(poly)) AS min_lon ,
+        st_x(st_centroid(ST_POLYGON(poly))) AS cen_lon ,
+        ST_MAX_X(ST_POLYGON(poly)) AS max_lon ,
+        ST_MIN_Y(ST_POLYGON(poly)) AS min_lat ,
+        st_y(st_centroid(ST_POLYGON(poly))) AS cen_lat ,
+        ST_MAX_Y(ST_POLYGON(poly)) AS max_lat
+    FROM ( VALUES
+            REPLACE_VALUES  # TODO: change on zone values
+           ) AS t(loc, poly)),
+mv AS (
+    SELECT loc, month, year, ad_id, time_cluster FROM (SELECT loc, ad_id, cast(to_unixtime(utc_timestamp) AS BIGINT)/15/60 AS time_cluster,
+            month, year, longitude, latitude, poly
+    FROM movement AS mv, zones AS z
+    WHERE mv.country_code IN ('AE')
+        AND year = 'REPLACE_YEAR'
+        AND cast(month as integer)= REPLACE_MONTH
+        AND h_accuracy <= 25
+        AND latitude >= min_lat
+        AND latitude <= max_lat
+        AND longitude >= min_lon
+        AND longitude <= max_lon)
+        WHERE ST_WITHIN(ST_POINT(longitude, latitude), ST_POLYGON(poly))
+)
+SELECT loc, month, year, COUNT(ad_id) AS ids, COUNT(ad_id||cast(time_cluster AS varchar)) AS clusters FROM mv
+GROUP BY 1,2,3
+ORDER BY 1,2,3
