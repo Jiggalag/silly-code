@@ -1,11 +1,9 @@
 import pymongo
 
-
 mongohost = 'irl-0ifms-dev-cpo-bse06.inventale.com'
 mongoport = 27017
 
 basename = 'ifms_m_suggestions'
-
 
 mongo = pymongo.MongoClient(mongohost, mongoport)
 base = mongo[basename]

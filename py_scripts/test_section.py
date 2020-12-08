@@ -1,7 +1,8 @@
+import json
 import os.path
+
 from py_scripts.helpers.ifmsApiHelper import IFMSApiHelper
 from py_scripts.helpers.logging_helper import Logger
-import json
 
 server = 'dev01.inventale.com'
 user = 'pavel.kiselev'

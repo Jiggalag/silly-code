@@ -1,5 +1,5 @@
-from py_scripts.helpers.logging_helper import Logger
 from py_scripts.helpers.ifms_forecast_helper import IFMSForecast
+from py_scripts.helpers.logging_helper import Logger
 
 server = 'dev01.inventale.com'
 user = 'pavel.kiselev'

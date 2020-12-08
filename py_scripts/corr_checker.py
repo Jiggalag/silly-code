@@ -5,6 +5,7 @@ files = [
     'def.json'
 ]
 
+
 def read_file(filename):
     with open('/home/polter/irv/' + filename, 'r') as f:
         return json.loads(f.read())

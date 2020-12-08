@@ -1,6 +1,7 @@
-import py_scripts.helpers.cli_helper as cliH
 import datetime
 import time
+
+import py_scripts.helpers.cli_helper as cliH
 
 date = datetime.date.today() - datetime.timedelta(days=1)
 

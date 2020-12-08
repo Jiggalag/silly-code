@@ -1,8 +1,10 @@
 import json
 
+
 def get_forecast(filename):
     with open(f'/home/polter/{filename}', 'r') as f:
         return json.loads(f.read())
+
 
 result = list()
 

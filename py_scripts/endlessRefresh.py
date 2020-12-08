@@ -1,7 +1,7 @@
 # Script refreshes sync in endless cycle and run forecast after refresh
 
-import subprocess
 import datetime
+import subprocess
 import time
 
 cliPath = '/home/jiggalag/Downloads/maxifier-cli-1.11/'

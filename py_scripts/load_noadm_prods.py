@@ -53,7 +53,6 @@ try:
 except json.JSONDecodeError:
     sys.exit(1)
 
-
 order = [
     'availableUniques',
     'bookedImpressions',
@@ -75,6 +74,5 @@ for name in order:
             default = results[0].get('byDate')[num].get(name)
             extrapolator = results[1].get('byDate')[num].get(name)
             file.write('{},{},{}\n'.format(date, default, extrapolator))
-
 
 print('OK')

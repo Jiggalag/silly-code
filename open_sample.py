@@ -12,7 +12,6 @@ for i in chk:
     print(f'chunk {count} read')
     count += 1
 
-
 unique_amount = df.nunique()
 
 print(f'Amount of uniques is {unique_amount}')

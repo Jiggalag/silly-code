@@ -1,6 +1,7 @@
 import json
-import rstr
+
 import requests
+import rstr
 
 while True:
     bssid = rstr.xeger(r'(?:[A-Fa-f0-9]{2}[:]){5}(?:[A-Fa-f0-9]{2})').lower()

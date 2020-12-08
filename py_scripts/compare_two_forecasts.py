@@ -1,5 +1,6 @@
 import json
 import sys
+
 from py_scripts.helpers.ifmsApiHelper import IFMSApiHelper
 from py_scripts.helpers.logging_helper import Logger
 
@@ -13,7 +14,6 @@ logger = Logger('DEBUG')
 
 api_point = IFMSApiHelper(server, user, password, context, logger)
 results = list()
-
 
 for scope in ['def_pub', 'default']:
     print(f'Process scope {scope}')
@@ -32,6 +32,7 @@ def wrwr(name, forecast):
     with open(f'/home/polter/{name}', 'w') as f:
         f.write(json.dumps(forecast))
 
+
 order = [
     'availableUniques',
     'bookedImpressions',
@@ -49,8 +50,6 @@ f = dict()
 for key in results[0].keys():
     if results[0].get(key) != results[1].get(key):
         print(f'Oops on key {key}')
-
-
 
 for name in order:
     with open('/home/jiggalag/results/{}.tsv'.format(name), 'w') as file:

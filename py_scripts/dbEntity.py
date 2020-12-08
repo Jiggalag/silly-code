@@ -1,15 +1,16 @@
-import pymysql.cursors
 import difflib
+import email
+import filecmp
+import os
 import smtplib
 import subprocess
 import time
-import os
-import filecmp
-import email
-from email.mime.text import MIMEText
+from email.header import Header
 from email.mime.multipart import MIMEBase
 from email.mime.multipart import MIMEMultipart
-from email.header import Header
+from email.mime.text import MIMEText
+
+import pymysql.cursors
 
 # TODO: add dict with pairs client - rmiPort after adding all appropriate sync to dev02
 path = '/home/jiggalag/'
@@ -18,7 +19,9 @@ dbases = ['mock', 'mock', 'mock']
 host = 'mock'
 rmiPort = '9035'
 jobs = ['DownloadEntity(-start)', 'Common()', 'Geo()', 'Inventory()', 'Campaign(-f MODIFIED)', 'DownloadEntity(-end)']
-irvingJobs = ['DownloadEntity(-start)', 'OpenParseEntities()', 'OpenLoadEntities()', 'OpenParseReport()', 'OpenLoadReport(-cfg PageReport,StandardReport,KVKeyPairReport,CampaignGeoReport,GeoPageReport,CampaignCountryReport)', 'DownloadEntity(-end)']
+irvingJobs = ['DownloadEntity(-start)', 'OpenParseEntities()', 'OpenLoadEntities()', 'OpenParseReport()',
+              'OpenLoadReport(-cfg PageReport,StandardReport,KVKeyPairReport,CampaignGeoReport,GeoPageReport,CampaignCountryReport)',
+              'DownloadEntity(-end)']
 
 # e-mail settings
 fromaddr = "mock"

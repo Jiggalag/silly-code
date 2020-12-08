@@ -4,4 +4,3 @@ result = '[{"name":"admin","password_hash":"YGYy7APVvcjSxxt1kw0p0WoKABY=","tags"
 
 jsonresult = json.loads(result)
 print('stop')
-

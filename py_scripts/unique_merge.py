@@ -1,11 +1,12 @@
-import pandas as pd
 import glob
+
+import pandas as pd
 
 filelist = glob.glob('proc_*.tsv')
 
 first_df = pd.read_csv(filelist[0], sep=',', low_memory=False)
 
-for i in range(1,len(filelist) - 1):
+for i in range(1, len(filelist) - 1):
     print(f'Now we process file {filelist[i]}...')
     tmp = pd.read_csv(filelist[i], sep=',', low_memory=False)
     first_df.append(tmp)

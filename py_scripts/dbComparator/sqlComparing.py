@@ -1,6 +1,7 @@
 import datetime
-from py_scripts.helpers import dbHelper
+
 from py_scripts.dbComparator import unified_comparing_class
+from py_scripts.helpers import dbHelper
 
 
 class Object:

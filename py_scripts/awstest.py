@@ -2,8 +2,8 @@ import boto3
 from botocore.exceptions import ClientError
 
 session = boto3.Session(
-    aws_access_key_id = 'mock',
-    aws_secret_access_key = 'mock'
+    aws_access_key_id='mock',
+    aws_secret_access_key='mock'
 )
 
 host = 'irl-0ifms-dev-cpo-bse06.inventale.com'

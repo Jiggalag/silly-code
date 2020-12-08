@@ -1,6 +1,5 @@
 import json
 import sys
-import argparse
 
 from py_scripts.helpers.ifmsApiHelper import IFMSApiHelper
 from py_scripts.helpers.logging_helper import Logger
@@ -32,6 +31,7 @@ for scope in ['default', 'api']:
     except json.JSONDecodeError:
         sys.exit(1)
 
+
 def get_size(obj, seen=None):
     """Recursively finds size of objects"""
     size = sys.getsizeof(obj)
@@ -57,6 +57,7 @@ def wrwr(name, forecast):
     with open(f'/home/polter/{name}', 'w') as f:
         f.write(json.dumps(forecast))
 
+
 order = [
     'availableUniques',
     'bookedImpressions',
@@ -77,7 +78,6 @@ for key in results[0].keys():
 
 size1 = get_size(results[0])
 size2 = get_size(results[1])
-
 
 for name in order:
     with open('/home/jiggalag/results/{}.tsv'.format(name), 'w') as file:

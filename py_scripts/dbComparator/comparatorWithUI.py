@@ -3,14 +3,15 @@ import os
 import os.path
 import shutil
 import smtplib
-from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
+from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from os.path import basename
-from py_scripts.helpers import converters
-from py_scripts.dbComparator import tableData, sqlComparing
-from py_scripts.helpers.dbHelper import DbConnector
+
 from py_scripts.dbComparator import queryConstructor
+from py_scripts.dbComparator import tableData, sqlComparing
+from py_scripts.helpers import converters
+from py_scripts.helpers.dbHelper import DbConnector
 
 
 class Backend:
